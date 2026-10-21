@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { api, usePermissionsCatalogQuery, useGetBellQuery, useGetDashboardQuery, useGetGroupQuery, useGetMasterQuery, useLogoutMutation, useReadAllNotificationsMutation } from '../../app/api';
-import { loggedOut, setLang } from '../../app/slices';
+import { loggedOut, setLang, toggleTheme } from '../../app/slices';
 import { fdate, SaIcon } from '../../components/sa';
 import { menu, shopMenu, toRoute } from './spec/engine';
 
@@ -61,7 +61,7 @@ export default function AdminLayout() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [q, setQ] = useState('');
     const [dd, setDd] = useState(null);                       // which dropdown is open: 'bell' | 'user' | null
-    const [theme, setTheme] = useState(() => { try { return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } });
+    const theme = useSelector((s) => s.ui.theme);          // one theme for the whole app (the store persists it), so route changes never reset it
     const [logout] = useLogoutMutation();
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -75,7 +75,6 @@ export default function AdminLayout() {
     const { data: cat } = usePermissionsCatalogQuery(undefined, { skip: !perms || !token });
     const brand = master?.data;
     const logo = theme === 'dark' ? (brand?.web_dark_logo || brand?.web_logo) : brand?.web_logo;
-    useEffect(() => { try { localStorage.setItem('theme', theme); } catch { /* storage unavailable */ } }, [theme]);
     useEffect(() => { setDd(null); setMobileOpen(false); }, [loc.pathname]);
     useEffect(() => { const h = (e) => { if (!e.target.closest('.dropdown, [data-dd]')) setDd(null); }; document.addEventListener('click', h); return () => document.removeEventListener('click', h); }, []);
 
@@ -125,7 +124,7 @@ export default function AdminLayout() {
                         <div className="hello"><h2>{t('Welcome Back, {name}', { name })}</h2><p>{t('Monitor your business analytics and statistics.')}</p></div>
                         <div className="spacer" />
                         <Link to={loc.pathname.startsWith('/shop') ? '/shop/pos' : '/admin/pos'} className="btn primary sm" style={{ gap: 6 }}><SaIcon name="cart" /> {t('POS')}</Link>
-                        <button className="icon-btn" aria-label={t('Toggle dark mode')} onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}><SaIcon name="moon" /></button>
+                        <button className="icon-btn" aria-label={t('Toggle dark mode')} onClick={() => dispatch(toggleTheme())}><SaIcon name={theme === 'dark' ? 'sun' : 'moon'} /></button>
                         <div className="rel">
                             <button className="icon-btn" data-dd aria-label={t('Language')} aria-expanded={dd === 'lang'} onClick={() => setDd(dd === 'lang' ? null : 'lang')} style={{ width: 'auto', padding: '0 10px', fontSize: 13, fontWeight: 600 }}>{LANGS.find((l) => l.code === lang)?.short ?? 'EN'}</button>
                             {dd === 'lang' && <div className="dropdown" style={{ minWidth: 160 }}>{LANGS.map((l) => <button key={l.code} onClick={() => { dispatch(setLang(l.code)); setDd(null); }}>{l.name}</button>)}</div>}

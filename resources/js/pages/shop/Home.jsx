@@ -22,7 +22,7 @@ function SaleClock({ endsAt, boxed }) {
         const id = setInterval(() => setParts(remaining(endsAt)), 1000);
         return () => clearInterval(id);
     }, [endsAt]);
-    if (boxed) return <div className="mt-4 flex gap-2">{parts.map((n, i) => <span key={i} className="min-w-14 rounded-lg bg-white px-4 py-2 text-center text-2xl font-bold text-primary">{n}</span>)}</div>;
+    if (boxed) return <div className="mt-4 flex gap-2">{parts.map((n, i) => <span key={i} className="min-w-14 rounded-lg bg-sa-surface px-4 py-2 text-center text-2xl font-bold text-primary">{n}</span>)}</div>;
     return <p className="mt-3 text-xs">{t('Sale ends in')} {parts.join(' : ')}</p>;
 }
 
@@ -34,9 +34,9 @@ function BannerSlider({ banners }) {
     if (!banners.length) return null;
     const b = banners[i];
     return (
-        <div className="relative h-[280px] overflow-hidden rounded-[14px] bg-white md:h-[460px]">
+        <div className="relative h-[280px] overflow-hidden rounded-[14px] bg-sa-surface md:h-[460px]">
             <Link to={b.url || '/products'} className="block h-full"><Img src={b.image} alt={b.title} className="h-full w-full object-cover" /></Link>
-            {banners.length > 1 && <div className="absolute bottom-3 start-0 end-0 flex justify-center gap-2">{banners.map((slide, n) => <button key={slide.id} aria-label={t('Go to slide {n}', { n: n + 1 })} onClick={() => setI(n)} className={`h-2.5 w-2.5 rounded-full ${n === i ? 'bg-primary' : 'bg-white/80'}`} />)}</div>}
+            {banners.length > 1 && <div className="absolute bottom-3 start-0 end-0 flex justify-center gap-2">{banners.map((slide, n) => <button key={slide.id} aria-label={t('Go to slide {n}', { n: n + 1 })} onClick={() => setI(n)} className={`h-2.5 w-2.5 rounded-full ${n === i ? 'bg-primary' : 'bg-sa-surface/80'}`} />)}</div>}
         </div>
     );
 }
@@ -70,21 +70,21 @@ export default function Home() {
     return (
         <div className="space-y-10 pb-4">
             <section className="grid items-start gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-                <aside className="hidden h-full flex-col overflow-hidden rounded-[12px] border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] xl:flex">
+                <aside className="hidden h-full flex-col overflow-hidden rounded-[12px] border border-line bg-sa-surface shadow-[0_8px_24px_rgba(15,23,42,0.06)] xl:flex">
                     {isLoading ? <div className="skeleton m-3 h-64" /> : menuCats.map((c) => (
                         <Link key={c.id} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between px-4 py-3 text-[15px] text-slate-700 hover:bg-primary-soft hover:text-primary"><span className="flex min-w-0 items-center gap-3"><Img src={c.image_url} alt="" className="h-7 w-7 shrink-0 rounded object-cover" /><span className="truncate">{catName(c, lang)}</span></span><Icon name="right" size={14} /></Link>
                     ))}
-                    <Link to="/products" className="mt-auto flex items-center gap-2 border-t border-slate-100 px-4 py-3.5 text-[15px] font-semibold text-slate-700 hover:text-primary">{t('View All Categories')}</Link>
+                    <Link to="/products" className="mt-auto flex items-center gap-2 border-t border-line px-4 py-3.5 text-[15px] font-semibold text-slate-700 hover:text-primary">{t('View All Categories')}</Link>
                 </aside>
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
                     {(data?.banners?.length) ? <BannerSlider banners={data.banners} /> : (
                         <div className="grid h-[280px] place-items-center rounded-[14px] bg-gradient-to-br from-sky-100 to-sky-300 p-8 text-center md:h-[460px]">
-                            <div><p className="text-4xl font-bold text-slate-800">{t('Natural Beauty Care')}</p>
+                            <div><p className="text-4xl font-bold text-ink">{t('Natural Beauty Care')}</p>
                                 <Link to="/products" className="btn-primary mt-5">{t('Shop Now')}</Link></div>
                         </div>
                     )}
                     <div className="grid grid-cols-2 gap-5 lg:h-[460px] lg:grid-cols-1">
-                        {side.map((a) => <Link key={a.image} to={a.url || '/products'} className="overflow-hidden rounded-[12px] bg-white"><Img src={a.image} alt={a.title || ''} className="aspect-[4/3] h-[180px] w-full object-cover lg:h-full" /></Link>)}
+                        {side.map((a) => <Link key={a.image} to={a.url || '/products'} className="overflow-hidden rounded-[12px] bg-sa-surface"><Img src={a.image} alt={a.title || ''} className="aspect-[4/3] h-[180px] w-full object-cover lg:h-full" /></Link>)}
                     </div>
                 </div>
             </section>

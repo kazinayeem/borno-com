@@ -22,6 +22,41 @@ function readTable() {
     return { head: heads.filter((_, i) => keep[i]), rows: rows.map((r) => r.filter((_, i) => keep[i])) };
 }
 
+const pagerInfo = () => {
+    const pager = document.querySelector('.sa .content .pager');
+    if (!pager) return null;
+    const total = Number((pager.querySelector('span')?.innerText.match(/(\d[\d,]*)\s*$/) ?? [])[1]?.replace(/,/g, ''));
+    const btns = [...pager.querySelectorAll('.pages button')];
+    return { total: total || 0, prev: btns[0], next: btns[btns.length - 1], active: pager.querySelector('.pages .active')?.innerText };
+};
+const sig = (d) => JSON.stringify([d?.rows.length, d?.rows[0], d?.rows[d.rows.length - 1]]);
+const waitChange = async (before) => {
+    for (let i = 0; i < 40; i++) { await new Promise((r) => setTimeout(r, 100)); if (sig(readTable()) !== before) return true; }
+    return false;
+};
+
+/** Walks the page's own pager from page 1 to the last page, collecting every row, then returns to the page the admin was on. */
+async function readAllPages(onProgress) {
+    const start = pagerInfo();
+    const original = Number(start?.active) || 1;
+    // rewind to page 1
+    for (let guard = 0; guard < 2000 && pagerInfo()?.prev && !pagerInfo().prev.disabled; guard++) {
+        const before = sig(readTable()); pagerInfo().prev.click();
+        if (!(await waitChange(before))) break;
+    }
+    let first = readTable(); const rows = [...first.rows]; let page = 1;
+    const pages = Math.max(1, Math.ceil((start?.total || rows.length) / Math.max(1, first.rows.length)));
+    onProgress(1, pages);
+    for (let guard = 0; guard < 2000 && pagerInfo()?.next && !pagerInfo().next.disabled; guard++) {
+        const before = sig(readTable()); pagerInfo().next.click();
+        if (!(await waitChange(before))) break;
+        page += 1; rows.push(...readTable().rows); onProgress(page, pages);
+    }
+    // return to the original page
+    for (let guard = 0; guard < 2000 && page > original; guard++) { const before = sig(readTable()); pagerInfo().prev.click(); page -= 1; await waitChange(before); }
+    return { head: first.head, rows };
+}
+
 const csvCell = (v) => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 function download(blob, name) {
     const url = URL.createObjectURL(blob);
@@ -33,9 +68,12 @@ async function logoData(src) {
     try {
         const blob = await (await fetch(src, { credentials: 'omit' })).blob();
         const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(blob); });
-        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
-        c.getContext('2d').drawImage(img, 0, 0);
-        return { url: c.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight };
+        // Shrink big logos first: a 2400 px photo would make every PDF several megabytes.
+        const scale = Math.min(1, 360 / img.naturalWidth);
+        const w = Math.round(img.naturalWidth * scale); const h = Math.round(img.naturalHeight * scale);
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        return { url: c.toDataURL('image/jpeg', 0.85), w, h };
     } catch { return null; }
 }
 
@@ -46,6 +84,8 @@ export default function ExportMenu() {
     const [open, setOpen] = useState(false);
     const [has, setHas] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [progress, setProgress] = useState('');
+    const [info, setInfo] = useState(null);
     const ref = useRef(null);
     // Only show the menu on pages that actually have a table.
     useEffect(() => {
@@ -66,9 +106,12 @@ export default function ExportMenu() {
 
     const title = () => document.querySelector('.sa .page-head h1')?.innerText.trim() || 'Export';
     const company = () => master?.data?.company_name || master?.data?.app_name || '';
-    const run = async (kind) => {
+    const run = async (kind, scope = 'page') => {
         setOpen(false);
-        const data = readTable();
+        setBusy(true);
+        let data;
+        try { data = scope === 'all' ? await readAllPages((n, total) => setProgress(`${n}/${total}`)) : readTable(); } finally { setProgress(''); }
+        setBusy(false);
         if (!data || !data.rows.length) { window.alert(t('There is nothing to export on this page.')); return; }
         const name = `${slug(title())}-${stamp()}`;
         setBusy(true);
@@ -80,7 +123,8 @@ export default function ExportMenu() {
                 const { default: writeXlsx } = await import('write-excel-file/browser');
                 const header = data.head.map((h) => ({ value: h, fontWeight: 'bold', backgroundColor: '#EEF2FF' }));
                 const body = data.rows.map((r) => r.map((v) => ({ value: /^-?\d+(\.\d+)?$/.test(v) && v.length < 15 && !/^0\d/.test(v) ? Number(v) : v })));
-                await writeXlsx([header, ...body], { fileName: `${name}.xlsx`, sheet: title().slice(0, 30), columns: data.head.map(() => ({ width: 22 })) });
+                const blob = await writeXlsx([header, ...body], { sheet: title().slice(0, 30), columns: data.head.map(() => ({ width: 22 })) }).toBlob();
+                download(blob, `${name}.xlsx`);
             } else {
                 await makePdf(data, title(), company(), master?.data?.web_logo, name);
             }
@@ -90,11 +134,13 @@ export default function ExportMenu() {
     };
     return (
         <div className="rel" ref={ref}>
-            <button type="button" className="btn" aria-haspopup="menu" aria-expanded={open} disabled={busy} onClick={() => setOpen((v) => !v)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" /></svg> {busy ? t('Exporting…') : t('Export')}</button>
-            {open && <div className="dropdown" role="menu" style={{ minWidth: 170 }}>
-                <button role="menuitem" onClick={() => run('pdf')}>PDF</button>
-                <button role="menuitem" onClick={() => run('xlsx')}>Excel (.xlsx)</button>
-                <button role="menuitem" onClick={() => run('csv')}>CSV</button>
+            <button type="button" className="btn" aria-haspopup="menu" aria-expanded={open} disabled={busy} onClick={() => { if (!open) { const d = readTable(); const p = pagerInfo(); setInfo({ rows: d?.rows.length ?? 0, total: p?.total ?? 0 }); } setOpen((v) => !v); }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" /></svg> {busy ? `${t('Exporting…')} ${progress}` : t('Export')}</button>
+            {open && <div className="dropdown" role="menu" style={{ minWidth: 220 }}>
+                {[['page', t('This page ({n} rows)', { n: info?.rows ?? '' })], ...(info?.total > info?.rows ? [['all', t('All {n} rows', { n: info.total })]] : [])].map(([scope, label]) => (
+                    <div key={scope}><div className="muted" style={{ padding: '6px 10px 2px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em' }}>{label}</div>
+                        <button role="menuitem" onClick={() => run('pdf', scope)}>PDF</button>
+                        <button role="menuitem" onClick={() => run('xlsx', scope)}>Excel (.xlsx)</button>
+                        <button role="menuitem" onClick={() => run('csv', scope)}>CSV</button></div>))}
             </div>}
         </div>
     );
@@ -112,7 +158,7 @@ async function makePdf(data, title, company, logoSrc, fileName) {
     const primary = [238, 69, 107];
     const header = () => {
         let x = M;
-        if (logo) { const h = 38; const w = Math.min(130, (logo.w / logo.h) * h); doc.addImage(logo.url, 'PNG', M, M - 6, w, w * (logo.h / logo.w) > h ? h : w * (logo.h / logo.w)); x = M + w + 12; }
+        if (logo) { const h = 38; const w = Math.min(130, (logo.w / logo.h) * h); doc.addImage(logo.url, 'JPEG', M, M - 6, w, w * (logo.h / logo.w) > h ? h : w * (logo.h / logo.w)); x = M + w + 12; }
         doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(31, 35, 48); doc.text(company || '', x, M + 8);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(107, 114, 128); doc.text(`Generated ${new Date().toLocaleString('en-GB')}`, x, M + 22);
         doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...primary); doc.text(title.toUpperCase(), W - M, M + 10, { align: 'right' });
