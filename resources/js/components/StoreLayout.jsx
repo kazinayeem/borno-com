@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useGetCategoriesQuery } from '../app/api';
+import { setLang, toggleTheme } from '../app/slices';
 import { Icon, Img, money } from './ui';
-import { t } from '../i18n';
+import { LANGS, t } from '../i18n';
 
 const nav = [['/', 'Home'], ['/products', 'Products'], ['/shops', 'Shops'], ['/brands', 'Brands'], ['/contact-us', 'Contact'], ['/blogs', 'Blogs']];
 
 function TopBar() {
+    const dispatch = useDispatch();
+    const lang = useSelector((s) => s.ui.lang);
+    const [open, setOpen] = useState(false);
+    const current = LANGS.find((l) => l.code === lang) ?? LANGS[0];
     return (
         <div className="border-b border-line text-[13px] text-ink print:hidden">
             <div className="mx-auto flex max-w-[1320px] items-center justify-between px-4 py-2.5">
@@ -15,7 +20,14 @@ function TopBar() {
                 <div className="hidden items-center gap-6 md:flex">
                     <Link to="/products?flash=1">{t('Daily Deals')}</Link><Link to="/contact-us">{t('Easy Returns')}</Link><Link to="/contact-us">{t('Help Center')}</Link>
                 </div>
-                <div className="flex items-center gap-4"><span className="hidden sm:inline">{t('EN')}</span><span>{t('$ USD')}</span><Icon name="moon" size={15} /></div>
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <button type="button" aria-expanded={open} aria-label={t('Language')} onClick={() => setOpen(!open)} className="flex items-center gap-1">{current.short} <Icon name="chevron" size={12} /></button>
+                        {open && <ul className="card absolute right-0 z-30 mt-2 w-36 p-1 shadow-lg">{LANGS.map((l) => <li key={l.code}><button type="button" className="w-full rounded px-3 py-2 text-left hover:bg-primary-soft" onClick={() => { dispatch(setLang(l.code)); setOpen(false); }}>{l.name}</button></li>)}</ul>}
+                    </div>
+                    <span>{t('$ USD')}</span>
+                    <button type="button" aria-label={t('Switch to Dark')} onClick={() => dispatch(toggleTheme())}><Icon name="moon" size={15} /></button>
+                </div>
             </div>
         </div>
     );

@@ -65,7 +65,7 @@ export default function Resource({ res }) {
     useEffect(() => setPage(1), [search, shop]);
     const { data, isFetching, isError } = useAdminListQuery({ res, page, per_page: 15, search: search || undefined, shop_id: shop || undefined, approval: ['accepted', 'pending', 'update'].includes(approval) ? approval : undefined });
     const { data: opts } = useGetOptionsQuery(undefined, { skip: !cfg.fields.some((f) => f[2] === 'categories') });
-    const { data: shops } = useAdminListQuery({ res: 'shops', per_page: 100 }, { skip: !cfg.shopFilter });
+    const { data: shops } = useAdminListQuery({ res: 'shops', per_page: 100 }, { skip: !cfg.shopFilter || !isAdmin });
     const [save, { isLoading: saving, error }] = useAdminSaveMutation();
     const [remove] = useAdminDeleteMutation();
     const errs = error?.data?.errors ?? {};
@@ -86,7 +86,7 @@ export default function Resource({ res }) {
             <Card>
                 <CardH><div className="toolbar" style={{ flex: 1 }}>
                     <input className="input" aria-label={t('Search')} placeholder={t('Search…')} style={{ minWidth: 220 }} value={q} onChange={(e) => setQ(e.target.value)} />
-                    {cfg.shopFilter && <select className="input" aria-label={t('Shop')} value={shop} onChange={(e) => setShop(e.target.value)}><option value="">{t('All Shop')}</option>{shops?.data.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
+                    {cfg.shopFilter && isAdmin && <select className="input" aria-label={t('Shop')} value={shop} onChange={(e) => setShop(e.target.value)}><option value="">{t('All Shop')}</option>{shops?.data.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
                 </div></CardH>
                 <div className="table-wrap" style={{ opacity: isFetching ? 0.6 : 1 }}><table>
                     <thead><tr>{!cfg.noSL && <th>{t('SL')}</th>}{cfg.cols.map(([l]) => <th key={l}>{t(l)}</th>)}</tr></thead>

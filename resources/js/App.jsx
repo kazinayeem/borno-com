@@ -28,6 +28,7 @@ import Settings from './pages/admin/Settings';
 import { Pos, PosDrafts, PosSales } from './pages/admin/Pos';
 import { OrderDetail, OrderDocument } from './pages/admin/OrderDetail';
 import GenericPage from './pages/admin/GenericPages';
+import ShopCatalog from './pages/admin/ShopCatalog';
 import Messages from './pages/admin/Messages';
 import { t } from './i18n';
 
@@ -96,6 +97,24 @@ export default function App() {
                     <Route path="*" element={<GenericPage />} />
                 </Route>
                 <Route path="shop" element={<AdminLayout />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="orders" element={<Orders />} />
+                    <Route path="orders/:status" element={<Orders />} />
+                    <Route path="pos" element={<Pos />} />
+                    <Route path="pos/sales" element={<PosSales />} />
+                    <Route path="pos/draft" element={<PosDrafts />} />
+                    <Route path="products" element={<Resource res="products" />} />
+                    <Route path="product/create" element={<ProductForm />} />
+                    <Route path="digital-product/create" element={<ProductForm />} />
+                    <Route path="categories" element={<ShopCatalog res="categories" />} />
+                    <Route path="subcategories" element={<ShopCatalog res="subcategories" />} />
+                    <Route path="brands" element={<ShopCatalog res="brands" />} />
+                    <Route path="colors" element={<ShopCatalog res="colors" />} />
+                    <Route path="sizes" element={<ShopCatalog res="sizes" />} />
+                    <Route path="units" element={<ShopCatalog res="units" />} />
+                    <Route path="flash-sale" element={<ShopCatalog res="flash-sales" />} />
+                    <Route path="banners" element={<ShopCatalog res="banners" />} />
+                    <Route path="vouchers" element={<ShopCatalog res="coupons" />} />
                     <Route path="*" element={<GenericPage />} />
                 </Route>
             </Routes>

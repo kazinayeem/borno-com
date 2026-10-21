@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useGetOrdersQuery } from '../../app/api';
 import { ORDER_STATUSES, statusLabel } from '../../components/OrderBadge';
 import { Card, CardH, fdt, money, PageHead, Pager, Pill, SaIcon, Tabs, useDebounced } from '../../components/sa';
@@ -11,9 +11,11 @@ export const label = statusLabel;
 export const Badge = ({ v }) => <Pill value={v} />;
 
 export default function Orders() {
+    const { status: pathStatus } = useParams();
     const [sp] = useSearchParams();
-    const initial = sp.get('status');
-    const [tab, setTab] = useState(STATUSES.includes(initial) ? initial : 'All');
+    const fromUrl = (pathStatus || sp.get('status') || '').toLowerCase();
+    const [tab, setTab] = useState(STATUSES.includes(fromUrl) ? fromUrl : 'All');
+    useEffect(() => setTab(STATUSES.includes(fromUrl) ? fromUrl : 'All'), [fromUrl]);
     const [page, setPage] = useState(1);
     const [q, setQ] = useState('');
     const search = useDebounced(q);

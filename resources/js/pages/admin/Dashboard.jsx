@@ -99,7 +99,7 @@ function AdminDashboard({ d }) {
                 {[['Already Withdraw', w.already_withdraw], ['Pending Withdraw', w.pending_withdraw], ['Total Commission', w.total_commission], ['Rejected Withdraw', w.rejected_withdraw]].map(([l, v]) => <div key={t(l)} className="mini"><b style={{ margin: '0 0 6px' }}>{money(v)}</b><span className="muted">{t(l)}</span></div>)}
             </CardB></Card>
             <Statistics users={d.user_overview} />
-            <Card><CardH><h3>{t('Order Summary (Latest 6 Orders)')}</h3></CardH><div className="table-wrap"><table>
+            <Card><CardH><h3>{t('Order Summary (Latest 5 Orders)')}</h3></CardH><div className="table-wrap"><table>
                 <thead><tr><th>{t('Order ID')}</th><th>{t('Qty')}</th><th>{t('Shop')}</th><th>{t('Date')}</th><th>{t('Status')}</th><th>{t('Action')}</th></tr></thead>
                 <tbody>{d.latest_orders.map((o) => <tr key={o.id}><td>#{o.number}</td><td>{o.qty}</td><td>{o.shop_name}</td><td>{fdate(o.created_at)}</td><td><Pill value={o.status} /></td><td><div className="actions"><Link to={`/admin/orders/${o.id}/show`} className="act" aria-label={t('View')}><SaIcon name="eye" /></Link></div></td></tr>)}</tbody>
             </table></div></Card>
@@ -112,28 +112,41 @@ function AdminDashboard({ d }) {
     );
 }
 
-// Seller dashboard (ShopDesk layout) drawn with the same shop-admin styles.
+// Seller dashboard, laid out like the ReadyEcommerce shop portal.
 function SellerDashboard({ d }) {
     const w = d.wallet;
-    const max = Math.max(1, ...d.last7.map((x) => x.count));
+    const rank = (title, rows, extra) => (
+        <Rank title={title} rows={rows} render={(p) => <>
+            <RoundImg src={p.image_url} name={p.name} />
+            <div className="grow"><div>{p.name}</div><small className="muted">{extra(p)}</small></div>
+        </>} />
+    );
     return (
         <>
             <div className="sa-grid sa-g4">
-                {[['Total Products', d.stats.products, 'box', 'a'], ['Total Orders', d.stats.orders, 'cart', 'b'], ['Total Categories', d.stats.categories, 'grid', 'c'], ['Total Brands', d.stats.brands, 'star', 'd']].map(([l, v, i, c]) => <div key={t(l)} className={`stat st-${c}`}><div><b>{v}</b>{t(l)}</div><div className="ico"><SaIcon name={i} /></div></div>)}
+                {[['Total Products', d.stats.products, 'box', 'a', '/shop/products'], ['Total Orders', d.stats.orders, 'cart', 'b', '/shop/orders'], ['Total Categories', d.stats.categories, 'grid', 'c', '/shop/categories'], ['Total Brands', d.stats.brands, 'star', 'd', '/shop/brands']].map(([l, v, i, c, to]) => <Link key={l} to={to} className={`stat st-${c}`}><div><b>{v}</b>{t(l)}</div><div className="ico"><SaIcon name={i} /></div></Link>)}
             </div>
             <Card><CardH><h3>{t('Order Analytics')}</h3></CardH><CardB className="sa-grid sa-g4">
-                {STATUSES.map((s) => <Link key={s} className="mini" to={`/admin/orders?status=${s}`}><div className="t"><span><SaIcon name={S_ICON[s]} className="inline-icon" />{statusLabel(s)}</span><span>↗</span></div><b>{d.orders_by_status[s] ?? 0}</b></Link>)}
+                {STATUSES.map((s) => <Link key={s} className="mini" to={`/shop/orders?status=${s}`}><div className="t"><span><SaIcon name={S_ICON[s]} className="inline-icon" />{statusLabel(s)}</span><span>↗</span></div><b>{d.orders_by_status[s] ?? 0}</b></Link>)}
             </CardB></Card>
-            <Card><CardH><h3>{t('Shop Wallet')}</h3></CardH><CardB className="sa-grid sa-g3">
-                <div className="mini"><span className="muted">{t('Available Balance')}</span><b style={{ fontSize: 28 }}>{money(w.balance)}</b></div>
-                {[['Pending Withdraw', w.pending_withdraw], ['Already Withdraw', w.already_withdraw], ['Total Sales', w.total_sales], ['Delivery Charge Collected', w.delivery_charge], ['POS Sales', w.pos_sales]].map(([l, v]) => <div key={t(l)} className="mini"><span className="muted">{t(l)}</span><b>{money(v)}</b></div>)}
+            <Card><CardH><h3>{t('Shop Wallet')}</h3></CardH><CardB className="sa-grid sa-g3" style={{ gridTemplateColumns: '1.4fr 1fr 1fr' }}>
+                <div className="wallet-big">
+                    <b>{money(w.balance)}</b>
+                    <span className="muted">{t('Available Balance')}</span>
+                    <Link to="/shop/withdraw" className="btn primary sm" style={{ marginTop: 14, width: 'auto' }}>{t('Withdraw')}</Link>
+                </div>
+                {[['Pending Withdraw', w.pending_withdraw], ['Already Withdraw', w.already_withdraw], ['Rejected Withdraw', w.rejected_withdraw], ['Total Withdraw', w.total_withdraw], ['Delivery Charge Collected', w.delivery_charge], ['Total Pos Sales', w.pos_sales]].map(([l, v]) => <div key={l} className="mini"><b style={{ margin: '0 0 6px' }}>{money(v)}</b><span className="muted">{t(l)}</span></div>)}
             </CardB></Card>
-            <div className="sa-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
-                <Card><CardH><h3>{t('Orders – last 7 days')}</h3></CardH><CardB>
-                    <div role="img" aria-label={t('Orders in the last 7 days')} style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 200, paddingTop: 10, marginBottom: 24 }}>
-                        {d.last7.map((x) => <div key={x.date} style={{ flex: 1, minHeight: 2, height: `${(x.count / max) * 100}%`, background: 'var(--primary)', borderRadius: '6px 6px 0 0', position: 'relative' }}><em style={{ position: 'absolute', top: -18, left: 0, right: 0, textAlign: 'center', fontSize: 11, fontStyle: 'normal' }}>{x.count}</em><span style={{ position: 'absolute', bottom: -20, left: 0, right: 0, textAlign: 'center', fontSize: 11, color: 'var(--muted)' }}>{x.date.slice(5)}</span></div>)}
-                    </div></CardB></Card>
-                <Rank title={t('Top Selling Products')} rows={d.top_products.map((p) => ({ ...p, id: p.name }))} render={(p) => <><div className="grow"><div>{p.name}</div></div><Chip>{t('{n} sold', { n: p.sold })}</Chip></>} />
+            <Card><CardH><h3>{t('Order Summary (Latest 8 Orders)')}</h3></CardH><div className="table-wrap"><table>
+                <thead><tr><th>{t('Order ID')}</th><th>{t('Qty')}</th><th>{t('Date')}</th><th>{t('Status')}</th><th>{t('Action')}</th></tr></thead>
+                <tbody>{(d.latest_orders ?? []).map((o) => <tr key={o.id}><td>#{o.number}</td><td>{o.qty}</td><td>{fdate(o.created_at)}</td><td><Pill value={o.status} /></td><td><div className="actions"><Link to={`/admin/orders/${o.id}/show`} className="act" aria-label={t('View')}><SaIcon name="eye" /></Link></div></td></tr>)}
+                    {(d.latest_orders ?? []).length === 0 && <tr><td colSpan={5} className="empty">{t('No Data Found')}</td></tr>}
+                </tbody>
+            </table></div></Card>
+            <div className="sa-grid sa-g3">
+                {rank(t('Top Selling Products'), d.top_selling ?? [], (p) => <>{t('Rating')}: {Number(p.rating ?? 0).toFixed(1)} · {t('Sold: {n}', { n: p.sold })}</>)}
+                {rank(t('Top Rating Products'), d.top_rating ?? [], (p) => <>{t('Sold: {n}', { n: p.sold })} · {t('Rating')}: {Number(p.rating ?? 0).toFixed(1)}</>)}
+                {rank(t('Most Favorite Products'), d.favorite_products ?? [], (p) => <>{t('Sold: {n}', { n: p.sold })} · ♥ {p.favorites}</>)}
             </div>
         </>
     );

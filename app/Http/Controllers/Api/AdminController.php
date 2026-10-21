@@ -91,7 +91,7 @@ class AdminController extends Controller
                 'rejected_withdraw' => $sumRecords('withdraws', 'amount', 'rejected'), 'total_commission' => $sumRecords('commissions', 'admin_commission'),
             ],
             'user_overview' => ['customer' => User::where('role', 'customer')->count(), 'shop' => Shop::count(), 'rider' => Rider::count()],
-            'latest_orders' => Order::with('shop:id,name')->withSum('items as qty', 'qty')->latest('id')->limit(6)->get()
+            'latest_orders' => Order::with('shop:id,name')->withSum('items as qty', 'qty')->latest('id')->limit(5)->get()
                 ->map(fn ($o) => ['id' => $o->id, 'number' => $o->number, 'qty' => (int) $o->qty, 'shop_name' => $o->shop?->name, 'created_at' => $o->created_at, 'status' => $o->status]),
             'top_shops' => Shop::withCount('orders')->orderByDesc('orders_count')->limit(5)->get()->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'image_url' => $s->image_url, 'rating' => $s->rating, 'orders' => $s->orders_count]),
             'favorite_products' => Product::orderByDesc('favorites')->orderBy('id')->limit(5)->get(['id', 'name', 'image', 'favorites'])->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'image_url' => $p->image_url, 'favorites' => $p->favorites]),
@@ -157,9 +157,19 @@ class AdminController extends Controller
         $days = collect(range(6, 0))->map(fn ($d) => now()->subDays($d)->toDateString());
         $perDay = (clone $orders)->where('created_at', '>=', now()->subDays(6)->startOfDay())->get(['created_at'])->groupBy(fn ($o) => $o->created_at->toDateString())->map->count();
 
+        $liveIds = (clone $orders)->where('status', '!=', 'cancelled')->pluck('id');
         $top = \App\Models\OrderItem::selectRaw('name, sum(qty) as sold')
-            ->whereIn('order_id', (clone $orders)->where('status', '!=', 'cancelled')->pluck('id'))
-            ->groupBy('name')->orderByDesc('sold')->limit(5)->get();
+            ->whereIn('order_id', $liveIds)
+            ->groupBy('name')->orderByDesc('sold')->limit(8)->get();
+        $named = Product::whereIn('shop_id', $ids)->whereIn('name', $top->pluck('name'))->get()->keyBy('name');
+        $soldByName = $top->pluck('sold', 'name');
+        $card = function (Product $p) use ($soldByName) {
+            return [
+                'id' => $p->id, 'name' => $p->name, 'image_url' => $p->image_url,
+                'rating' => (float) $p->rating, 'favorites' => (int) $p->favorites,
+                'sold' => (int) ($soldByName[$p->name] ?? 0),
+            ];
+        };
 
         return [
             'scope' => 'shop', 'shop_name' => $shops->first()->name ?? request()->user()->name,
@@ -167,12 +177,48 @@ class AdminController extends Controller
             'orders_by_status' => (clone $orders)->selectRaw('status, count(*) as count')->groupBy('status')->pluck('count', 'status'),
             'wallet' => [
                 'balance' => round($sales - $sum($spent), 2), 'pending_withdraw' => $sum($byStatus('pending')), 'already_withdraw' => $sum($byStatus('approved')),
+                'rejected_withdraw' => $sum($byStatus('rejected')), 'total_withdraw' => $sum($spent),
                 'total_sales' => round($sales, 2), 'delivery_charge' => round((float) (clone $delivered)->sum('shipping'), 2),
                 'pos_sales' => round((float) (clone $orders)->where('source', 'pos')->sum('total'), 2),
             ],
             'last7' => $days->map(fn ($d) => ['date' => $d, 'count' => (int) ($perDay[$d] ?? 0)])->values(),
-            'top_products' => $top->map(fn ($t) => ['name' => $t->name, 'sold' => (int) $t->sold])->values(),
+            'latest_orders' => (clone $orders)->withSum('items as qty', 'qty')->latest('id')->limit(8)->get()
+                ->map(fn ($o) => ['id' => $o->id, 'number' => $o->number, 'qty' => (int) $o->qty, 'created_at' => $o->created_at, 'status' => $o->status]),
+            'top_products' => $top->take(5)->map(fn ($t) => ['name' => $t->name, 'sold' => (int) $t->sold])->values(),
+            'top_selling' => $top->map(function ($t) use ($named) {
+                $p = $named[$t->name] ?? null;
+
+                return ['id' => $p?->id ?? $t->name, 'name' => $t->name, 'image_url' => $p?->image_url, 'rating' => (float) ($p?->rating ?? 0), 'favorites' => (int) ($p?->favorites ?? 0), 'sold' => (int) $t->sold];
+            })->values(),
+            'top_rating' => Product::whereIn('shop_id', $ids)->orderByDesc('rating')->orderBy('id')->limit(8)->get()->map($card)->values(),
+            'favorite_products' => Product::whereIn('shop_id', $ids)->orderByDesc('favorites')->orderBy('id')->limit(8)->get()->map($card)->values(),
         ];
+    }
+
+    /** Sellers only touch products that belong to their shop. */
+    private function guardOwnProduct(string $res, $row): void
+    {
+        if ($res === 'products' && request()->user()->role === 'shop') {
+            abort_unless(Shop::where('user_id', request()->user()->id)->where('id', $row->shop_id)->exists(), 403);
+        }
+    }
+
+    /** Read-only catalog for the shop portal. The admin list routes stay admin-only. */
+    public function shopCatalog(string $res)
+    {
+        abort_unless(request()->user()->role === 'shop', 403);
+        $models = [
+            'categories' => Category::class, 'subcategories' => SubCategory::class, 'brands' => Brand::class,
+            'colors' => Color::class, 'sizes' => Size::class, 'units' => Unit::class,
+            'flash-sales' => FlashSale::class, 'coupons' => Coupon::class,
+        ];
+        if ($res === 'banners') {
+            return Record::where('resource', 'banners')->orderByDesc('rid')->paginate(15)
+                ->through(fn (Record $r) => $r->flat());
+        }
+        abort_unless(isset($models[$res]), 404);
+
+        return $models[$res]::orderBy('id')->paginate(15);
     }
 
     public function index(Request $request, string $res)
@@ -189,6 +235,9 @@ class AdminController extends Controller
         if ($request->filled('shop_id') && $res === 'products') {
             $q->where('shop_id', $request->query('shop_id'));
         }
+        if ($res === 'products' && $request->user()->role === 'shop') {
+            $q->whereIn('shop_id', Shop::where('user_id', $request->user()->id)->pluck('id'));
+        }
         if ($res === 'shops') {
             $q->withCount(['products', 'orders']);
         }
@@ -199,8 +248,10 @@ class AdminController extends Controller
     public function show(string $res, int $id)
     {
         [$model, , , $with] = $this->cfg($res);
+        $row = $model::with($with)->findOrFail($id);
+        $this->guardOwnProduct($res, $row);
 
-        return $model::with($with)->findOrFail($id);
+        return $row;
     }
 
     public function store(Request $request, string $res)
@@ -222,6 +273,7 @@ class AdminController extends Controller
     {
         [$model, , $rules] = $this->cfg($res);
         $row = $model::findOrFail($id);
+        $this->guardOwnProduct($res, $row);
         $before = $this->imageOf($row);
         $rules = array_map(fn ($r) => is_string($r) ? str_replace('required|', 'sometimes|required|', $r) : $r, $rules);
         foreach (['icon', 'logo', 'image'] as $imgField) {
@@ -243,6 +295,7 @@ class AdminController extends Controller
     {
         [$model] = $this->cfg($res);
         $row = $model::findOrFail($id);
+        $this->guardOwnProduct($res, $row);
         abort_if($res === 'currencies' && $row->is_default, 422, 'The default currency cannot be deleted.');
         $this->dropFile($this->imageOf($row));
         $row->delete();

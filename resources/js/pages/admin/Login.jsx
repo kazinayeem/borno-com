@@ -14,8 +14,8 @@ export default function Login() {
     const [login, { isLoading, error }] = useLoginMutation();
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const token = useSelector((s) => s.auth.token);
-    if (token) return <Navigate to="/admin" replace />;
+    const { token, user } = useSelector((s) => s.auth);
+    if (token) return <Navigate to={user?.role === 'shop' ? '/shop' : '/admin'} replace />;
     const errs = error?.data?.errors ?? {};
 
     const submit = async (e) => {
@@ -23,7 +23,7 @@ export default function Login() {
         const r = await login(form);
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
         dispatch(loggedIn(r.data));
-        navigate('/admin');
+        navigate(r.data.user?.role === 'shop' ? '/shop' : '/admin');
     };
 
     return (
@@ -51,7 +51,8 @@ export default function Login() {
                         {errs.password && <p className="mt-1 text-xs text-red-500">{errs.password[0]}</p>}</div>
                     <button disabled={isLoading} className="btn-primary w-full !rounded-md !py-3 text-base">{isLoading ? t('Logging in…') : t('Login')}</button>
                     <div className="mt-3 text-xs leading-5 text-gray-600">
-                        {t('This is a local development environment. Seeded accounts are listed below for testing only.')}
+                        <p>{t('This is a public demo environment for the ReadyEcommerce software.')}</p>
+                        <p>{t('The accounts below are demo accounts for testing purposes only and do not contain real user data.')}</p>
                         {demos.map(([title, email]) => (
                             <div key={title} className="mt-2 overflow-hidden rounded border border-line bg-surface"><div className="border-b border-line px-2 py-1 font-semibold text-ink">{t(title)}</div>
                                 <div className="flex items-center justify-between px-2 py-2"><div className="flex flex-col"><span>{t('Email: {v}', { v: email })}</span><span>{t('Password: {v}', { v: 'secret' })}</span></div>

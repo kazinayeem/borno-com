@@ -4,17 +4,34 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Record;
+use App\Models\Shop;
 use App\Support\Spec;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-/** CRUD for the admin resources that live in the generic `records` table. Admin only. */
+/** CRUD for the admin resources that live in the generic `records` table. */
 class RecordController extends Controller
 {
+    /** Seller portal resources. Everything else (banners, roles, gateways, …) stays admin-only. */
+    private const SHOP_RESOURCES = [
+        'preorders', 'preorder_products', 'preorder_commissions', 'preorder_profits', 'return_orders',
+        'stock_summary', 'purchases', 'purchase_returns', 'sale_reports', 'commissions', 'payouts',
+        'employees', 'suppliers', 'withdraws',
+    ];
+
     private function check(string $res): void
     {
         abort_unless(in_array($res, Spec::RECORD_RESOURCES, true), 404);
+        abort_if(request()->user()->role === 'shop' && ! in_array($res, self::SHOP_RESOURCES, true), 403);
+    }
+
+    /** Null for admins. A seller's shop ids otherwise. */
+    private function sellerShopIds()
+    {
+        $user = request()->user();
+
+        return $user->role === 'shop' ? Shop::where('user_id', $user->id)->pluck('id') : null;
     }
 
     public function index(Request $request, string $res)
@@ -36,6 +53,15 @@ class RecordController extends Controller
         if ($request->filled('to')) {
             $q->whereDate('created_at', '<=', $request->query('to'));
         }
+        if (($ids = $this->sellerShopIds()) !== null) {
+            $ids->isEmpty()
+                ? $q->whereRaw('0 = 1')
+                : $q->where(function ($w) use ($ids) {
+                    foreach ($ids as $id) {
+                        $w->orWhere('data->shop_id', $id);
+                    }
+                });
+        }
         $page = $q->orderByDesc('rid')->paginate(min((int) $request->query('per_page', 10), 100));
         $page->getCollection()->transform(fn (Record $r) => $r->flat());
 
@@ -54,6 +80,9 @@ class RecordController extends Controller
         $this->check($res);
         $fields = Spec::fieldsFor($res);
         $data = $this->clean($request->validate(Spec::rules($fields, true)), $fields);
+        if (($ids = $this->sellerShopIds()) !== null) {
+            $data['shop_id'] = (int) $ids->first();
+        }
         $record = DB::transaction(fn () => Record::create([
             'resource' => $res, 'rid' => (int) Record::where('resource', $res)->max('rid') + 1,
             'data' => $data + $this->defaults($res),
@@ -97,6 +126,7 @@ class RecordController extends Controller
     public function decide(string $res, int $id, string $decision)
     {
         $this->check($res);
+        abort_if(request()->user()->role === 'shop', 403);
         abort_unless(in_array($decision, ['approve', 'reject'], true) && in_array($decision, Spec::actionsFor($res), true), 404);
         $record = $this->find($res, $id);
         abort_unless(strtolower($record->data['status'] ?? '') === 'pending', 422, 'Only pending requests can be approved or rejected.');
@@ -107,7 +137,12 @@ class RecordController extends Controller
 
     private function find(string $res, int $id): Record
     {
-        return Record::where('resource', $res)->where('rid', $id)->firstOrFail();
+        $record = Record::where('resource', $res)->where('rid', $id)->firstOrFail();
+        if (($ids = $this->sellerShopIds()) !== null) {
+            abort_unless($ids->contains($record->data['shop_id'] ?? null), 404);
+        }
+
+        return $record;
     }
 
     /** Keep only declared fields; hash passwords; drop confirmation helpers. */

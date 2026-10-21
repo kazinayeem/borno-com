@@ -39,9 +39,38 @@ export function parseColumn(def) {
     return { key, type, label: rest.join(':') };
 }
 
-export const resolvePage = (pathname) => pages[pathname.replace(/\/+$/, '') || '/'] ?? null;
+// Shop URLs that reuse an admin spec page (same columns and form, seller-scoped on the API).
+const SHOP_ALIAS = {
+    '/shop/return-orders': '/admin/return-orders',
+    '/shop/withdraw': '/admin/withdraws',
+    '/shop/employees': '/admin/employees',
+    '/shop/employee/create': '/admin/employee/create',
+};
+export const resolvePage = (pathname) => {
+    const path = pathname.replace(/\/+$/, '') || '/';
+    return pages[SHOP_ALIAS[path] ?? path] ?? null;
+};
 
 export const imgUrl = (v) => (!v ? null : v.startsWith('uploads/') ? `/storage/${v}` : v);
 
-// Sidebar items visible to a seller (everything else is admin-only on the API too).
-export const SELLER_MENU = ['Dashboard', 'Order', 'POS', 'Product'];
+// Seller sidebar, in the same order as the ReadyEcommerce shop portal.
+export const shopMenu = [
+    { label: 'Dashboard', icon: 'home', path: '/shop' },
+    { label: 'All Orders', icon: 'cart', children: [['All', '/shop/orders'], ['Pending', '/shop/orders?status=pending'], ['Confirm', '/shop/orders?status=confirm'], ['Processing', '/shop/orders?status=processing'], ['Pickup', '/shop/orders?status=pickup'], ['On The Way', '/shop/orders?status=on_the_way'], ['Delivered', '/shop/orders?status=delivered'], ['Cancelled', '/shop/orders?status=cancelled']] },
+    { label: 'Pre-orders', icon: 'gift', addon: true, children: [['Analytics', '/shop/pre-order/analytics'], ['Order List', '/shop/pre-orders'], ['Product List', '/shop/pre-orders/products/list'], ['Add Product', '/shop/pre-orders/products/create'], ['Commission', '/shop/pre-order/commission-list'], ['Profit Report', '/shop/pre-order/profit-report']] },
+    { label: 'POS', icon: 'pos', children: [['POS', '/shop/pos'], ['POS Sales History', '/shop/pos/sales'], ['POS Draft', '/shop/pos/draft']] },
+    { label: 'Refund', icon: 'refund', path: '/shop/return-orders' },
+    { label: 'Messages', icon: 'chat', path: '/shop/customer-chats' },
+    { label: 'Category', icon: 'grid', children: [['Category', '/shop/categories'], ['Sub Category', '/shop/subcategories']] },
+    { label: 'Product', icon: 'box', children: [['All Product', '/shop/products'], ['Add Product', '/shop/product/create'], ['Add Digital Product', '/shop/digital-product/create']] },
+    { label: 'Product Variant', icon: 'box', children: [['Brand', '/shop/brands'], ['Color', '/shop/colors'], ['Size', '/shop/sizes'], ['Unit', '/shop/units']] },
+    { label: 'Purchase', icon: 'gift', addon: true, children: [['Stock Report', '/shop/purchase/stock-summary'], ['Add New Purchase', '/shop/purchase/create'], ['Purchase Invoices', '/shop/purchase'], ['Purchase Summary', '/shop/purchase/summary'], ['Purchase Returns', '/shop/purchase-return'], ['Add Purchase Return', '/shop/purchase-return/create']] },
+    { label: 'Promotion', icon: 'megaphone', children: [['Flash Deals', '/shop/flash-sale'], ['Banner Setup', '/shop/banners'], ['Promo Code', '/shop/vouchers']] },
+    { label: 'Report', icon: 'chart', children: [['Analytics', '/shop/reports/analytics'], ['Report', '/shop/reports/sale-product'], ['Earning Summary', '/shop/earning-summary'], ['Commission List', '/shop/commission-list'], ['PayOut', '/shop/pay-out']] },
+    { label: 'Employee', icon: 'users', children: [['Employees', '/shop/employees'], ['Add Employee', '/shop/employee/create']] },
+    { label: 'Suppliers', icon: 'user', children: [['List Of Suppliers', '/shop/supplier'], ['Add New Supplier', '/shop/supplier/create']] },
+    { label: 'My Shop', icon: 'store', path: '/shop/profile' },
+    { label: 'Withdraws', icon: 'wallet', path: '/shop/withdraw' },
+    { label: 'Import/Export', icon: 'swap', children: [['Product Export', '/shop/bulk-product-export'], ['Product Import', '/shop/bulk-product-import'], ['Gallery Import', '/shop/gallery']] },
+];
+export const SELLER_MENU = shopMenu.map((m) => m.label);

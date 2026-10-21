@@ -27,7 +27,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        User::create(['name' => 'Root Admin', 'email' => 'root@readyecommerce.com', 'role' => 'admin', 'password' => 'secret']);
+        User::create(['name' => 'Super Admin', 'email' => 'root@readyecommerce.com', 'role' => 'admin', 'password' => 'secret']);
         $owner = User::create(['name' => 'Demo Shop', 'email' => 'shop@readyecommerce.com', 'role' => 'shop', 'password' => 'secret']);
 
         $catNames = ['Electronics', 'Fashion & Clothing', 'Beauty & Personal Care', 'Home & Living', 'Grocery & Essentials', 'Toys & Games', 'Sports & Outdoors', 'Jewelry & Accessories', 'Books & Stationery', 'Automotive'];

@@ -66,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('admin')->middleware('staff')->controller(AdminController::class)->group(function () {
         Route::get('dashboard', 'dashboard');
+        Route::get('shop-catalog/{res}', 'shopCatalog')->middleware('staff:shop');
         Route::get('messages', 'messages')->middleware('staff:admin');
         Route::patch('messages/{id}/read', 'markMessage')->middleware('staff:admin');
         Route::get('options', 'options');
@@ -82,20 +83,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('my-shop', [ProfileController::class, 'shopUpdate'])->middleware('staff:shop');
         Route::get('products-export', [CatalogIoController::class, 'export']);
         Route::post('products-import', [CatalogIoController::class, 'import']);
-        Route::get('gallery', [CatalogIoController::class, 'gallery'])->middleware('staff:admin');
+        Route::get('gallery', [CatalogIoController::class, 'gallery']);
         Route::delete('gallery/{name}', [CatalogIoController::class, 'destroyImage'])->middleware('staff:admin');
         Route::middleware('staff:admin')->group(function () {
             Route::get('gateways', [GatewayController::class, 'index']);
             Route::put('gateways/{id}', [GatewayController::class, 'update'])->whereNumber('id');
-            Route::get('chats', [ChatController::class, 'users']);
-            Route::get('chats/{customer}', [ChatController::class, 'messages'])->whereNumber('customer');
-            Route::post('chats/{customer}', [ChatController::class, 'send'])->whereNumber('customer');
             Route::post('push-notifications', [PushController::class, 'send']);
         });
+        Route::get('chats', [ChatController::class, 'users']);
+        Route::get('chats/{customer}', [ChatController::class, 'messages'])->whereNumber('customer');
+        Route::post('chats/{customer}', [ChatController::class, 'send'])->whereNumber('customer');
         Route::get('lookup/{resource}', [LookupController::class, 'show']);
         Route::get('settings-group/{key}', [SettingsGroupController::class, 'show'])->middleware('staff:admin');
         Route::put('settings-group/{key}', [SettingsGroupController::class, 'update'])->middleware('staff:admin');
-        Route::prefix('r/{res}')->controller(RecordController::class)->middleware('staff:admin')->group(function () {
+        Route::prefix('r/{res}')->controller(RecordController::class)->middleware('staff')->group(function () {
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::get('{id}', 'show')->whereNumber('id');
