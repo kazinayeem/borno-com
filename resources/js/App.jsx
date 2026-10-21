@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { LANGS, setCurrentLang } from './i18n';
-import { Route, Routes, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { Toasts } from './components/ui';
 import StoreLayout from './components/StoreLayout';
 import Home from './pages/shop/Home';
@@ -17,6 +17,7 @@ import { AccountAddresses, AccountHome, AccountLayout, AccountOrderDetail, Accou
 import Brands from './pages/shop/Brands';
 import Blogs from './pages/shop/Blogs';
 import Contact from './pages/shop/Contact';
+import CmsPage from './pages/shop/Page';
 import Login from './pages/admin/Login';
 import AdminLayout from './pages/admin/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
@@ -66,6 +67,10 @@ export default function App() {
                     <Route path="brands" element={<Brands />} />
                     <Route path="blogs" element={<Blogs />} />
                     <Route path="contact-us" element={<Contact />} />
+                    <Route path="pages/:slug" element={<CmsPage />} />
+                    <Route path="best-deal" element={<Navigate to="/products?sort=price_asc" replace />} />
+                    <Route path="most-popular" element={<Navigate to="/products?sort=rating" replace />} />
+                    <Route path="flash-sale/:slug" element={<Navigate to="/products?flash=1" replace />} />
                     <Route path="cart" element={<Cart />} />
                     <Route path="login" element={<CustomerLogin />} />
                     <Route path="wishlist" element={<Wishlist />} />

@@ -35,7 +35,7 @@ export const customerSlice = createSlice({
 
 export const shopSlice = createSlice({
     name: 'shop',
-    initialState: { cart: load('cart', []), wishlist: load('wishlist', []), currency: 'USD' },
+    initialState: { cart: load('cart', []), wishlist: load('wishlist', []), currency: readPref('currency') || 'USD' },
     reducers: {
         // payload: product row (+ optional qty). Quantity never exceeds the stock we last saw.
         addToCart: (s, { payload }) => {
@@ -54,6 +54,7 @@ export const shopSlice = createSlice({
         toggleWish: (s, { payload }) => {
             s.wishlist = s.wishlist.includes(payload) ? s.wishlist.filter((i) => i !== payload) : [...s.wishlist, payload];
         },
+        setCurrency: (s, { payload }) => { s.currency = payload; },
     },
 });
 
@@ -69,5 +70,5 @@ export const toastSlice = createSlice({
 export const { loggedIn, loggedOut } = authSlice.actions;
 export const { setLang, toggleTheme } = uiSlice.actions;
 export const { customerLoggedIn, customerUpdated, customerLoggedOut } = customerSlice.actions;
-export const { addToCart, setCartQty, removeFromCart, clearCart, toggleWish } = shopSlice.actions;
+export const { addToCart, setCartQty, removeFromCart, clearCart, toggleWish, setCurrency } = shopSlice.actions;
 export const { push: pushToast, dismiss } = toastSlice.actions;

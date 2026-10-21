@@ -133,6 +133,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->seedReference();
+        $this->call(StorefrontSeeder::class);
     }
 
     /** Resources without their own table + settings groups come from the reference spec's synthetic data. */

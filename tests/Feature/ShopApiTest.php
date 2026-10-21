@@ -243,7 +243,7 @@ class ShopApiTest extends TestCase
             'address' => ['name' => 'A', 'phone' => '1', 'address_line' => 'Street'],
         ])->assertJsonValidationErrors('payment_method');
 
-        $this->admin();
+        Sanctum::actingAs(User::where('email', 'a@x.test')->first());
         $this->postJson('/api/admin/shops', [
             'first_name' => 'A', 'phone' => '1', 'email' => 'newshop@x.test', 'password' => 'secret', 'password_confirmation' => 'secret', 'name' => 'Extra',
         ])->assertForbidden();

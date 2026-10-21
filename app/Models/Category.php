@@ -12,7 +12,15 @@ class Category extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->icon ? '/storage/'.$this->icon : null;
+        $icon = $this->icon;
+        if (! $icon) {
+            return null;
+        }
+        if (str_starts_with($icon, 'http://') || str_starts_with($icon, 'https://') || str_starts_with($icon, '/')) {
+            return $icon;
+        }
+
+        return '/storage/'.$icon;
     }
 
     protected $casts = ['active' => 'boolean'];

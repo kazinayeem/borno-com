@@ -8,6 +8,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\ContactMessage;
 use App\Models\Product;
+use App\Models\Record;
 use App\Models\Setting;
 use App\Models\Shop;
 use Illuminate\Http\Request;
@@ -23,6 +24,11 @@ class StoreController extends Controller
             'flash_sale' => Product::with($with)->where('is_flash_sale', true)->where('active', true)->where('approval', '!=', 'pending')->limit(5)->get(),
             'popular' => Product::with($with)->where('active', true)->where('approval', '!=', 'pending')->orderByDesc('reviews_count')->limit(12)->get(),
             'shops' => Shop::withCount('products')->orderBy('id')->limit(Setting::shopType() === 'single' ? 1 : 6)->get(),
+            'banners' => $this->promo('banners', 'thumbnail'),
+            'ads' => $this->promo('ads', 'thumbnail'),
+            'support' => $this->promo('support_items', 'icon'),
+            'social' => $this->promo('social_links', null),
+            'quick' => Product::with($with)->where('active', true)->where('approval', '!=', 'pending')->latest('id')->limit(6)->get(),
         ];
     }
 
@@ -92,6 +98,9 @@ class StoreController extends Controller
         if ($request->boolean('preorder')) {
             $q->where('is_preorder', true);
         }
+        if ($request->boolean('flash')) {
+            $q->where('is_flash_sale', true);
+        }
 
         match ($request->query('sort')) {
             'price_asc' => $q->orderBy('price'),
@@ -125,6 +134,41 @@ class StoreController extends Controller
     public function shop(Shop $shop)
     {
         return $shop->loadCount('products');
+    }
+
+    public function page(string $slug)
+    {
+        $row = Record::where('resource', 'pages')->get()->first(fn ($r) => ($r->data['slug'] ?? '') === $slug);
+        abort_unless($row, 404);
+
+        return $row->flat();
+    }
+
+    /** Active admin records (banners, ads, support items, social links) shaped for the storefront. */
+    private function promo(string $resource, ?string $imageKey): array
+    {
+        return Record::where('resource', $resource)->orderBy('rid')->get()->map->flat()
+            ->filter(fn ($r) => ($r['is_active'] ?? true) !== false && ($imageKey === null || ($r['link'] ?? $r[$imageKey] ?? '') !== ''))
+            ->map(fn ($r) => [
+                'id' => $r['id'],
+                'title' => $r['title'] ?? $r['name'] ?? '',
+                'description' => $r['description'] ?? '',
+                'url' => $r['url'] ?? $r['link'] ?? '/',
+                'image' => $this->mediaUrl($imageKey ? ($r[$imageKey] ?? null) : null),
+            ])->filter(fn ($r) => $imageKey === null ? $r['url'] !== '' && $r['url'] !== '/' : (bool) $r['image'])
+            ->take(12)->values()->all();
+    }
+
+    private function mediaUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, '/')) {
+            return $path;
+        }
+
+        return '/storage/'.$path;
     }
 
     public function brands(Request $request)

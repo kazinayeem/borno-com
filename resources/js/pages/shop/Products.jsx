@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { useGetCategoriesQuery, useGetProductsQuery } from '../../app/api';
 import ProductCard from '../../components/ProductCard';
 import { Empty, Pagination } from '../../components/ui';
@@ -8,6 +9,7 @@ import { t } from '../../i18n';
 export default function Products() {
     const [sp, setSp] = useSearchParams();
     const { data: cats = [] } = useGetCategoriesQuery();
+    const lang = useSelector((s) => s.ui.lang);
     const [range, setRange] = useState({ min: sp.get('min_price') ?? '', max: sp.get('max_price') ?? '' });
     const params = Object.fromEntries(sp.entries());
     const { data, isFetching, isError } = useGetProductsQuery({ ...params, per_page: 12 });
@@ -45,7 +47,7 @@ export default function Products() {
                         <option value="price_desc">{t('Price: High to Low')}</option><option value="rating">{t('Top Rated')}</option><option value="newest">{t('Newest')}</option></select></div>
                 <Toggle label={t('Digital Products')} k="digital" /><Toggle label={t('Preorder Products')} k="preorder" />
                 <ul className="space-y-2 border-t border-line pt-3 text-sm">
-                    {cats.map((c) => <li key={c.id}><label className="flex items-center gap-2"><input type="checkbox" className="accent-primary" checked={selected.includes(c.slug)} onChange={() => toggleCat(c.slug)} />{c.name}</label></li>)}
+                    {cats.map((c) => <li key={c.id}><label className="flex items-center gap-2"><input type="checkbox" className="accent-primary" checked={selected.includes(c.slug)} onChange={() => toggleCat(c.slug)} />{(lang === 'ar' && c.name_ar) || c.name}</label></li>)}
                 </ul>
             </aside>
             <section>

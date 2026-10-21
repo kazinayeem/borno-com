@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Record;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -265,5 +266,18 @@ class CustomerShopTest extends TestCase
         $me->refresh();
         $this->assertSame('c@x.test', $me->email);
         $this->assertSame('customer', $me->role);
+    }
+
+    public function test_home_serves_admin_banners_and_flash_filter(): void
+    {
+        $shop = Shop::create(['name' => 'S']);
+        $this->product($shop, ['is_flash_sale' => true, 'name' => 'Flash']);
+        $this->product($shop, ['name' => 'Plain']);
+        Record::create(['resource' => 'banners', 'rid' => 1, 'data' => ['title' => 'Banner 1', 'thumbnail' => '/assets/storefront/banner-watch.png', 'url' => '/products', 'is_active' => true]]);
+
+        $this->getJson('/api/home')->assertOk()->assertJsonPath('banners.0.image', '/assets/storefront/banner-watch.png');
+        $names = collect($this->getJson('/api/products?flash=1')->assertOk()->json('data'))->pluck('name');
+        $this->assertTrue($names->contains('Flash'));
+        $this->assertFalse($names->contains('Plain'));
     }
 }

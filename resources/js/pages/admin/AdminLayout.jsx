@@ -61,13 +61,14 @@ export default function AdminLayout() {
     const { data: bell } = useGetBellQuery(undefined, { skip: !isAdmin || !token, pollingInterval: 30000 });
     const [readAll] = useReadAllNotificationsMutation();
     const { data: dash } = useGetDashboardQuery(undefined, { skip: isAdmin || !token });
-    const { data: business } = useGetGroupQuery('business', { skip: !isAdmin || !token });
+    const { data: business, isError: businessError } = useGetGroupQuery('business', { skip: !isAdmin || !token });
     useEffect(() => { try { localStorage.setItem('theme', theme); } catch { /* storage unavailable */ } }, [theme]);
     useEffect(() => { setDd(null); setMobileOpen(false); }, [loc.pathname]);
     useEffect(() => { const h = (e) => { if (!e.target.closest('.dropdown, [data-dd]')) setDd(null); }; document.addEventListener('click', h); return () => document.removeEventListener('click', h); }, []);
 
     const items = useMemo(() => {
-        const hideAddShop = (list) => (business?.shop_type === 'single'
+        const restrictShops = isAdmin && (business ? business.shop_type !== 'multi' : !businessError);
+        const hideAddShop = (list) => (restrictShops
             ? list.map((m) => (m.label === 'Shop' ? { ...m, children: m.children.filter(([label]) => label !== 'Add Shop') } : m))
             : list);
         if (isAdmin) return hideAddShop(menu);
@@ -80,7 +81,7 @@ export default function AdminLayout() {
                 return [n == null ? label : `${label} ${n}`, path];
             }),
         }));
-    }, [isAdmin, dash, business]);
+    }, [isAdmin, dash, business, businessError]);
 
     if (!token) return <Navigate to="/admin/login" replace />;
     if (user?.role === 'shop' && (loc.pathname === '/admin' || !shopOk(loc.pathname))) return <Navigate to="/shop" replace />;

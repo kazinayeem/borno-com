@@ -54,6 +54,7 @@ Route::controller(StoreController::class)->group(function () {
     Route::get('products/{product}', 'product');
     Route::get('shops', 'shops');
     Route::get('shops/{shop}', 'shop');
+    Route::get('pages/{slug}', 'page');
     Route::get('brands', 'brands');
     Route::get('blogs', 'blogs');
     Route::get('blogs/{post}', 'blog');

@@ -26,5 +26,6 @@ store.subscribe(() => {
         localStorage.setItem('cuser', JSON.stringify(customer.user));
         localStorage.setItem('cart', JSON.stringify(shop.cart));
         localStorage.setItem('wishlist', JSON.stringify(shop.wishlist));
+        localStorage.setItem('currency', shop.currency);
     } catch { /* storage unavailable */ }
 });
