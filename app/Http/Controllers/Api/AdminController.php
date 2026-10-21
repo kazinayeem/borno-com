@@ -6,9 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\BlogPost;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Rider;
+use App\Models\Currency;
+use App\Models\VatTax;
+use App\Models\SubCategory;
+use App\Models\FlashSale;
+use App\Models\Coupon;
+use App\Models\Unit;
+use App\Models\Size;
+use App\Models\Color;
 use App\Models\Order;
 use App\Models\ContactMessage;
 use App\Models\Product;
+use App\Models\Record;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -42,12 +52,26 @@ class AdminController extends Controller
             'brands' => [Brand::class, 'name', ['name' => 'required|string|max:120', 'slug' => 'nullable|string|max:140', 'active' => 'boolean'], []],
             'shops' => [Shop::class, 'name', ['name' => 'required|string|max:120', 'name_ar' => 'nullable|string|max:120', 'logo' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'address' => 'nullable|string|max:255', 'description' => 'nullable|string', 'online' => 'boolean', 'active' => 'boolean'], []],
             'blogs' => [BlogPost::class, 'title', ['title' => 'required|string|max:255', 'category' => 'nullable|string|max:120', 'excerpt' => 'nullable|string', 'body' => 'nullable|string', 'published' => 'boolean'], []],
+            'colors' => [Color::class, 'name', ['name' => 'required|string|max:60', 'code' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'], 'active' => 'boolean'], []],
+            'sizes' => [Size::class, 'name', ['name' => 'required|string|max:30', 'active' => 'boolean'], []],
+            'units' => [Unit::class, 'name', ['name' => 'required|string|max:30', 'active' => 'boolean'], []],
+            'subcategories' => [SubCategory::class, 'name', ['category_id' => 'required|exists:categories,id', 'name' => 'required|string|max:120', 'image' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'active' => 'boolean'], ['category:id,name']],
+            'coupons' => [Coupon::class, 'code', ['code' => 'required|string|max:40|unique:coupons,code', 'discount' => 'required|numeric|min:0', 'discount_type' => 'required|in:percent,fixed', 'min_amount' => 'nullable|numeric|min:0', 'starts_at' => 'nullable|date', 'expires_at' => 'nullable|date|after_or_equal:starts_at', 'active' => 'boolean'], []],
+            'flash-sales' => [FlashSale::class, 'name', ['name' => 'required|string|max:120', 'description' => 'nullable|string', 'image' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'starts_at' => 'nullable|date', 'ends_at' => 'nullable|date|after_or_equal:starts_at', 'active' => 'boolean'], []],
+            'riders' => [Rider::class, 'name', ['name' => 'required|string|max:120', 'first_name' => 'nullable|string|max:80', 'last_name' => 'nullable|string|max:80', 'phone' => 'nullable|string|max:30', 'email' => 'nullable|email|max:160', 'gender' => 'nullable|in:male,female', 'driving_licence' => 'nullable|string|max:60', 'vehicle_type' => 'nullable|string|max:40', 'active' => 'boolean'], []],
+            'customers' => [User::class, 'name', ['name' => 'required|string|max:120', 'last_name' => 'nullable|string|max:80', 'phone' => 'required|string|max:30', 'email' => 'required|email|max:160|unique:users,email', 'password' => 'required|string|min:6|confirmed', 'gender' => 'nullable|in:male,female', 'date_of_birth' => 'nullable|date'], []],
+            'currencies' => [Currency::class, 'name', ['name' => 'required|string|max:10', 'symbol' => 'required|string|max:6', 'rate' => 'required|numeric|min:0.0001'], []],
+            'vat-taxes' => [VatTax::class, 'name', ['name' => 'required|string|max:80', 'percentage' => 'required|numeric|min:0|max:100', 'active' => 'boolean'], []],
             default => abort(404),
         };
     }
 
     public function dashboard()
     {
+        if (request()->user()->role === 'shop') {
+            return $this->shopDashboard();
+        }
+
         return [
             'stats' => [
                 'products' => Product::count(), 'categories' => Category::count(), 'brands' => Brand::count(),
@@ -64,6 +88,42 @@ class AdminController extends Controller
         ];
     }
 
+    /** Seller dashboard (ShopDesk layout): shop stats, status counts, wallet, 7-day orders and top products for the seller's own shop(s). */
+    private function shopDashboard(): array
+    {
+        $shops = Shop::where('user_id', request()->user()->id)->get(['id', 'name']);
+        $ids = $shops->pluck('id');
+        $orders = Order::whereIn('shop_id', $ids);
+        $delivered = (clone $orders)->where('status', 'delivered');
+        $sales = (float) (clone $delivered)->sum('total');
+
+        // Withdrawals are generic records tagged with the seller's shop id; rejected ones never count against the balance.
+        $withdraws = Record::where('resource', 'withdraws')->get()->filter(fn ($r) => $ids->contains($r->data['shop_id'] ?? null));
+        $sum = fn ($rows) => round((float) $rows->sum(fn ($r) => (float) ($r->data['amount'] ?? 0)), 2);
+        $byStatus = fn (string $st) => $withdraws->filter(fn ($r) => strtolower($r->data['status'] ?? '') === $st);
+        $spent = $withdraws->filter(fn ($r) => strtolower($r->data['status'] ?? '') !== 'rejected');
+
+        $days = collect(range(6, 0))->map(fn ($d) => now()->subDays($d)->toDateString());
+        $perDay = (clone $orders)->where('created_at', '>=', now()->subDays(6)->startOfDay())->get(['created_at'])->groupBy(fn ($o) => $o->created_at->toDateString())->map->count();
+
+        $top = \App\Models\OrderItem::selectRaw('name, sum(qty) as sold')
+            ->whereIn('order_id', (clone $orders)->where('status', '!=', 'cancelled')->pluck('id'))
+            ->groupBy('name')->orderByDesc('sold')->limit(5)->get();
+
+        return [
+            'scope' => 'shop', 'shop_name' => $shops->first()->name ?? request()->user()->name,
+            'stats' => ['products' => Product::whereIn('shop_id', $ids)->count(), 'orders' => (clone $orders)->count(), 'categories' => Category::count(), 'brands' => Brand::count()],
+            'orders_by_status' => (clone $orders)->selectRaw('status, count(*) as count')->groupBy('status')->pluck('count', 'status'),
+            'wallet' => [
+                'balance' => round($sales - $sum($spent), 2), 'pending_withdraw' => $sum($byStatus('pending')), 'already_withdraw' => $sum($byStatus('approved')),
+                'total_sales' => round($sales, 2), 'delivery_charge' => round((float) (clone $delivered)->sum('shipping'), 2),
+                'pos_sales' => round((float) (clone $orders)->where('source', 'pos')->sum('total'), 2),
+            ],
+            'last7' => $days->map(fn ($d) => ['date' => $d, 'count' => (int) ($perDay[$d] ?? 0)])->values(),
+            'top_products' => $top->map(fn ($t) => ['name' => $t->name, 'sold' => (int) $t->sold])->values(),
+        ];
+    }
+
     public function index(Request $request, string $res)
     {
         [$model, $search, , $with] = $this->cfg($res);
@@ -72,6 +132,9 @@ class AdminController extends Controller
             $q->where($search, 'like', "%$s%");
         }
 
+        if ($request->filled('approval') && $res === 'products') {
+            $q->where('approval', $request->query('approval'));
+        }
         if ($request->filled('shop_id') && $res === 'products') {
             $q->where('shop_id', $request->query('shop_id'));
         }
@@ -98,6 +161,7 @@ class AdminController extends Controller
         $data = $this->prepare($res, $request->validate($rules));
         if ($res === 'products' && $request->user()->role === 'shop') {
             $data['shop_id'] = Shop::where('user_id', $request->user()->id)->value('id') ?? $data['shop_id'];
+            $data['approval'] = 'pending'; // seller products wait for an admin to accept them
         }
 
         return response()->json($model::create($data), 201);
@@ -108,7 +172,11 @@ class AdminController extends Controller
         [$model, , $rules] = $this->cfg($res);
         $row = $model::findOrFail($id);
         $before = $this->imageOf($row);
-        $row->update($this->prepare($res, $request->validate(array_map(fn ($r) => str_replace('required|', 'sometimes|required|', $r), $rules))));
+        $rules = array_map(fn ($r) => is_string($r) ? str_replace('required|', 'sometimes|required|', $r) : $r, $rules);
+        if ($res === 'coupons') {
+            $rules['code'] = 'sometimes|required|string|max:40|unique:coupons,code,'.$id;
+        }
+        $row->update($this->prepare($res, $request->validate($rules)));
 
         $this->dropFile($before, $this->imageOf($row->refresh()));
 
@@ -119,6 +187,7 @@ class AdminController extends Controller
     {
         [$model] = $this->cfg($res);
         $row = $model::findOrFail($id);
+        abort_if($res === 'currencies' && $row->is_default, 422, 'The default currency cannot be deleted.');
         $this->dropFile($this->imageOf($row));
         $row->delete();
 
@@ -141,7 +210,7 @@ class AdminController extends Controller
 
     public function order(int $id)
     {
-        $q = Order::with(['user:id,name,email', 'items', 'shop:id,name']);
+        $q = Order::with(['user:id,name,email,phone', 'items.product:id,image', 'shop:id,name', 'rider:id,name,phone']);
         $this->scopeToShop($q);
 
         return $q->findOrFail($id);
@@ -152,11 +221,20 @@ class AdminController extends Controller
         $data = $request->validate([
             'status' => ['required', Rule::in(Order::STATUSES)],
             'payment_status' => ['sometimes', Rule::in(['paid', 'unpaid'])],
+            'rider_id' => ['sometimes', 'nullable', 'exists:riders,id'],
         ]);
         $o = Order::findOrFail($id);
+        // Delivery date follows the status: set when delivered, cleared otherwise.
+        $data['delivered_at'] = $data['status'] === 'delivered' ? ($o->delivered_at ?? now()) : null;
         $o->update($data);
 
-        return $o;
+        return $o->load('rider:id,name,phone');
+    }
+
+    /** Riders with their open (not delivered/cancelled) order counts, for the Assign Rider dialog. */
+    public function riders()
+    {
+        return Rider::where('active', true)->withCount(['orders as incomplete_orders' => fn ($q) => $q->whereNotIn('status', ['delivered', 'cancelled'])])->get();
     }
 
     public function customers(Request $request)
@@ -176,9 +254,9 @@ class AdminController extends Controller
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'brands' => Brand::orderBy('name')->get(['id', 'name']),
             'shops' => Shop::orderBy('name')->get(['id', 'name']),
-            'colors' => [['id' => 1, 'name' => 'Red'], ['id' => 2, 'name' => 'Green'], ['id' => 3, 'name' => 'Blue'], ['id' => 4, 'name' => 'Orange'], ['id' => 5, 'name' => 'Gray']],
-            'sizes' => [['id' => 1, 'name' => 'S'], ['id' => 2, 'name' => 'M'], ['id' => 3, 'name' => 'L'], ['id' => 4, 'name' => 'XL'], ['id' => 5, 'name' => 'XXL']],
-            'units' => ['pcs', 'kg', 'g', 'litre', 'box'],
+            'colors' => Color::where('active', true)->get(['id', 'name']),
+            'sizes' => Size::where('active', true)->get(['id', 'name']),
+            'units' => Unit::where('active', true)->pluck('name'),
         ];
     }
 
@@ -198,6 +276,14 @@ class AdminController extends Controller
 
             return Shop::create(collect($data)->only(['name', 'name_ar', 'logo', 'address', 'description', 'online', 'active'])->all() + ['user_id' => $user->id]);
         });
+    }
+
+    public function approveProduct(int $id)
+    {
+        $p = Product::findOrFail($id);
+        $p->update(['approval' => 'accepted']);
+
+        return $p;
     }
 
     public function messages()
@@ -237,6 +323,14 @@ class AdminController extends Controller
 
     private function prepare(string $res, array $data): array
     {
+        if ($res === 'customers') {
+            $data['name'] = trim(($data['name'] ?? '').' '.($data['last_name'] ?? ''));
+            $data['role'] = 'customer';
+            if (isset($data['date_of_birth'])) {
+                $data['birth_date'] = $data['date_of_birth'];
+            }
+            unset($data['last_name'], $data['password_confirmation'], $data['date_of_birth']);
+        }
         // Nullable-but-NOT-NULL columns fall back to their defaults.
         foreach (['stock', 'order_by'] as $k) {
             if (array_key_exists($k, $data) && $data[$k] === null) {

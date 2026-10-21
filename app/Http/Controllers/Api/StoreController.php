@@ -28,17 +28,20 @@ class StoreController extends Controller
     /** Site-wide settings, shaped like the reference's /api/master response (`data` + `message`). */
     public function master()
     {
+        $c = array_replace(\App\Http\Controllers\Api\SettingsController::DEFAULTS, \App\Models\Setting::all_());
+        $img = fn ($p) => $p ? url('storage/'.$p) : url('assets/logo.png');
+        $cur = \App\Models\Currency::where('name', $c['currency'])->first();
+
         return ['message' => 'Success', 'data' => [
-            'app_name' => 'ReadyEcommerce', 'app_logo' => url('assets/logo.png'), 'web_logo' => url('assets/logo.png'),
-            'web_footer_logo' => url('assets/logo.png'), 'web_footer_text' => '© 2026 All right reserved by company',
-            'web_show_footer' => true, 'app_locale' => 'en', 'baseUrl' => url('/'),
-            'mobile' => '+880123456789', 'address' => 'Dhaka, Bangladesh',
-            'currency' => ['name' => 'USD', 'symbol' => '$', 'position' => 'before', 'rate' => 1],
-            'currencies' => [['name' => 'USD', 'symbol' => '$', 'position' => 'before', 'rate' => 1]],
+            'app_name' => $c['name'], 'app_title' => $c['title'], 'app_logo' => $img($c['app_logo']), 'web_logo' => $img($c['logo']), 'web_dark_logo' => $img($c['dark_logo']),
+            'web_footer_logo' => $img($c['footer_logo']), 'web_footer_text' => $c['footer_text'], 'web_show_footer' => (bool) $c['show_footer'],
+            'app_locale' => 'en', 'baseUrl' => url('/'), 'mobile' => $c['footer_phone'] ?: $c['mobile'], 'email' => $c['email'], 'address' => $c['address'],
+            'currency' => ['name' => $cur?->name ?? 'USD', 'symbol' => $cur?->symbol ?? '$', 'position' => $c['currency_position'], 'rate' => $cur?->rate ?? 1],
+            'currencies' => \App\Models\Currency::all(['name', 'symbol', 'rate']),
             'languages' => [['name' => 'English', 'code' => 'en']],
+            'show_download_app' => (bool) $c['show_download_app'], 'google_playstore_link' => $c['google_playstore_url'], 'app_store_link' => $c['app_store_url'],
             'cash_on_delivery' => true, 'online_payment' => true, 'multi_vendor' => true, 'preOrder' => true,
-            'return_order_within_days' => 7, 'show_product_stock' => true,
-            'theme_colors' => ['primary' => '#ee456b'],
+            'return_order_within_days' => 7, 'show_product_stock' => true, 'theme_colors' => ['primary' => '#ee456b'],
         ]];
     }
 

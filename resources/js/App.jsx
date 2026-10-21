@@ -16,12 +16,15 @@ import Resource, { resources } from './pages/admin/Resource';
 import Orders from './pages/admin/Orders';
 import Customers from './pages/admin/Customers';
 import { CategoryForm, ProductForm, ShopForm } from './pages/admin/forms';
-import Soon from './pages/admin/Soon';
+import Settings from './pages/admin/Settings';
+import { Pos, PosDrafts, PosSales } from './pages/admin/Pos';
+import { OrderDetail, OrderDocument } from './pages/admin/OrderDetail';
+import GenericPage from './pages/admin/GenericPages';
 import Messages from './pages/admin/Messages';
 
 const AdminResource = () => {
     const { res } = useParams();
-    return resources[res] ? <Resource res={res} /> : <p>Not found</p>;
+    return resources[res] ? <Resource res={res} /> : <GenericPage />;
 };
 
 export default function App() {
@@ -42,6 +45,9 @@ export default function App() {
                 <Route path="admin" element={<AdminLayout />}>
                     <Route index element={<Dashboard />} />
                     <Route path="orders" element={<Orders />} />
+                    <Route path="orders/:id/show" element={<OrderDetail />} />
+                    <Route path="orders/:id/invoice" element={<OrderDocument kind="invoice" />} />
+                    <Route path="orders/:id/slip" element={<OrderDocument kind="slip" />} />
                     <Route path="customers" element={<Customers />} />
                     <Route path="messages" element={<Messages />} />
                     <Route path="category/create" element={<CategoryForm />} />
@@ -50,8 +56,15 @@ export default function App() {
                     <Route path="shops/:id/edit" element={<ShopForm />} />
                     <Route path="product/create" element={<ProductForm />} />
                     <Route path="products/:id/edit" element={<ProductForm />} />
-                    <Route path="soon/:name" element={<Soon />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="pos" element={<Pos />} />
+                    <Route path="pos/sales" element={<PosSales />} />
+                    <Route path="pos/draft" element={<PosDrafts />} />
                     <Route path=":res" element={<AdminResource />} />
+                    <Route path="*" element={<GenericPage />} />
+                </Route>
+                <Route path="shop" element={<AdminLayout />}>
+                    <Route path="*" element={<GenericPage />} />
                 </Route>
             </Routes>
             <Toasts />

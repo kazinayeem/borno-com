@@ -20,6 +20,7 @@ class Product extends Model
         'is_digital' => 'boolean', 'is_preorder' => 'boolean', 'is_flash_sale' => 'boolean', 'active' => 'boolean',
     ];
 
+    public function orderItems() { return $this->hasMany(OrderItem::class); }
     public function shop() { return $this->belongsTo(Shop::class); }
     public function category() { return $this->belongsTo(Category::class); }
     public function brand() { return $this->belongsTo(Brand::class); }
