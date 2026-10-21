@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -24,22 +25,22 @@ class AdminController extends Controller
 
         return match ($res) {
             'products' => [Product::class, 'name', [
-                'shop_id' => 'required|exists:shops,id', 'category_id' => 'nullable|exists:categories,id',
+                'shop_id' => 'required|exists:shops,id', 'category_id' => 'required|exists:categories,id',
                 'brand_id' => 'nullable|exists:brands,id', 'name' => 'required|string|max:255',
                 'description' => 'required|string', 'price' => 'required|numeric|min:0',
-                'name_ar' => 'nullable|string|max:255', 'slug' => 'nullable|string|max:255',
+                'name_ar' => 'nullable|string|max:255', 'image' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'slug' => 'nullable|string|max:255',
                 'short_description' => 'required|string|max:1000', 'short_description_ar' => 'nullable|string|max:1000',
                 'sku' => 'required|string|max:60', 'weight' => 'nullable|numeric|min:0', 'buy_price' => 'required|numeric|min:0',
                 'discount_type' => 'nullable|in:fixed,percent', 'unit' => 'nullable|string|max:20',
                 'color_ids' => 'nullable|array', 'size_ids' => 'nullable|array',
                 'video_type' => 'nullable|string|max:30', 'video_url' => 'nullable|string|max:255',
                 'meta_title' => 'nullable|string|max:255', 'meta_description' => 'nullable|string', 'meta_keywords' => 'nullable|array',
-                'old_price' => 'nullable|numeric|min:0', 'discount_price' => 'nullable|numeric|min:0', 'stock' => 'integer|min:0',
+                'old_price' => 'nullable|numeric|min:0', 'discount_price' => 'nullable|numeric|min:0', 'stock' => 'nullable|integer|min:0',
                 'is_digital' => 'boolean', 'is_preorder' => 'boolean', 'is_flash_sale' => 'boolean', 'active' => 'boolean',
             ], ['shop:id,name', 'category:id,name']],
-            'categories' => [Category::class, 'name', ['name' => 'required|string|max:120', 'name_ar' => 'nullable|string|max:120', 'order_by' => 'nullable|integer|min:0', 'description' => 'nullable|string', 'description_ar' => 'nullable|string', 'slug' => 'nullable|string|max:140', 'active' => 'boolean'], []],
+            'categories' => [Category::class, 'name', ['name' => 'required|string|max:120', 'name_ar' => 'nullable|string|max:120', 'order_by' => 'nullable|integer|min:0', 'description' => 'nullable|string', 'description_ar' => 'nullable|string', 'icon' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'slug' => 'nullable|string|max:140', 'active' => 'boolean'], []],
             'brands' => [Brand::class, 'name', ['name' => 'required|string|max:120', 'slug' => 'nullable|string|max:140', 'active' => 'boolean'], []],
-            'shops' => [Shop::class, 'name', ['name' => 'required|string|max:120', 'name_ar' => 'nullable|string|max:120', 'address' => 'nullable|string|max:255', 'description' => 'nullable|string', 'online' => 'boolean', 'active' => 'boolean'], []],
+            'shops' => [Shop::class, 'name', ['name' => 'required|string|max:120', 'name_ar' => 'nullable|string|max:120', 'logo' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'address' => 'nullable|string|max:255', 'description' => 'nullable|string', 'online' => 'boolean', 'active' => 'boolean'], []],
             'blogs' => [BlogPost::class, 'title', ['title' => 'required|string|max:255', 'category' => 'nullable|string|max:120', 'excerpt' => 'nullable|string', 'body' => 'nullable|string', 'published' => 'boolean'], []],
             default => abort(404),
         };
@@ -106,7 +107,10 @@ class AdminController extends Controller
     {
         [$model, , $rules] = $this->cfg($res);
         $row = $model::findOrFail($id);
+        $before = $this->imageOf($row);
         $row->update($this->prepare($res, $request->validate(array_map(fn ($r) => str_replace('required|', 'sometimes|required|', $r), $rules))));
+
+        $this->dropFile($before, $this->imageOf($row->refresh()));
 
         return $row;
     }
@@ -114,7 +118,9 @@ class AdminController extends Controller
     public function destroy(string $res, int $id)
     {
         [$model] = $this->cfg($res);
-        $model::findOrFail($id)->delete();
+        $row = $model::findOrFail($id);
+        $this->dropFile($this->imageOf($row));
+        $row->delete();
 
         return response()->noContent();
     }
@@ -190,7 +196,7 @@ class AdminController extends Controller
                 'phone' => $data['phone'], 'gender' => $data['gender'] ?? null, 'password' => $data['password'],
             ]);
 
-            return Shop::create(collect($data)->only(['name', 'name_ar', 'address', 'description', 'online', 'active'])->all() + ['user_id' => $user->id]);
+            return Shop::create(collect($data)->only(['name', 'name_ar', 'logo', 'address', 'description', 'online', 'active'])->all() + ['user_id' => $user->id]);
         });
     }
 
@@ -207,6 +213,19 @@ class AdminController extends Controller
         return $m;
     }
 
+    private function imageOf($row): ?string
+    {
+        return $row->icon ?? $row->logo ?? $row->image ?? null;
+    }
+
+    /** Remove an uploaded file once it is replaced (or its record is deleted). */
+    private function dropFile(?string $old, ?string $current = null): void
+    {
+        if ($old && $old !== $current && str_starts_with($old, 'uploads/')) {
+            Storage::disk('public')->delete($old);
+        }
+    }
+
     /** Shop owners only see orders that belong to their own shop(s). */
     private function scopeToShop($query): void
     {
@@ -218,6 +237,13 @@ class AdminController extends Controller
 
     private function prepare(string $res, array $data): array
     {
+        // Nullable-but-NOT-NULL columns fall back to their defaults.
+        foreach (['stock', 'order_by'] as $k) {
+            if (array_key_exists($k, $data) && $data[$k] === null) {
+                unset($data[$k]);
+            }
+        }
+
         if (in_array($res, ['categories', 'brands']) && empty($data['slug']) && isset($data['name'])) {
             $data['slug'] = \Illuminate\Support\Str::slug($data['name']).'-'.substr(md5(uniqid()), 0, 4);
         }

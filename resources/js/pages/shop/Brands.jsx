@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useGetBrandsQuery } from '../../app/api';
-import { Empty } from '../../components/ui';
+import { Empty, Img } from '../../components/ui';
 
 export default function Brands() {
     const [q, setQ] = useState('');
@@ -26,7 +26,7 @@ export default function Brands() {
                 <section><h2 className="mb-4 font-semibold">Featured Brands</h2>
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                         {isLoading ? Array.from({ length: 8 }, (_, i) => <div key={i} className="skeleton h-36" />) : data.map((b) => (
-                            <div key={b.id} className="card p-4 text-center"><div className="grid h-20 place-items-center text-2xl font-bold text-gray-300">{b.name[0]}</div>
+                            <div key={b.id} className="card p-4 text-center"><div className="grid h-20 place-items-center text-2xl font-bold text-gray-300"><Img src={b.image_url} alt={b.name} className="max-h-full max-w-full object-contain" fallback={b.name[0]} /></div>
                                 <p className="mb-2 text-sm font-semibold">{b.name}</p><Link to={`/products?brand_id=${b.id}`} className="btn-outline w-full">View</Link></div>))}
                     </div>
                     {!isLoading && data.length === 0 && <Empty title="No brands found" />}

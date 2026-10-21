@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useGetCategoriesQuery } from '../app/api';
-import { Icon, money } from './ui';
+import { Icon, Img, money } from './ui';
 
 const nav = [['/', 'Home'], ['/products', 'Products'], ['/shops', 'Shops'], ['/brands', 'Brands'], ['/contact-us', 'Contact'], ['/blogs', 'Blogs']];
 
@@ -31,7 +31,7 @@ function CategoryMenu() {
             {open && (
                 <ul className="card absolute left-0 top-full z-30 w-64 p-2 shadow-lg">
                     {data.map((c) => (
-                        <li key={c.id}><Link onClick={() => setOpen(false)} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-primary-soft">{c.name}<Icon name="right" size={14} /></Link></li>
+                        <li key={c.id}><Link onClick={() => setOpen(false)} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-primary-soft"><span className="flex items-center gap-2"><Img src={c.image_url} alt="" className="h-5 w-5 rounded object-cover" />{c.name}</span><Icon name="right" size={14} /></Link></li>
                     ))}
                 </ul>
             )}

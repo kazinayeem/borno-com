@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { errorMessage, useUploadImageMutation } from '../app/api';
 import { Icon } from './ui';
 
 export const PageTitle = ({ icon, children }) => <h2 className="mb-4 flex items-center gap-2 text-[22px] font-semibold"><Icon name={icon} size={22} />{children}</h2>;
@@ -55,15 +56,31 @@ export function TagInput({ value = [], onChange, placeholder }) {
     );
 }
 
-// Image picker with a local preview. Files are not uploaded yet; see README.
-export function ImagePicker({ label, ratio = 'aspect-square', width = 'w-48' }) {
-    const [src, setSrc] = useState(null);
-    useEffect(() => () => src && URL.revokeObjectURL(src), [src]);
+// Uploads the chosen file right away and stores the returned path (e.g. "uploads/abc.png") in the form.
+export function ImagePicker({ label, value, onChange, error, ratio = 'aspect-square', width = 'w-48' }) {
+    const [upload, { isLoading }] = useUploadImageMutation();
+    const [localError, setLocalError] = useState(null);
+    const pick = async (e) => {
+        const file = e.target.files[0];
+        e.target.value = '';
+        if (!file) return;
+        setLocalError(null);
+        const r = await upload(file);
+        if (r.error) return setLocalError(r.error.data?.errors?.file?.[0] ?? errorMessage(r.error));
+        onChange(r.data.path);
+    };
     return (
         <div className="mb-4">
-            <label className="mb-1.5 block text-[13px]">{label}</label>
-            <div className={`${width} ${ratio} mb-2 grid place-items-center overflow-hidden rounded-md bg-[#f1f2f4] text-gray-400`}>{src ? <img src={src} alt="" className="h-full w-full object-cover" /> : <Icon name="box" size={40} />}</div>
-            <input type="file" accept="image/*" className="w-full text-[13px] file:mr-3 file:rounded file:border file:border-line file:bg-white file:px-3 file:py-1.5" onChange={(e) => e.target.files[0] && setSrc(URL.createObjectURL(e.target.files[0]))} />
+            {label && <label className="mb-1.5 block text-[13px]">{label}</label>}
+            <div className={`${width} ${ratio} relative mb-2 grid place-items-center overflow-hidden rounded-md bg-[#f1f2f4] text-gray-400`}>
+                {value ? <img src={`/storage/${value}`} alt="" className="h-full w-full object-cover" /> : <Icon name="box" size={40} />}
+                {isLoading && <div className="absolute inset-0 grid place-items-center bg-white/70 text-xs">Uploading…</div>}
+            </div>
+            <div className="flex items-center gap-3">
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={isLoading} onChange={pick} className="w-full text-[13px] file:mr-3 file:rounded file:border file:border-line file:bg-white file:px-3 file:py-1.5" />
+                {value && <button type="button" onClick={() => onChange('')} className="whitespace-nowrap text-xs text-red-500">Remove</button>}
+            </div>
+            {(localError || error) && <p className="mt-1 text-xs text-red-500">{localError || error}</p>}
         </div>
     );
 }

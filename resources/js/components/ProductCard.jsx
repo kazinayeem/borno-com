@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, pushToast, toggleWish } from '../app/slices';
-import { Icon, money } from './ui';
+import { Icon, Img, money } from './ui';
 
 export default function ProductCard({ p }) {
     const dispatch = useDispatch();
@@ -15,8 +15,8 @@ export default function ProductCard({ p }) {
             <button onClick={() => dispatch(toggleWish(p.id))} aria-label="Wishlist" className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full border border-line bg-white ${wished ? 'text-primary' : 'text-muted'}`}>
                 <Icon name="heart" size={14} fill={wished} />
             </button>
-            <Link to={`/products/${p.id}/details`} className="mb-3 grid h-40 place-items-center rounded-lg bg-surface text-gray-300">
-                <Icon name="box" size={48} />
+            <Link to={`/products/${p.id}/details`} className="mb-3 grid h-40 place-items-center overflow-hidden rounded-lg bg-surface text-gray-300">
+                <Img src={p.image_url} alt={p.name} className="h-full w-full object-contain" fallback={<Icon name="box" size={48} />} />
             </Link>
             <Link to={`/products/${p.id}/details`}><h3 className="line-clamp-1 text-sm font-semibold">{p.name}</h3></Link>
             <div className="mt-1 flex items-baseline gap-2 text-sm">

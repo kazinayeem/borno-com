@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StoreController;
+use App\Http\Controllers\Api\UploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
@@ -30,6 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('messages', 'messages')->middleware('staff:admin');
         Route::patch('messages/{id}/read', 'markMessage')->middleware('staff:admin');
         Route::get('options', 'options');
+        Route::post('uploads', [UploadController::class, 'image']);
         Route::get('orders', 'orders');
         Route::get('orders/{id}', 'order');
         Route::patch('orders/{id}', 'updateOrder')->middleware('staff:admin');

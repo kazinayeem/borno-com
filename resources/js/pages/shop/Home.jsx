@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useGetHomeQuery } from '../../app/api';
 import ProductCard from '../../components/ProductCard';
-import { Icon } from '../../components/ui';
+import { Icon, Img } from '../../components/ui';
 
 const perks = [['Secure Payments', '100% safe & trusted'], ['Free Delivery', 'On orders over 999'], ['100% Authentic', 'Genuine products only'], ['24/7 Support', 'We are always here'], ['Easy Returns', 'Hassle free returns']];
 
@@ -15,7 +15,7 @@ export default function Home() {
             <section className="grid gap-4 lg:grid-cols-[256px_1fr_270px]">
                 <aside className="card hidden p-3 lg:block">
                     {isLoading ? <div className="skeleton h-64" /> : data.categories.map((c) => (
-                        <Link key={c.id} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between rounded-md px-3 py-3 text-sm hover:bg-primary-soft">{c.name}<Icon name="right" size={14} /></Link>
+                        <Link key={c.id} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between rounded-md px-3 py-3 text-sm hover:bg-primary-soft"><span className="flex items-center gap-3"><Img src={c.image_url} alt="" className="h-6 w-6 rounded object-cover" />{c.name}</span><Icon name="right" size={14} /></Link>
                     ))}
                     <Link to="/products" className="mt-2 block border-t border-line px-3 pt-3 text-sm font-medium">View All Categories</Link>
                 </aside>
@@ -39,7 +39,7 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
                     {(data?.categories ?? Array.from({ length: 8 })).map((c, i) => c ? (
                         <Link key={c.id} to={`/products?category_slug=${c.slug}`} className="flex flex-col items-center gap-2 text-center text-xs font-semibold">
-                            <span className="grid h-20 w-20 place-items-center rounded-full bg-surface text-primary shadow-sm"><Icon name="tag" size={28} /></span>{c.name}</Link>
+                            <span className="grid h-20 w-20 place-items-center overflow-hidden rounded-full bg-surface text-primary shadow-sm"><Img src={c.image_url} alt={c.name} className="h-full w-full object-cover" fallback={<Icon name="tag" size={28} />} /></span>{c.name}</Link>
                     ) : <div key={i} className="skeleton h-24" />)}
                 </div>
             </section>
@@ -74,7 +74,7 @@ export default function Home() {
                 <h2 className="mb-4 text-xl font-semibold">Top Shops</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
                     {(data?.shops ?? []).map((s) => (
-                        <div key={s.id} className="card p-4 text-center text-sm"><div className="text-xs text-muted">★ {s.rating} ({s.reviews_count})</div>
+                        <div key={s.id} className="card p-4 text-center text-sm"><Img src={s.image_url} alt={s.name} className="mx-auto mb-2 h-12 w-12 rounded-full object-cover" /><div className="text-xs text-muted">★ {s.rating} ({s.reviews_count})</div>
                             <p className="my-1 font-semibold">{s.name}</p><p className="text-xs text-muted">{s.products_count}</p>
                             <Link to={`/products?shop_id=${s.id}`} className="btn-outline mt-2">Visit Shop</Link></div>
                     ))}

@@ -5,8 +5,8 @@ import { errorMessage, useAdminDeleteMutation, useAdminListQuery, useAdminSaveMu
 import { pushToast } from '../../app/slices';
 import { Empty, Icon, Modal, Pagination, money } from '../../components/ui';
 
-const thumb = (row) => <span className="grid h-10 w-10 place-items-center rounded bg-[#f6f7f9] text-gray-400"><Icon name="box" size={16} /></span>;
-const logo = (row) => <span className="grid h-10 w-10 place-items-center rounded-full bg-primary-soft font-bold text-primary">{(row.name ?? row.title)?.[0]}</span>;
+const thumb = (row) => (row.image_url ? <img src={row.image_url} alt={row.name} className="h-10 w-10 rounded object-cover" /> : <span className="grid h-10 w-10 place-items-center rounded bg-[#f6f7f9] text-gray-400"><Icon name="box" size={16} /></span>);
+const logo = (row) => (row.image_url ? <img src={row.image_url} alt={row.name} className="h-10 w-10 rounded-full object-cover" /> : <span className="grid h-10 w-10 place-items-center rounded-full bg-primary-soft font-bold text-primary">{(row.name ?? row.title)?.[0]}</span>);
 
 // Columns/fields mirror the reference admin's list pages. `status` renders a toggle switch bound to `active`.
 export const resources = {

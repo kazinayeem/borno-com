@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useGetProductQuery, useGetProductsQuery } from '../../app/api';
 import { addToCart, pushToast, toggleWish } from '../../app/slices';
 import ProductCard from '../../components/ProductCard';
-import { Empty, Icon, money } from '../../components/ui';
+import { Empty, Icon, Img, money } from '../../components/ui';
 
 const colors = [['Orange', '#f5a742'], ['Gray', '#808080'], ['Purple', '#800080']];
 const sizes = ['M', 'L', 'XXL', 'XXXL'];
@@ -28,7 +28,7 @@ export default function ProductDetail() {
         <div className="pb-4">
             <nav className="flex items-center gap-2 py-4 text-sm"><Link to="/"><Icon name="home" size={15} /></Link>›<span>{p.name}</span></nav>
             <div className="grid gap-8 lg:grid-cols-2">
-                <div className="card grid h-[480px] place-items-center bg-surface text-gray-300"><Icon name="box" size={120} /></div>
+                <div className="card grid h-[480px] place-items-center overflow-hidden bg-surface text-gray-300"><Img src={p.image_url} alt={p.name} className="h-full w-full object-contain" fallback={<Icon name="box" size={120} />} /></div>
                 <div>
                     <div className="flex items-start justify-between"><div>
                         <p className="text-sm text-primary">{p.brand?.name}</p><h1 className="mt-1 text-2xl font-bold">{p.name}</h1></div>

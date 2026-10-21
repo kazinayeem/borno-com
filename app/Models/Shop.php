@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 #[Guarded([])]
 class Shop extends Model
 {
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->logo ? '/storage/'.$this->logo : null;
+    }
+
     protected $casts = ['online' => 'boolean', 'active' => 'boolean', 'rating' => 'float'];
 
     public function products() { return $this->hasMany(Product::class); }

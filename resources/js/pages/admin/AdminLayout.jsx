@@ -7,7 +7,7 @@ import { Icon } from '../../components/ui';
 import { menu } from './menu';
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-const titles = { '/admin': 'Dashboard', '/admin/orders': 'Orders', '/admin/categories': 'Categories', '/admin/products': 'Product List', '/admin/brands': 'Brands', '/admin/customers': 'All Customers', '/admin/shops': 'All Shops', '/admin/blogs': 'Blogs', '/admin/messages': 'Contact Us' };
+const titles = { '/admin': 'Dashboard', '/admin/orders': 'Orders', '/admin/categories': 'Categories', '/admin/products': 'Product List', '/admin/brands': 'Brands', '/admin/customers': 'All Customers', '/admin/shops': 'All Shops', '/admin/blogs': 'Blogs', '/admin/messages': 'Contact Us', '/admin/product/create': 'Add New Product', '/admin/category/create': 'Create New Category', '/admin/shops/create': 'Add New Shop' };
 const shopAllowed = ['/admin', '/admin/orders', '/admin/products'];
 
 function Group({ item, pathname, onNavigate }) {
@@ -44,7 +44,7 @@ export default function AdminLayout() {
     if (user?.role === 'shop' && pathname.startsWith('/admin') && !shopAllowed.includes(pathname) && !pathname.startsWith('/admin/soon')) return <Navigate to="/admin" replace />;
     const out = async () => { await logout(); dispatch(loggedOut()); dispatch(api.util.resetApiState()); navigate('/admin/login'); };
     const items = menu.filter((m) => user?.role === 'admin' || m.to === '/admin' || m.to === '/admin/orders' || m.label === 'Product').filter((m) => !q || m.label.toLowerCase().includes(q.toLowerCase()) || m.children?.some((c) => (Array.isArray(c) ? c[0] : c).toLowerCase().includes(q.toLowerCase())));
-    const title = titles[pathname] ?? (pathname.startsWith('/admin/soon') ? 'Coming soon' : 'Admin');
+    const title = titles[pathname] ?? (/\/edit$/.test(pathname) ? 'Edit' : null) ?? (pathname.startsWith('/admin/soon') ? 'Coming soon' : 'Admin');
 
     return (
         <div className="min-h-screen bg-[#f6f7f9] text-[14px]">

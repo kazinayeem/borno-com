@@ -30,7 +30,7 @@ function useAdminForm(res, initial, backTo) {
 const Loading = () => <div className="skeleton h-72" />;
 
 export function CategoryForm() {
-    const { id, form, set, err, submit, saving, isLoading, reset } = useAdminForm('categories', { name: '', name_ar: '', order_by: 0, description: '', description_ar: '', active: true }, '/admin/categories');
+    const { id, form, set, err, submit, saving, isLoading, reset } = useAdminForm('categories', { name: '', name_ar: '', order_by: 0, description: '', description_ar: '', icon: '', active: true }, '/admin/categories');
     if (isLoading) return <Loading />;
     return (
         <form onSubmit={submit} className="mx-auto max-w-[900px]">
@@ -39,7 +39,7 @@ export function CategoryForm() {
                 <Field label="Name" required error={err('name')}><TextInput value={form.name} onChange={set('name')} placeholder="Enter Name" /></Field>
                 <Field label="Name (2nd Language)" error={err('name_ar')}><TextInput value={form.name_ar} onChange={set('name_ar')} placeholder="Enter Arabic name" /></Field>
                 <Field label="Order By" error={err('order_by')}><TextInput type="number" value={form.order_by} onChange={set('order_by')} placeholder="Enter category order" /></Field>
-                <ImagePicker label="Icon *" width="w-60" ratio="aspect-[3/4]" />
+                <ImagePicker label="Icon *" value={form.icon} onChange={set('icon')} error={err('icon')} width="w-60" ratio="aspect-[3/4]" />
                 <Field label="Description"><TextArea value={form.description} onChange={set('description')} placeholder="Enter description" /></Field>
                 <Field label="Description (2nd Language)"><TextArea value={form.description_ar} onChange={set('description_ar')} placeholder="Enter Arabic description" /></Field>
             </Section>
@@ -49,7 +49,7 @@ export function CategoryForm() {
 }
 
 export function ShopForm() {
-    const empty = { first_name: '', last_name: '', phone: '', gender: 'male', email: '', password: '', password_confirmation: '', name: '', name_ar: '', address: '', description: '', active: true };
+    const empty = { first_name: '', last_name: '', phone: '', gender: 'male', email: '', password: '', password_confirmation: '', name: '', name_ar: '', address: '', description: '', active: true, logo: '' };
     const { id, form, set, err, submit, saving, isLoading } = useAdminForm('shops', empty, '/admin/shops');
     if (isLoading) return <Loading />;
     return (
@@ -71,7 +71,7 @@ export function ShopForm() {
                 <Field label="Shop Name" required error={err('name')}><TextInput value={form.name} onChange={set('name')} placeholder="Enter Shop Name" /></Field>
                 <Field label="Shop Name (2nd Language)"><TextInput value={form.name_ar} onChange={set('name_ar')} placeholder="Enter Arabic shop name" /></Field>
                 <Field label="Address"><TextInput value={form.address} onChange={set('address')} placeholder="Enter Address" /></Field></div>
-                <div className="grid gap-x-6 md:grid-cols-2"><ImagePicker label="Shop logo(Ratio 1:1) *" width="w-36" /><ImagePicker label="Shop banner Ratio 4:1 (2000 x 500 px) *" width="w-full max-w-sm" ratio="aspect-[4/1]" /></div>
+                <div className="grid gap-x-6 md:grid-cols-2"><ImagePicker label="Shop logo(Ratio 1:1) *" value={form.logo} onChange={set('logo')} error={err('logo')} width="w-36" /><ImagePicker label="Shop banner Ratio 4:1 (2000 x 500 px) *" width="w-full max-w-sm" ratio="aspect-[4/1]" /></div>
                 <Field label="Description"><TextArea value={form.description} onChange={set('description')} placeholder="Enter Description" rows={4} /></Field></Section>
             <FormActions saving={saving} back="/admin/shops" />
         </form>
@@ -79,7 +79,7 @@ export function ShopForm() {
 }
 
 export function ProductForm() {
-    const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], active: true };
+    const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], image: '', active: true };
     const { id, form, set, err, submit, saving, isLoading, reset } = useAdminForm('products', empty, '/admin/products');
     const { data: opt } = useGetOptionsQuery();
     if (isLoading) return <Loading />;
@@ -96,9 +96,8 @@ export function ProductForm() {
                 <Field label="Short Description (2nd Language)"><TextArea value={form.short_description_ar} onChange={set('short_description_ar')} placeholder="Enter Arabic short description" /></Field>
                 <Field label="Description" required error={err('description')}><TextArea rows={6} value={form.description} onChange={set('description')} placeholder="Enter description" /></Field>
             </Section>
-            <Section title="Thumbnail (Ratio 1280 x 960 px) *"><ImagePicker label="" width="w-60" ratio="aspect-[4/3]" /></Section>
-            <Section title="Additional Thumbnail (Ratio 1280 x 960 px)"><ImagePicker label="" width="w-60" ratio="aspect-[4/3]" /></Section>
-            <Section title="Product Information"><div className="grid gap-x-6 md:grid-cols-3">
+            <Section title="Thumbnail (Ratio 1280 x 960 px) *"><ImagePicker value={form.image} onChange={set('image')} error={err('image')} width="w-60" ratio="aspect-[4/3]" /></Section>
+                        <Section title="Product Information"><div className="grid gap-x-6 md:grid-cols-3">
                 <Field label="Select Shop" required error={err('shop_id')}><Select value={form.shop_id} onChange={set('shop_id')} options={o.shops} placeholder="Select Shop" /></Field>
                 <Field label="Select Category" required error={err('category_id')}><Select value={form.category_id} onChange={set('category_id')} options={o.categories} placeholder="Select Category" /></Field>
                 <Field label="Select Brand"><Select value={form.brand_id} onChange={set('brand_id')} options={o.brands} placeholder="Select Brand" /></Field>

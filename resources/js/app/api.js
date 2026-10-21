@@ -54,6 +54,7 @@ export const api = createApi({
         getOrder: b.query({ query: (id) => `/admin/orders/${id}`, providesTags: ['Orders'] }),
         updateOrder: b.mutation({ query: ({ id, ...body }) => ({ url: `/admin/orders/${id}`, method: 'PATCH', body }), invalidatesTags: ['Orders', 'Admin'] }),
         getCustomers: b.query({ query: (params) => ({ url: '/admin/customers', params }) }),
+        uploadImage: b.mutation({ query: (file) => { const body = new FormData(); body.append('file', file); return { url: '/admin/uploads', method: 'POST', body }; } }),
         getOptions: b.query({ query: () => '/admin/options' }),
         adminGet: b.query({ query: ({ res, id }) => `/admin/${res}/${id}`, providesTags: (_r, _e, { res, id }) => [{ type: 'Admin', id: `${res}-${id}` }] }),
         getMessages: b.query({ query: (page = 1) => ({ url: '/admin/messages', params: { page } }), providesTags: ['Messages'] }),
@@ -64,7 +65,7 @@ export const api = createApi({
 export const {
     useGetHomeQuery, useGetCategoriesQuery, useGetProductsQuery, useGetProductQuery, useGetShopsQuery, useGetBrandsQuery, useGetBlogsQuery,
     useSendContactMutation, useLoginMutation, useLogoutMutation, useGetDashboardQuery, useAdminListQuery,
-    useAdminSaveMutation, useAdminDeleteMutation, useGetMessagesQuery, useGetOptionsQuery, useAdminGetQuery, useGetOrdersQuery, useGetOrderQuery, useUpdateOrderMutation, useGetCustomersQuery, useMarkMessageMutation,
+    useAdminSaveMutation, useAdminDeleteMutation, useGetMessagesQuery, useGetOptionsQuery, useUploadImageMutation, useAdminGetQuery, useGetOrdersQuery, useGetOrderQuery, useUpdateOrderMutation, useGetCustomersQuery, useMarkMessageMutation,
 } = api;
 
 export const errorMessage = (e) => e?.data?.message || (e?.status === 'FETCH_ERROR' ? 'Network error. Please try again.' : 'Something went wrong.');

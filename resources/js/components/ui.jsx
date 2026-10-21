@@ -39,6 +39,14 @@ export function Icon({ name, size = 18, className = '', fill = false }) {
     );
 }
 
+// Renders an uploaded image, or `fallback` when there is none or it fails to load.
+export function Img({ src, alt = '', className = '', fallback }) {
+    const [failed, setFailed] = React.useState(false);
+    React.useEffect(() => setFailed(false), [src]);
+    if (!src || failed) return fallback ?? null;
+    return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} className={className} />;
+}
+
 export const money = (n) => `$${Number(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function Toasts() {
