@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { LANGS, setCurrentLang } from './i18n';
 import { Route, Routes, useParams } from 'react-router-dom';
 import { Toasts } from './components/ui';
 import StoreLayout from './components/StoreLayout';
@@ -27,6 +29,7 @@ import { Pos, PosDrafts, PosSales } from './pages/admin/Pos';
 import { OrderDetail, OrderDocument } from './pages/admin/OrderDetail';
 import GenericPage from './pages/admin/GenericPages';
 import Messages from './pages/admin/Messages';
+import { t } from './i18n';
 
 const AdminResource = () => {
     const { res } = useParams();
@@ -34,8 +37,19 @@ const AdminResource = () => {
 };
 
 export default function App() {
+    const lang = useSelector((s) => s.ui.lang);
+    const theme = useSelector((s) => s.ui.theme);
+    setCurrentLang(lang);   // set before children render, so every t() call in this render pass uses the new language
+    useEffect(() => {
+        const l = LANGS.find((x) => x.code === lang) ?? LANGS[0];
+        const root = document.documentElement;
+        root.lang = l.code;
+        root.dir = l.dir;                 // Arabic flips the whole layout to right-to-left
+        root.dataset.theme = theme;
+    }, [lang, theme]);
     return (
-        <>
+        // key={lang}: switching language remounts the tree so every string re-renders (data stays in the RTK cache).
+        <React.Fragment key={lang}>
             <Routes>
                 <Route element={<StoreLayout />}>
                     <Route index element={<Home />} />
@@ -57,7 +71,7 @@ export default function App() {
                         <Route path="addresses" element={<AccountAddresses />} />
                         <Route path="profile" element={<AccountProfile />} />
                     </Route>
-                    <Route path="*" element={<p className="py-20 text-center">Page not found</p>} />
+                    <Route path="*" element={<p className="py-20 text-center">{t('Page not found')}</p>} />
                 </Route>
                 <Route path="admin/login" element={<Login />} />
                 <Route path="admin" element={<AdminLayout />}>
@@ -86,6 +100,6 @@ export default function App() {
                 </Route>
             </Routes>
             <Toasts />
-        </>
+        </React.Fragment>
     );
 }

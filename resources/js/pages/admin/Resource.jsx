@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { errorMessage, useAdminDeleteMutation, useAdminListQuery, useAdminSaveMutation, useApproveProductMutation, useGetOptionsQuery } from '../../app/api';
 import { pushToast } from '../../app/slices';
 import { ActBtn, Card, CardH, Modal, money as fmtMoney, PageHead, Pager, SaIcon, Switch, Thumb, useDebounced } from '../../components/sa';
+import { t } from '../../i18n';
 
 const thumb = (row) => <Thumb src={row.image_url} name={row.name ?? row.title} id={row.id} />;
 const logo = (row) => <Thumb src={row.image_url} name={row.name ?? row.title} id={row.id} />;
@@ -34,13 +35,14 @@ const toLocalInput = (d) => (d ? new Date(d).toISOString().slice(0, 16) : '');
 
 // Input for the small add/edit dialogs.
 function ModalField({ f: [key, label, type], value, onChange, error, categories }) {
+    label = t(label);
     const lab = <label htmlFor={`m_${key}`}>{label}</label>;
     const err = <span className="err">{error}</span>;
     const set = (v) => onChange(v);
     if (type === 'checkbox') return <div className="sa-field check"><Switch checked={value} label={label} onChange={() => set(!value)} /><label>{label}</label></div>;
     if (type === 'textarea') return <div className="sa-field wide">{lab}<textarea id={`m_${key}`} className="input" value={value ?? ''} onChange={(e) => set(e.target.value)} />{err}</div>;
-    if (type === 'categories') return <div className="sa-field">{lab}<select id={`m_${key}`} className="input" value={value ?? ''} onChange={(e) => set(e.target.value)}><option value="">Select Category</option>{categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>{err}</div>;
-    if (type === 'dtype') return <div className="sa-field">{lab}<select id={`m_${key}`} className="input" value={value ?? 'percent'} onChange={(e) => set(e.target.value)}><option value="percent">Percent</option><option value="fixed">Fixed</option></select>{err}</div>;
+    if (type === 'categories') return <div className="sa-field">{lab}<select id={`m_${key}`} className="input" value={value ?? ''} onChange={(e) => set(e.target.value)}><option value="">{t('Select Category')}</option>{categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>{err}</div>;
+    if (type === 'dtype') return <div className="sa-field">{lab}<select id={`m_${key}`} className="input" value={value ?? 'percent'} onChange={(e) => set(e.target.value)}><option value="percent">{t('Percent')}</option><option value="fixed">{t('Fixed')}</option></select>{err}</div>;
     if (type === 'datetime-local') return <div className="sa-field">{lab}<input id={`m_${key}`} className="input" type="datetime-local" value={toLocalInput(value)} onChange={(e) => set(e.target.value)} />{err}</div>;
     if (type === 'color') return <div className="sa-field">{lab}<input id={`m_${key}`} className="input" type="color" style={{ height: 42, padding: 4 }} value={value || '#000000'} onChange={(e) => set(e.target.value)} />{err}</div>;
     return <div className="sa-field">{lab}<input id={`m_${key}`} className="input" type={type} step="any" value={value ?? ''} onChange={(e) => set(e.target.value)} />{err}</div>;
@@ -69,25 +71,25 @@ export default function Resource({ res }) {
     const errs = error?.data?.errors ?? {};
     const notify = (r, ok) => dispatch(pushToast(r.error ? errorMessage(r.error) : ok, r.error ? 'error' : 'success'));
 
-    const submit = async (e) => { e.preventDefault(); const r = await save({ res, ...editing }); notify(r, 'Saved successfully'); if (!r.error) setEditing(null); };
-    const toggle = async (row, key) => notify(await save({ res, id: row.id, [key]: !row[key] }), 'Status updated');
-    const del = async (row) => { if (window.confirm('Delete this record?')) notify(await remove({ res, id: row.id }), 'Deleted'); };
-    const title = approval ? `Shop Products · ${approval[0].toUpperCase()}${approval.slice(1)}` : cfg.title;
+    const submit = async (e) => { e.preventDefault(); const r = await save({ res, ...editing }); notify(r, t('Saved successfully')); if (!r.error) setEditing(null); };
+    const toggle = async (row, key) => notify(await save({ res, id: row.id, [key]: !row[key] }), t('Status updated'));
+    const del = async (row) => { if (window.confirm(t('Delete this record?'))) notify(await remove({ res, id: row.id }), t('Deleted')); };
+    const title = approval ? `${t('Shop Products')} · ${t(approval[0].toUpperCase() + approval.slice(1))}` : t(cfg.title);
     const rows = data?.data ?? [];
     const colSpan = cfg.cols.length + (cfg.noSL ? 0 : 1);
 
     return (
         <>
             <PageHead title={title}>
-                {!approval && <button className="btn primary" onClick={() => (cfg.page ? navigate(`/admin/${cfg.page}/create`) : setEditing({ ...cfg.defaults }))}><SaIcon name="plus" /> Add New</button>}
+                {!approval && <button className="btn primary" onClick={() => (cfg.page ? navigate(`/admin/${cfg.page}/create`) : setEditing({ ...cfg.defaults }))}><SaIcon name="plus" /> {t('Add New')}</button>}
             </PageHead>
             <Card>
                 <CardH><div className="toolbar" style={{ flex: 1 }}>
-                    <input className="input" aria-label="Search" placeholder="Search…" style={{ minWidth: 220 }} value={q} onChange={(e) => setQ(e.target.value)} />
-                    {cfg.shopFilter && <select className="input" aria-label="Shop" value={shop} onChange={(e) => setShop(e.target.value)}><option value="">All Shop</option>{shops?.data.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
+                    <input className="input" aria-label={t('Search')} placeholder={t('Search…')} style={{ minWidth: 220 }} value={q} onChange={(e) => setQ(e.target.value)} />
+                    {cfg.shopFilter && <select className="input" aria-label={t('Shop')} value={shop} onChange={(e) => setShop(e.target.value)}><option value="">{t('All Shop')}</option>{shops?.data.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
                 </div></CardH>
                 <div className="table-wrap" style={{ opacity: isFetching ? 0.6 : 1 }}><table>
-                    <thead><tr>{!cfg.noSL && <th>SL</th>}{cfg.cols.map(([l]) => <th key={l}>{l}</th>)}</tr></thead>
+                    <thead><tr>{!cfg.noSL && <th>{t('SL')}</th>}{cfg.cols.map(([l]) => <th key={l}>{t(l)}</th>)}</tr></thead>
                     <tbody>
                         {rows.map((row, i) => (
                             <tr key={row.id}>
@@ -98,23 +100,23 @@ export default function Resource({ res }) {
                                             : v === 'published' ? <Switch checked={row.published} onChange={() => toggle(row, 'published')} />
                                                 : v === 'actions' ? (
                                                     <div className="actions">
-                                                        {approval && approval !== 'accepted' && isAdmin && <ActBtn icon="check" title="Approve" onClick={async () => notify(await approve(row.id), 'Product accepted')} />}
-                                                        <ActBtn icon="edit" title="Edit" onClick={() => (cfg.page ? navigate(`/admin/${res}/${row.id}/edit`) : setEditing(row))} />
-                                                        <ActBtn icon="trash" title="Delete" onClick={() => del(row)} />
+                                                        {approval && approval !== 'accepted' && isAdmin && <ActBtn icon="check" title={t('Approve')} onClick={async () => notify(await approve(row.id), t('Product accepted'))} />}
+                                                        <ActBtn icon="edit" title={t('Edit')} onClick={() => (cfg.page ? navigate(`/admin/${res}/${row.id}/edit`) : setEditing(row))} />
+                                                        <ActBtn icon="trash" title={t('Delete')} onClick={() => del(row)} />
                                                     </div>)
                                                     : (v(row) ?? '--')}
                                     </td>))}
                             </tr>))}
-                        {!data && !isError && <tr><td colSpan={colSpan} className="empty">Loading…</td></tr>}
-                        {isError && <tr><td colSpan={colSpan} className="empty">Could not load data. You may not have permission for this section.</td></tr>}
-                        {data && rows.length === 0 && <tr><td colSpan={colSpan} className="empty">No Data Found</td></tr>}
+                        {!data && !isError && <tr><td colSpan={colSpan} className="empty">{t('Loading…')}</td></tr>}
+                        {isError && <tr><td colSpan={colSpan} className="empty">{t('Could not load data. You may not have permission for this section.')}</td></tr>}
+                        {data && rows.length === 0 && <tr><td colSpan={colSpan} className="empty">{t('No Data Found')}</td></tr>}
                     </tbody>
                 </table></div>
                 <Pager meta={data} count={rows.length} onPage={setPage} />
             </Card>
             {editing && (
-                <Modal title={editing.id ? `Edit ${title}` : cfg.add} onClose={() => setEditing(null)}
-                    footer={<><button type="button" className="btn" onClick={() => setEditing(null)}>Cancel</button><button form="res-form" className="btn primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></>}>
+                <Modal title={editing.id ? t('Edit {name}', { name: title }) : t(cfg.add)} onClose={() => setEditing(null)}
+                    footer={<><button type="button" className="btn" onClick={() => setEditing(null)}>{t('Cancel')}</button><button form="res-form" className="btn primary" disabled={saving}>{saving ? t('Saving…') : t('Save')}</button></>}>
                     <form id="res-form" className="form-grid" onSubmit={submit}>
                         {cfg.fields.map((f) => <ModalField key={f[0]} f={f} value={editing[f[0]]} onChange={(v) => setEditing({ ...editing, [f[0]]: v })} error={errs[f[0]]?.[0]} categories={opts?.categories} />)}
                     </form>

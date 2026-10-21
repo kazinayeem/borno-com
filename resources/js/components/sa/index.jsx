@@ -1,6 +1,7 @@
 import React from 'react';
 import { statusLabel } from '../OrderBadge';
 import { paths } from './iconPaths';
+import { t } from '../../i18n';
 
 // Building blocks that render the exact markup/classes of the shop-admin UI (styles live in resources/css/sa.css).
 
@@ -23,7 +24,7 @@ const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 export function Pill({ value }) {
     if (!value) return '--';
-    const text = ORDER.includes(value) ? statusLabel(value) : cap(String(value).replace(/_/g, ' '));
+    const text = ORDER.includes(value) ? statusLabel(value) : t(cap(String(value).replace(/_/g, ' ')));
     return <span className={`pill s-${slug(value)}`}>{text}</span>;
 }
 
@@ -38,7 +39,7 @@ export const Card = ({ children, className = '', ...rest }) => <div className={`
 export const CardH = ({ children, className = '' }) => <div className={`card-h ${className}`}>{children}</div>;
 export const CardB = ({ children, className = '' }) => <div className={`card-b ${className}`}>{children}</div>;
 
-export function Tabs({ tabs, value, onChange, label = (t) => String(t).replace(/_/g, ' ') }) {
+export function Tabs({ tabs, value, onChange, label = (x) => t(String(x).replace(/_/g, ' ')) }) {
     return <div className="tabs" role="tablist">{tabs.map((t) => <button key={t} role="tab" aria-selected={value === t} className={`tab ${value === t ? 'active' : ''}`} onClick={() => onChange(t)}>{label(t)}</button>)}</div>;
 }
 
@@ -50,11 +51,11 @@ export function Pager({ meta, count, onPage }) {
     for (let n = Math.max(1, cp - 2); n <= Math.min(lp, cp + 2); n++) nums.push(n);
     return (
         <div className="pager">
-            <span>Showing {count} of {total}</span>
+            <span>{t('Showing {count} of {total}', { count, total })}</span>
             <div className="pages">
-                <button aria-label="Previous page" disabled={cp <= 1} onClick={() => onPage(cp - 1)}>‹</button>
+                <button aria-label={t('Previous page')} disabled={cp <= 1} onClick={() => onPage(cp - 1)}>‹</button>
                 {nums.map((n) => <button key={n} className={n === cp ? 'active' : ''} onClick={() => onPage(n)}>{n}</button>)}
-                <button aria-label="Next page" disabled={cp >= lp} onClick={() => onPage(cp + 1)}>›</button>
+                <button aria-label={t('Next page')} disabled={cp >= lp} onClick={() => onPage(cp + 1)}>›</button>
             </div>
         </div>
     );
@@ -79,7 +80,7 @@ export function Modal({ title, onClose, children, footer, wide }) {
     return (
         <div className="backdrop" onMouseDown={onClose}>
             <div className="modal" role="dialog" aria-modal="true" aria-label={title} style={wide ? { width: 'min(860px,100%)' } : undefined} onMouseDown={(e) => e.stopPropagation()}>
-                <div className="card-h"><h3>{title}</h3><button className="act" aria-label="Close" onClick={onClose}><SaIcon name="x" /></button></div>
+                <div className="card-h"><h3>{title}</h3><button className="act" aria-label={t('Close')} onClick={onClose}><SaIcon name="x" /></button></div>
                 <div className="card-b">{children}</div>
                 {footer && <div className="modal-f">{footer}</div>}
             </div>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, pushToast, toggleWish } from '../app/slices';
 import { Icon, Img, money } from './ui';
+import { t } from '../i18n';
 
 export default function ProductCard({ p }) {
     const dispatch = useDispatch();
@@ -12,7 +13,7 @@ export default function ProductCard({ p }) {
     return (
         <div className="card group relative flex flex-col p-3 transition hover:shadow-md">
             {discount > 0 && <span className="absolute left-3 top-3 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">{discount}%</span>}
-            <button onClick={() => dispatch(toggleWish(p.id))} aria-label="Wishlist" className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full border border-line bg-sa-surface ${wished ? 'text-primary' : 'text-muted'}`}>
+            <button onClick={() => dispatch(toggleWish(p.id))} aria-label={t('Wishlist')} className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full border border-line bg-sa-surface ${wished ? 'text-primary' : 'text-muted'}`}>
                 <Icon name="heart" size={14} fill={wished} />
             </button>
             <Link to={`/products/${p.id}/details`} className="mb-3 grid h-40 place-items-center overflow-hidden rounded-lg bg-surface text-gray-300">
@@ -26,8 +27,8 @@ export default function ProductCard({ p }) {
             <div className="mt-1 flex items-center gap-1 text-xs text-muted">
                 <Icon name="star" size={13} fill className="text-amber-400" /> <b className="text-ink">{p.rating}</b> ({p.reviews_count})
             </div>
-            <button disabled={p.stock < 1} onClick={() => { dispatch(addToCart({ ...p, qty: 1 })); dispatch(pushToast('Added to cart')); }} className="btn-primary mt-3 w-full !py-1.5" aria-label={p.stock < 1 ? 'Out of stock' : 'Add to cart'}>
-                {p.stock < 1 ? 'Out of stock' : <Icon name="arrow" size={16} />}
+            <button disabled={p.stock < 1} onClick={() => { dispatch(addToCart({ ...p, qty: 1 })); dispatch(pushToast(t('Added to cart'))); }} className="btn-primary mt-3 w-full !py-1.5" aria-label={p.stock < 1 ? t('Out of stock') : t('Add to cart')}>
+                {p.stock < 1 ? t('Out of stock') : <Icon name="arrow" size={16} />}
             </button>
         </div>
     );

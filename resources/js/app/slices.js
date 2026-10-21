@@ -12,6 +12,17 @@ export const authSlice = createSlice({
 });
 
 // Storefront customer session (kept separate from the staff session used by /admin).
+// Language and theme are shared by the storefront and the admin, and survive reloads.
+const readPref = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+export const uiSlice = createSlice({
+    name: 'ui',
+    initialState: { lang: ['en', 'bn', 'ar'].includes(readPref('lang')) ? readPref('lang') : 'en', theme: readPref('theme') === 'dark' ? 'dark' : 'light' },
+    reducers: {
+        setLang: (s, { payload }) => { if (['en', 'bn', 'ar'].includes(payload)) s.lang = payload; },
+        toggleTheme: (s) => { s.theme = s.theme === 'dark' ? 'light' : 'dark'; },
+    },
+});
+
 export const customerSlice = createSlice({
     name: 'customer',
     initialState: { token: load('ctoken', null), user: load('cuser', null) },
@@ -56,6 +67,7 @@ export const toastSlice = createSlice({
 });
 
 export const { loggedIn, loggedOut } = authSlice.actions;
+export const { setLang, toggleTheme } = uiSlice.actions;
 export const { customerLoggedIn, customerUpdated, customerLoggedOut } = customerSlice.actions;
 export const { addToCart, setCartQty, removeFromCart, clearCart, toggleWish } = shopSlice.actions;
 export const { push: pushToast, dismiss } = toastSlice.actions;

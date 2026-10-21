@@ -4,6 +4,7 @@ import { errorMessage, useAdminListQuery, useGetSettingsQuery, useSaveSettingsMu
 import { pushToast } from '../../app/slices';
 import { Field, ImagePicker, Section, Select, TextArea, TextInput } from '../../components/FormKit';
 import { Icon } from '../../components/ui';
+import { t } from '../../i18n';
 
 const Toggle = ({ label, on, onChange }) => (
     <label className="flex cursor-pointer items-center justify-between py-1 text-[13px] font-medium">{label}
@@ -24,54 +25,54 @@ export default function Settings() {
     const submit = async (e) => {
         e.preventDefault();
         const r = await save(f);
-        dispatch(r.error ? pushToast(errorMessage(r.error), 'error') : pushToast('Settings updated'));
+        dispatch(r.error ? pushToast(errorMessage(r.error), 'error') : pushToast(t('Settings updated')));
     };
     const img = (k, label, props = {}) => <ImagePicker label={label} value={f[k]} onChange={set(k)} error={err(k)} {...props} />;
 
     return (
         <form onSubmit={submit} className="mx-auto max-w-[1100px]">
-            <h2 className="mb-4 flex items-center gap-3 text-[22px] font-semibold"><Icon name="grid" size={22} />Admin Settings</h2>
+            <h2 className="mb-4 flex items-center gap-3 text-[22px] font-semibold"><Icon name="grid" size={22} />{t('Admin Settings')}</h2>
             <Section>
                 <div className="grid gap-x-6 md:grid-cols-2">
                     <div>
-                        <Field label="Website Name" required error={err('name')}><TextInput value={f.name} onChange={set('name')} /></Field>
-                        <Field label="Website Title" required error={err('title')}><TextInput value={f.title} onChange={set('title')} /></Field>
+                        <Field label={t('Website Name')} required error={err('name')}><TextInput value={f.name} onChange={set('name')} /></Field>
+                        <Field label={t('Website Title')} required error={err('title')}><TextInput value={f.title} onChange={set('title')} /></Field>
                         <div className="grid gap-x-6 md:grid-cols-2">
-                            <Field label="Default Currency" error={err('currency')}><Select value={f.currency} onChange={set('currency')} options={(cur?.data ?? []).map((c) => ({ id: c.name, name: `${c.name} (${c.symbol})` }))} placeholder="Select Currency" /></Field>
-                            <Field label="Currency Position"><Select value={f.currency_position} onChange={set('currency_position')} options={[{ id: 'prefix', name: 'Prefix' }, { id: 'suffix', name: 'Suffix' }]} /></Field>
+                            <Field label={t('Default Currency')} error={err('currency')}><Select value={f.currency} onChange={set('currency')} options={(cur?.data ?? []).map((c) => ({ id: c.name, name: `${c.name} (${c.symbol})` }))} placeholder={t('Select Currency')} /></Field>
+                            <Field label={t('Currency Position')}><Select value={f.currency_position} onChange={set('currency_position')} options={[{ id: 'prefix', name: 'Prefix' }, { id: 'suffix', name: 'Suffix' }]} /></Field>
                         </div>
                     </div>
                     <div className="grid gap-x-6 sm:grid-cols-2">{img('logo', 'Logo Ratio4:1 (200x50)', { width: 'w-full', ratio: 'aspect-[4/1]' })}{img('dark_logo', 'Dark Logo Ratio4:1 (200x50)', { width: 'w-full', ratio: 'aspect-[4/1]' })}</div>
                 </div>
                 <div className="grid gap-x-6 md:grid-cols-2">{img('app_logo', 'App Logo (300x300)', { width: 'w-28' })}{img('favicon', 'Favicon (300x300)', { width: 'w-28' })}</div>
             </Section>
-            <Section title="Others Information" icon="user"><div className="grid gap-x-6 md:grid-cols-3">
-                <Field label="Mobile Number" error={err('mobile')}><TextInput value={f.mobile} onChange={set('mobile')} /></Field>
-                <Field label="Email Address" error={err('email')}><TextInput type="email" value={f.email} onChange={set('email')} /></Field>
-                <Field label="Address"><TextInput value={f.address} onChange={set('address')} /></Field></div></Section>
-            <Section title="Marketing Analytics" icon="star">
-                <Toggle label="Enable Meta Pixel Tracking" on={!!f.meta_pixel_enabled} onChange={set('meta_pixel_enabled')} />
+            <Section title={t('Others Information')} icon="user"><div className="grid gap-x-6 md:grid-cols-3">
+                <Field label={t('Mobile Number')} error={err('mobile')}><TextInput value={f.mobile} onChange={set('mobile')} /></Field>
+                <Field label={t('Email Address')} error={err('email')}><TextInput type="email" value={f.email} onChange={set('email')} /></Field>
+                <Field label={t('Address')}><TextInput value={f.address} onChange={set('address')} /></Field></div></Section>
+            <Section title={t('Marketing Analytics')} icon="star">
+                <Toggle label={t('Enable Meta Pixel Tracking')} on={!!f.meta_pixel_enabled} onChange={set('meta_pixel_enabled')} />
                 {f.meta_pixel_enabled && <div className="mt-3 grid gap-x-6 md:grid-cols-3">
-                    <Field label="Meta Pixel ID"><TextInput value={f.meta_pixel_id} onChange={set('meta_pixel_id')} /></Field>
-                    <Field label="Test Event Code"><TextInput value={f.meta_test_event_code} onChange={set('meta_test_event_code')} /></Field>
-                    <Field label="Conversions API Access Token"><TextInput type="password" autoComplete="off" value={f.meta_capi_access_token} onChange={set('meta_capi_access_token')} /></Field></div>}
+                    <Field label={t('Meta Pixel ID')}><TextInput value={f.meta_pixel_id} onChange={set('meta_pixel_id')} /></Field>
+                    <Field label={t('Test Event Code')}><TextInput value={f.meta_test_event_code} onChange={set('meta_test_event_code')} /></Field>
+                    <Field label={t('Conversions API Access Token')}><TextInput type="password" autoComplete="off" value={f.meta_capi_access_token} onChange={set('meta_capi_access_token')} /></Field></div>}
             </Section>
-            <Section title="Download App Link" icon="box">
-                <Toggle label="Show/Hide Website Navigation Download App" on={!!f.show_download_app} onChange={set('show_download_app')} />
+            <Section title={t('Download App Link')} icon="box">
+                <Toggle label={t('Show/Hide Website Navigation Download App')} on={!!f.show_download_app} onChange={set('show_download_app')} />
                 <div className="mt-3 grid gap-x-6 md:grid-cols-2">
-                    <Field label="Google PlayStore App Link" error={err('google_playstore_url')}><TextArea value={f.google_playstore_url} onChange={set('google_playstore_url')} /></Field>
-                    <Field label="Apple Store App Link" error={err('app_store_url')}><TextArea value={f.app_store_url} onChange={set('app_store_url')} /></Field></div>
+                    <Field label={t('Google PlayStore App Link')} error={err('google_playstore_url')}><TextArea value={f.google_playstore_url} onChange={set('google_playstore_url')} /></Field>
+                    <Field label={t('Apple Store App Link')} error={err('app_store_url')}><TextArea value={f.app_store_url} onChange={set('app_store_url')} /></Field></div>
             </Section>
-            <Section title="Footer Section Info" icon="doc">
-                <Toggle label="Show/Hide Website Footer" on={!!f.show_footer} onChange={set('show_footer')} />
+            <Section title={t('Footer Section Info')} icon="doc">
+                <Toggle label={t('Show/Hide Website Footer')} on={!!f.show_footer} onChange={set('show_footer')} />
                 <div className="mt-3 grid gap-x-6 md:grid-cols-2">
-                    <Field label="Hotline Number"><TextInput value={f.footer_phone} onChange={set('footer_phone')} /></Field>
-                    <Field label="Footer Text"><TextInput value={f.footer_text} onChange={set('footer_text')} /></Field></div>
+                    <Field label={t('Hotline Number')}><TextInput value={f.footer_phone} onChange={set('footer_phone')} /></Field>
+                    <Field label={t('Footer Text')}><TextInput value={f.footer_text} onChange={set('footer_text')} /></Field></div>
                 <div className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-4">
                     {img('footer_logo', 'Frontend Footer Logo Ratio4:1', { width: 'w-full', ratio: 'aspect-[4/1]' })}{img('footer_qrcode', 'Frontend Scan the QR (200x200)', { width: 'w-28' })}
                     {img('footer_payment_img', 'Frontend Footer Payment Image', { width: 'w-full', ratio: 'aspect-[4/1]' })}{img('footer_bg_image', 'Frontend Footer Background Image', { width: 'w-full', ratio: 'aspect-[4/1]' })}</div>
             </Section>
-            <div className="flex justify-end pb-6"><button disabled={saving} className="btn-primary !rounded-lg !px-8">{saving ? 'Saving…' : 'Save And Update'}</button></div>
+            <div className="flex justify-end pb-6"><button disabled={saving} className="btn-primary !rounded-lg !px-8">{saving ? t('Saving…') : t('Save And Update')}</button></div>
         </form>
     );
 }

@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { errorMessage, useCustGoogleMutation, useCustLoginMutation, useCustRegisterMutation, useGetMasterQuery } from '../../app/api';
 import { customerLoggedIn, pushToast } from '../../app/slices';
 import { Field, TextInput } from '../../components/FormKit';
+import { t } from '../../i18n';
 
 // Only same-site paths are honoured, so a crafted ?next= cannot send people to another website.
 const safeNext = (n) => (n && /^\/(?!\/)/.test(n) ? n : '/account');
@@ -47,7 +48,7 @@ export default function Login() {
     if (token) return <Navigate to={next} replace />;
     const errs = (mode === 'login' ? e1 : e2)?.data?.errors ?? {};
     const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
-    const done = (r) => { dispatch(customerLoggedIn(r.data)); dispatch(pushToast('Signed in')); navigate(next, { replace: true }); };
+    const done = (r) => { dispatch(customerLoggedIn(r.data)); dispatch(pushToast(t('Signed in'))); navigate(next, { replace: true }); };
     const submit = async (e) => {
         e.preventDefault();
         const r = mode === 'login' ? await login({ email: f.email, password: f.password }) : await register(f);
@@ -65,19 +66,19 @@ export default function Login() {
         <div className="mx-auto my-8 max-w-md">
             <div className="card p-6">
                 <div className="mb-5 grid grid-cols-2 rounded-lg bg-surface p-1 text-sm font-medium" role="tablist">
-                    {[['login', 'Sign in'], ['register', 'Create account']].map(([k, label]) => <button key={k} role="tab" aria-selected={mode === k} onClick={() => setMode(k)} className={`rounded-md py-2 ${mode === k ? 'bg-sa-surface shadow-sm' : 'text-muted'}`}>{label}</button>)}
+                    {[['login', 'Sign in'], ['register', 'Create account']].map(([k, label]) => <button key={k} role="tab" aria-selected={mode === k} onClick={() => setMode(k)} className={`rounded-md py-2 ${mode === k ? 'bg-sa-surface shadow-sm' : 'text-muted'}`}>{t(label)}</button>)}
                 </div>
                 <form onSubmit={submit} noValidate>
-                    {mode === 'register' && <Field label="Full name" required error={errs.name?.[0]}><TextInput value={f.name} onChange={set('name')} autoComplete="name" /></Field>}
-                    <Field label="Email" required error={errs.email?.[0]}><TextInput type="email" value={f.email} onChange={set('email')} autoComplete="email" /></Field>
-                    {mode === 'register' && <Field label="Phone (optional)" error={errs.phone?.[0]}><TextInput value={f.phone} onChange={set('phone')} autoComplete="tel" /></Field>}
-                    <Field label="Password" required error={errs.password?.[0]} hint={mode === 'register' ? 'At least 8 characters.' : undefined}><TextInput type="password" value={f.password} onChange={set('password')} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></Field>
-                    {mode === 'register' && <Field label="Confirm password" required><TextInput type="password" value={f.password_confirmation} onChange={set('password_confirmation')} autoComplete="new-password" /></Field>}
-                    <button disabled={l1 || l2} className="btn-primary w-full !py-3">{l1 || l2 ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}</button>
+                    {mode === 'register' && <Field label={t('Full name')} required error={errs.name?.[0]}><TextInput value={f.name} onChange={set('name')} autoComplete="name" /></Field>}
+                    <Field label={t('Email')} required error={errs.email?.[0]}><TextInput type="email" value={f.email} onChange={set('email')} autoComplete="email" /></Field>
+                    {mode === 'register' && <Field label={t('Phone (optional)')} error={errs.phone?.[0]}><TextInput value={f.phone} onChange={set('phone')} autoComplete="tel" /></Field>}
+                    <Field label={t('Password')} required error={errs.password?.[0]} hint={mode === 'register' ? t('At least 8 characters.') : undefined}><TextInput type="password" value={f.password} onChange={set('password')} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></Field>
+                    {mode === 'register' && <Field label={t('Confirm password')} required><TextInput type="password" value={f.password_confirmation} onChange={set('password_confirmation')} autoComplete="new-password" /></Field>}
+                    <button disabled={l1 || l2} className="btn-primary w-full !py-3">{l1 || l2 ? t('Please wait…') : mode === 'login' ? t('Sign in') : t('Create account')}</button>
                 </form>
-                <div className="my-5 flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
-                {clientId ? <GoogleButton clientId={clientId} onCredential={onGoogle} /> : <p className="rounded-lg bg-surface p-3 text-center text-xs text-muted">Google sign-in is not set up on this site yet.</p>}
-                <p className="mt-5 text-center text-xs text-muted">Store staff? <Link to="/admin/login" className="text-primary underline">Admin login</Link></p>
+                <div className="my-5 flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" />{t('or')}<span className="h-px flex-1 bg-line" /></div>
+                {clientId ? <GoogleButton clientId={clientId} onCredential={onGoogle} /> : <p className="rounded-lg bg-surface p-3 text-center text-xs text-muted">{t('Google sign-in is not set up on this site yet.')}</p>}
+                <p className="mt-5 text-center text-xs text-muted">{t('Store staff?')} <Link to="/admin/login" className="text-primary underline">{t('Admin login')}</Link></p>
             </div>
         </div>
     );

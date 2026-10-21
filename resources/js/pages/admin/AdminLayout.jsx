@@ -5,6 +5,7 @@ import { api, useGetBellQuery, useGetDashboardQuery, useLogoutMutation, useReadA
 import { loggedOut } from '../../app/slices';
 import { fdate, SaIcon } from '../../components/sa';
 import { SELLER_MENU, menu, toRoute } from './spec/engine';
+import { t } from '../../i18n';
 
 // Where a seller may go; everything else is bounced to the dashboard (the API enforces the same rules).
 const shopOk = (p) => p === '/admin' || p === '/shop/profile' || ['/admin/orders', '/admin/products', '/admin/pos', '/admin/product/', '/admin/soon'].some((a) => p === a || p.startsWith(a + (a.endsWith('/') ? '' : '/')));
@@ -17,26 +18,26 @@ function Menu({ items, loc, filter, onNavigate }) {
     const toggle = (l) => setOpen((s) => { const n = new Set(s); n.has(l) ? n.delete(l) : n.add(l); return n; });
     const out = [];
     items.forEach((m, i) => {
-        if (m.section) { if (!filter) out.push(<div key={`s${i}`} className="menu-section">{m.section}</div>); return; }
+        if (m.section) { if (!filter) out.push(<div key={`s${i}`} className="menu-section">{t(m.section)}</div>); return; }
         if (m.children) {
-            const kids = m.children.map(([l, p]) => [l, toRoute(p)]).filter(([l]) => !filter || l.toLowerCase().includes(filter) || m.label.toLowerCase().includes(filter));
+            const kids = m.children.map(([l, p]) => [l, toRoute(p)]).filter(([l]) => !filter || [l, t(l), m.label, t(m.label)].some((x) => x.toLowerCase().includes(filter)));
             if (!kids.length) return;
             const act = kids.some(([, p]) => isActive(p, loc));
             const isOpen = !!filter || act || open.has(m.label);
             out.push(
                 <React.Fragment key={m.label}>
                     <button className={`menu-item ${isOpen ? 'open' : ''} ${act ? 'active' : ''}`} onClick={() => toggle(m.label)} aria-expanded={isOpen}>
-                        <SaIcon name={m.icon} className="ic" /><span>{m.label}</span>{m.addon && <em className="tag">add-on</em>}<SaIcon name="chev" className="chev" />
+                        <SaIcon name={m.icon} className="ic" /><span>{t(m.label)}</span>{m.addon && <em className="tag">{t('add-on')}</em>}<SaIcon name="chev" className="chev" />
                     </button>
-                    <div className={`submenu ${isOpen ? 'open' : ''}`}>{kids.map(([l, p]) => <Link key={l} to={p} onClick={onNavigate} className={isActive(p, loc) ? 'active' : ''}>{l}</Link>)}</div>
+                    <div className={`submenu ${isOpen ? 'open' : ''}`}>{kids.map(([l, p]) => <Link key={l} to={p} onClick={onNavigate} className={isActive(p, loc) ? 'active' : ''}>{t(l)}</Link>)}</div>
                 </React.Fragment>,
             );
-        } else if (!filter || m.label.toLowerCase().includes(filter)) {
+        } else if (!filter || [m.label, t(m.label)].some((x) => x.toLowerCase().includes(filter))) {
             const to = toRoute(m.path);
-            out.push(<Link key={m.label} to={to} onClick={onNavigate} className={`menu-item ${isActive(to, loc) ? 'active' : ''}`}><SaIcon name={m.icon} className="ic" /><span>{m.label}</span></Link>);
+            out.push(<Link key={m.label} to={to} onClick={onNavigate} className={`menu-item ${isActive(to, loc) ? 'active' : ''}`}><SaIcon name={m.icon} className="ic" /><span>{t(m.label)}</span></Link>);
         }
     });
-    return <nav className="menu">{out.length ? out : <div className="empty">No menu found</div>}</nav>;
+    return <nav className="menu">{out.length ? out : <div className="empty">{t('No menu found')}</div>}</nav>;
 }
 
 export default function AdminLayout() {
@@ -73,40 +74,40 @@ export default function AdminLayout() {
         <div className="sa" data-theme={theme}>
             <div className={`layout ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <aside className="sidebar print:hidden">
-                    <div className="brand"><img className="brand-mark !bg-transparent" src="/assets/favicon.png" alt="" /><span>ReadyEcommerce</span></div>
-                    <div className="menu-search"><SaIcon name="search" /><input aria-label="Search menu" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu..." /></div>
+                    <div className="brand"><img className="brand-mark !bg-transparent" src="/assets/favicon.png" alt="" /><span>{t('ReadyEcommerce')}</span></div>
+                    <div className="menu-search"><SaIcon name="search" /><input aria-label={t('Search menu')} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search menu...')} /></div>
                     <Menu items={items} loc={loc} filter={q.trim().toLowerCase()} onNavigate={() => setMobileOpen(false)} />
-                    <div className="sidebar-foot"><span>{isAdmin ? 'Admin panel' : 'Seller panel'}</span><span>v1.0</span></div>
+                    <div className="sidebar-foot"><span>{isAdmin ? t('Admin panel') : t('Seller panel')}</span><span>{t('v1.0')}</span></div>
                 </aside>
                 <div className="main">
                     <header className="topbar print:hidden">
-                        <button className="icon-btn" aria-label="Toggle sidebar" onClick={toggleSide}><SaIcon name="menu" /></button>
-                        <div className="hello"><h2>Welcome Back, {name}</h2><p>Monitor your business analytics and statistics.</p></div>
+                        <button className="icon-btn" aria-label={t('Toggle sidebar')} onClick={toggleSide}><SaIcon name="menu" /></button>
+                        <div className="hello"><h2>{t('Welcome Back, {name}', { name })}</h2><p>{t('Monitor your business analytics and statistics.')}</p></div>
                         <div className="spacer" />
-                        <button className="icon-btn" aria-label="Toggle dark mode" onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}><SaIcon name="moon" /></button>
+                        <button className="icon-btn" aria-label={t('Toggle dark mode')} onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}><SaIcon name="moon" /></button>
                         {isAdmin && (
                             <div className="rel">
-                                <button className="icon-btn" data-dd aria-label="Notifications" aria-expanded={dd === 'bell'} onClick={() => setDd(dd === 'bell' ? null : 'bell')}>
+                                <button className="icon-btn" data-dd aria-label={t('Notifications')} aria-expanded={dd === 'bell'} onClick={() => setDd(dd === 'bell' ? null : 'bell')}>
                                     <SaIcon name="bell" />{bell?.count > 0 && <span className="badge-dot">{bell.count}</span>}
                                 </button>
                                 {dd === 'bell' && (
                                     <div className="dropdown" style={{ minWidth: 320 }}>
-                                        <div className="row between" style={{ padding: '8px 12px' }}><b>Notifications</b><button className="btn sm" style={{ width: 'auto' }} onClick={() => readAll()}>Mark all as read</button></div>
-                                        {bell?.notifications.length ? bell.notifications.map((n) => <Link key={n.id} className="n-item" to={toRoute(n.url || '/admin/notifications')}>{n.title}<small>{n.content} · {fdate(n.created_at)}</small></Link>) : <div className="empty">No notifications</div>}
-                                        <Link to="/admin/notifications" style={{ textAlign: 'center', color: 'var(--primary)' }}>View All Notifications</Link>
+                                        <div className="row between" style={{ padding: '8px 12px' }}><b>{t('Notifications')}</b><button className="btn sm" style={{ width: 'auto' }} onClick={() => readAll()}>{t('Mark all as read')}</button></div>
+                                        {bell?.notifications.length ? bell.notifications.map((n) => <Link key={n.id} className="n-item" to={toRoute(n.url || '/admin/notifications')}>{n.title}<small>{n.content} · {fdate(n.created_at)}</small></Link>) : <div className="empty">{t('No notifications')}</div>}
+                                        <Link to="/admin/notifications" style={{ textAlign: 'center', color: 'var(--primary)' }}>{t('View All Notifications')}</Link>
                                     </div>)}
                             </div>)}
                         <div className="rel">
                             <button className="user-chip" data-dd aria-expanded={dd === 'user'} onClick={() => setDd(dd === 'user' ? null : 'user')}>
-                                <span className="nm"><b>{user?.name}</b><small>{isAdmin ? 'root' : 'shop'}</small></span>
+                                <span className="nm"><b>{user?.name}</b><small>{isAdmin ? t('root') : t('shop')}</small></span>
                                 <img className="avatar" src={`/placeholder/${encodeURIComponent(user?.name ?? '?')}.svg?h=20`} alt="" />
                             </button>
                             {dd === 'user' && (
                                 <div className="dropdown">
-                                    {isAdmin && <Link to="/admin/profile">Profile</Link>}
-                                    {isAdmin && <Link to="/admin/settings">Settings</Link>}
-                                    {!isAdmin && <Link to="/shop/profile">My Profile</Link>}
-                                    <button onClick={out}>Logout</button>
+                                    {isAdmin && <Link to="/admin/profile">{t('Profile')}</Link>}
+                                    {isAdmin && <Link to="/admin/settings">{t('Settings')}</Link>}
+                                    {!isAdmin && <Link to="/shop/profile">{t('My Profile')}</Link>}
+                                    <button onClick={out}>{t('Logout')}</button>
                                 </div>)}
                         </div>
                     </header>

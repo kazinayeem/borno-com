@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { dismiss } from '../app/slices';
+import { t } from '../i18n';
 
 const paths = {
     search: 'M21 21l-4.3-4.3M11 18a7 7 0 100-14 7 7 0 000 14z',
@@ -71,12 +72,12 @@ export function Pagination({ meta, onPage }) {
     if (!meta || meta.last_page <= 1) return null;
     const pages = Array.from({ length: meta.last_page }, (_, i) => i + 1);
     return (
-        <nav className="mt-6 flex flex-wrap items-center justify-center gap-1.5" aria-label="Pagination">
-            <button disabled={meta.current_page === 1} onClick={() => onPage(meta.current_page - 1)} className="rounded-md border border-line px-3 py-1.5 text-sm disabled:opacity-40">Prev</button>
+        <nav className="mt-6 flex flex-wrap items-center justify-center gap-1.5" aria-label={t('Pagination')}>
+            <button disabled={meta.current_page === 1} onClick={() => onPage(meta.current_page - 1)} className="rounded-md border border-line px-3 py-1.5 text-sm disabled:opacity-40">{t('Prev')}</button>
             {pages.map((p) => (
                 <button key={p} onClick={() => onPage(p)} className={`h-9 w-9 rounded-md border text-sm ${p === meta.current_page ? 'border-primary bg-primary text-white' : 'border-line hover:border-primary'}`}>{p}</button>
             ))}
-            <button disabled={meta.current_page === meta.last_page} onClick={() => onPage(meta.current_page + 1)} className="rounded-md border border-line px-3 py-1.5 text-sm disabled:opacity-40">Next</button>
+            <button disabled={meta.current_page === meta.last_page} onClick={() => onPage(meta.current_page + 1)} className="rounded-md border border-line px-3 py-1.5 text-sm disabled:opacity-40">{t('Next')}</button>
         </nav>
     );
 }
@@ -102,7 +103,7 @@ export function Modal({ title, onClose, children }) {
             <div role="dialog" aria-modal="true" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-sa-surface p-6 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-semibold">{title}</h3>
-                    <button onClick={onClose} aria-label="Close"><Icon name="close" /></button>
+                    <button onClick={onClose} aria-label={t('Close')}><Icon name="close" /></button>
                 </div>
                 {children}
             </div>

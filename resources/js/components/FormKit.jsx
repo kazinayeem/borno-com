@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { errorMessage, useUploadImageMutation } from '../app/api';
 import { Icon } from './ui';
+import { t } from '../i18n';
 
 export const PageTitle = ({ children }) => <div className="page-head" style={{ marginBottom: 4 }}><h1>{children}</h1></div>;
 
@@ -50,7 +51,7 @@ export function TagInput({ value = [], onChange, placeholder }) {
     const add = () => { const v = t.trim(); if (v && !value.includes(v)) onChange([...value, v]); setT(''); };
     return (
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-line p-2">
-            {value.map((k) => <span key={k} className="flex items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-xs text-primary">{k}<button type="button" onClick={() => onChange(value.filter((x) => x !== k))} aria-label={`Remove ${k}`}><Icon name="close" size={11} /></button></span>)}
+            {value.map((k) => <span key={k} className="flex items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-xs text-primary">{k}<button type="button" onClick={() => onChange(value.filter((x) => x !== k))} aria-label={t('Remove {name}', { name: k })}><Icon name="close" size={11} /></button></span>)}
             <input className="min-w-40 flex-1 text-[13px] outline-none" value={t} placeholder={placeholder} onChange={(e) => setT(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} onBlur={add} />
         </div>
     );
@@ -74,11 +75,11 @@ export function ImagePicker({ label, value, onChange, error, ratio = 'aspect-squ
             {label && <label className="mb-1.5 block text-[13px]">{label}</label>}
             <div className={`${width} ${ratio} relative mb-2 grid place-items-center overflow-hidden rounded-md bg-surface text-gray-400`}>
                 {value ? <img src={/^https?:\/\//.test(value) ? value : `/storage/${value}`} alt="" referrerPolicy="no-referrer" className="h-full w-full object-contain" /> : <Icon name="box" size={40} />}
-                {isLoading && <div className="absolute inset-0 grid place-items-center bg-sa-surface/70 text-xs">Uploading…</div>}
+                {isLoading && <div className="absolute inset-0 grid place-items-center bg-sa-surface/70 text-xs">{t('Uploading…')}</div>}
             </div>
             <div className="flex items-center gap-3">
                 <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={isLoading} onChange={pick} className="w-full text-[13px] file:mr-3 file:rounded file:border file:border-line file:bg-sa-surface file:px-3 file:py-1.5" />
-                {value && <button type="button" onClick={() => onChange('')} className="whitespace-nowrap text-xs text-red-500">Remove</button>}
+                {value && <button type="button" onClick={() => onChange('')} className="whitespace-nowrap text-xs text-red-500">{t('Remove')}</button>}
             </div>
             {(localError || error) && <p className="mt-1 text-xs text-red-500">{localError || error}</p>}
         </div>
@@ -88,9 +89,9 @@ export function ImagePicker({ label, value, onChange, error, ratio = 'aspect-squ
 export function FormActions({ saving, onReset, back }) {
     return (
         <div className="row" style={{ justifyContent: 'flex-end', gap: 10, paddingBottom: 24 }}>
-            {onReset && <button type="button" onClick={onReset} className="btn">Reset</button>}
-            {back && <a href={back} className="btn">Cancel</a>}
-            <button disabled={saving} className="btn primary">{saving ? 'Saving…' : 'Submit'}</button>
+            {onReset && <button type="button" onClick={onReset} className="btn">{t('Reset')}</button>}
+            {back && <a href={back} className="btn">{t('Cancel')}</a>}
+            <button disabled={saving} className="btn primary">{saving ? t('Saving…') : t('Submit')}</button>
         </div>
     );
 }

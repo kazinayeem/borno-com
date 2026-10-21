@@ -7,6 +7,7 @@ import {
 } from '../../app/api';
 import { pushToast } from '../../app/slices';
 import { ActBtn, Card, CardB, CardH, fdt, Modal, money, PageHead, Pager, Pill, SaIcon, Thumb } from '../../components/sa';
+import { t } from '../../i18n';
 
 const DRAFT_KEY = 'pos_resume';
 
@@ -64,7 +65,7 @@ export function Pos() {
     }, [body, getQuote, items.length]);
 
     const add = (p) => {
-        if (p.stock < 1) return dispatch(pushToast('Out of stock', 'error'));
+        if (p.stock < 1) return dispatch(pushToast(t('Out of stock'), 'error'));
         setCart((c) => {
             const row = c.find((x) => x.product.id === p.id);
             if (row) return c.map((x) => (x === row ? { ...x, qty: Math.min(x.qty + 1, p.stock) } : x));
@@ -78,70 +79,70 @@ export function Pos() {
     const pay = async () => {
         const r = await checkout({ ...body, payment_method: payment, draft_id: draftId });
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
-        dispatch(pushToast(`Order ${r.data.number} placed`));
+        dispatch(pushToast(t('Order {number} placed', { number: r.data.number })));
         setShowPay(false); reset();
     };
     const draft = async () => {
-        if (!items.length) return dispatch(pushToast('Add products first', 'error'));
+        if (!items.length) return dispatch(pushToast(t('Add products first'), 'error'));
         const r = await saveDraft(body);
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
-        dispatch(pushToast('Saved as draft')); reset();
+        dispatch(pushToast(t('Saved as draft'))); reset();
     };
 
     const rows = products?.data ?? [];
     return (
         <>
-            <PageHead title="POS">{draftId && <span className="muted">Resuming draft #{draftId} <button className="btn sm" onClick={() => navigate(0)}>Discard</button></span>}</PageHead>
+            <PageHead title={t('POS')}>{draftId && <span className="muted">{t('Resuming draft #{id}', { id: draftId })} <button className="btn sm" onClick={() => navigate(0)}>{t('Discard')}</button></span>}</PageHead>
             <div className="pos">
                 <Card>
                     <CardH><form className="toolbar" style={{ flex: 1 }} onSubmit={(e) => { e.preventDefault(); setFilters({ ...filters, search: q, page: 1 }); }}>
-                        <input className="input" aria-label="Search products" placeholder="Search product by name" style={{ flex: 1 }} value={q} onChange={(e) => setQ(e.target.value)} />
-                        <select className="input" aria-label="Brand" value={filters.brand_id} onChange={(e) => setFilters({ ...filters, brand_id: e.target.value, page: 1 })}><option value="">All Brands</option>{opts?.brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
-                        <select className="input" aria-label="Category" value={filters.category_id} onChange={(e) => setFilters({ ...filters, category_id: e.target.value, page: 1 })}><option value="">All Categories</option>{opts?.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                        <input className="input" aria-label={t('Search products')} placeholder={t('Search product by name')} style={{ flex: 1 }} value={q} onChange={(e) => setQ(e.target.value)} />
+                        <select className="input" aria-label={t('Brand')} value={filters.brand_id} onChange={(e) => setFilters({ ...filters, brand_id: e.target.value, page: 1 })}><option value="">{t('All Brands')}</option>{opts?.brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
+                        <select className="input" aria-label={t('Category')} value={filters.category_id} onChange={(e) => setFilters({ ...filters, category_id: e.target.value, page: 1 })}><option value="">{t('All Categories')}</option>{opts?.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     </form></CardH>
                     <CardB className="prod-grid" style={{ opacity: isFetching ? 0.6 : 1 }}>
                         {rows.map((p) => (
                             <button key={p.id} className="prod" disabled={p.stock < 1} onClick={() => add(p)} style={p.stock < 1 ? { opacity: 0.5 } : undefined}>
                                 <img src={p.image_url || `/placeholder/${encodeURIComponent(p.name)}.svg?h=${(p.id * 37) % 360}`} alt="" loading="lazy" referrerPolicy="no-referrer" />
-                                <div>{p.name}</div><b>{money(p.price)}</b> <small className="muted">{p.stock > 0 ? `${p.stock} left` : 'Out of stock'}</small>
+                                <div>{p.name}</div><b>{money(p.price)}</b> <small className="muted">{p.stock > 0 ? t('{n} left', { n: p.stock }) : t('Out of stock')}</small>
                             </button>))}
-                        {!products && <p className="muted">Loading…</p>}
-                        {products && rows.length === 0 && <p className="muted">No products</p>}
+                        {!products && <p className="muted">{t('Loading…')}</p>}
+                        {products && rows.length === 0 && <p className="muted">{t('No products')}</p>}
                     </CardB>
                     <Pager meta={products} count={rows.length} onPage={(page) => setFilters({ ...filters, page })} />
                 </Card>
 
                 <Card>
-                    <CardH><h3 style={{ flex: 1 }}>Cart</h3><button className="btn sm" onClick={() => setShowCustomer(true)}><SaIcon name="plus" /> Customer</button></CardH>
+                    <CardH><h3 style={{ flex: 1 }}>{t('Cart')}</h3><button className="btn sm" onClick={() => setShowCustomer(true)}><SaIcon name="plus" /> {t('Customer')}</button></CardH>
                     <CardB>
-                        <div className="sa-field" style={{ marginBottom: 12 }}><label htmlFor="pos-cust">Customer</label>
-                            <input id="pos-cust" className="input" list="pos-customers" placeholder="Enter customer name or phone number" value={custSearch} onChange={(e) => { setCustSearch(e.target.value); const m = customers?.find((c) => `${c.name} (${c.phone ?? ''})` === e.target.value); setCustomer(m ? String(m.id) : ''); }} />
+                        <div className="sa-field" style={{ marginBottom: 12 }}><label htmlFor="pos-cust">{t('Customer')}</label>
+                            <input id="pos-cust" className="input" list="pos-customers" placeholder={t('Enter customer name or phone number')} value={custSearch} onChange={(e) => { setCustSearch(e.target.value); const m = customers?.find((c) => `${c.name} (${c.phone ?? ''})` === e.target.value); setCustomer(m ? String(m.id) : ''); }} />
                             <datalist id="pos-customers">{customers?.map((c) => <option key={c.id} value={`${c.name} (${c.phone ?? ''})`} />)}</datalist>
-                            <small className="muted">{customer ? 'Customer selected' : 'Walk-in customer if none selected'}</small></div>
+                            <small className="muted">{customer ? t('Customer selected') : t('Walk-in customer if none selected')}</small></div>
                         <div id="cart">
-                            {cart.length === 0 && <p className="muted">Cart is empty — click a product to add it.</p>}
+                            {cart.length === 0 && <p className="muted">{t('Cart is empty — click a product to add it.')}</p>}
                             {cart.map(({ product: p, qty }) => (
                                 <div key={p.id} className="cart-row">
                                     <span>{p.name}</span>
-                                    <input className="input" type="number" min="1" max={p.stock} aria-label={`Quantity for ${p.name}`} value={qty} onChange={(e) => setQty(p.id, e.target.value)} />
+                                    <input className="input" type="number" min="1" max={p.stock} aria-label={t('Quantity for {name}', { name: p.name })} value={qty} onChange={(e) => setQty(p.id, e.target.value)} />
                                     <span>{money(qty * p.price)}</span>
-                                    <button className="act" aria-label={`Remove ${p.name}`} onClick={() => remove(p.id)}><SaIcon name="x" /></button>
+                                    <button className="act" aria-label={t('Remove {name}', { name: p.name })} onClick={() => remove(p.id)}><SaIcon name="x" /></button>
                                 </div>))}
                         </div>
                         <form className="row" style={{ margin: '12px 0' }} onSubmit={(e) => { e.preventDefault(); setAppliedCoupon(coupon.trim()); setCouponError(null); }}>
-                            <input className="input" aria-label="Coupon code" placeholder="Coupon code" value={coupon} onChange={(e) => setCoupon(e.target.value)} /><button className="btn">Apply</button>
+                            <input className="input" aria-label={t('Coupon code')} placeholder={t('Coupon code')} value={coupon} onChange={(e) => setCoupon(e.target.value)} /><button className="btn">{t('Apply')}</button>
                         </form>
                         {couponError && <p className="err" style={{ margin: '0 0 8px', color: 'var(--danger)', fontSize: 12 }}>{couponError}</p>}
                         <div className="totals">
-                            <div><span>Sub total</span><span>{money(quote.subtotal)}</span></div>
-                            <div><span>Discount{appliedCoupon && quote.discount ? ` (${appliedCoupon})` : ''}</span><span>-{money(quote.discount)}</span></div>
-                            <div className="grand"><span>Total</span><span>{money(quote.total)}</span></div>
+                            <div><span>{t('Sub total')}</span><span>{money(quote.subtotal)}</span></div>
+                            <div><span>{t('Discount')}{appliedCoupon && quote.discount ? ` (${appliedCoupon})` : ''}</span><span>-{money(quote.discount)}</span></div>
+                            <div className="grand"><span>{t('Total')}</span><span>{money(quote.total)}</span></div>
                         </div>
-                        <div className="sa-field" style={{ marginTop: 12 }}><label htmlFor="pos-pay">Payment Method</label>
-                            <select id="pos-pay" className="input" value={payment} onChange={(e) => setPayment(e.target.value)}>{['Cash Payment', 'Card', 'Bkash'].map((m) => <option key={m}>{m}</option>)}</select></div>
+                        <div className="sa-field" style={{ marginTop: 12 }}><label htmlFor="pos-pay">{t('Payment Method')}</label>
+                            <select id="pos-pay" className="input" value={payment} onChange={(e) => setPayment(e.target.value)}>{['Cash Payment', 'Card', 'Bkash'].map((m) => <option key={m}>{t(m)}</option>)}</select></div>
                         <div className="row" style={{ marginTop: 14 }}>
-                            <button className="btn" style={{ flex: 1, justifyContent: 'center' }} onClick={draft}>Save Draft</button>
-                            <button className="btn primary" style={{ flex: 1, justifyContent: 'center' }} disabled={!items.length || paying} onClick={pay}>{paying ? 'Processing…' : 'Place Order'}</button>
+                            <button className="btn" style={{ flex: 1, justifyContent: 'center' }} onClick={draft}>{t('Save Draft')}</button>
+                            <button className="btn primary" style={{ flex: 1, justifyContent: 'center' }} disabled={!items.length || paying} onClick={pay}>{paying ? t('Processing…') : t('Place Order')}</button>
                         </div>
                     </CardB>
                 </Card>
@@ -160,14 +161,14 @@ function AddCustomer({ onClose, onAdded }) {
         e.preventDefault();
         const r = await add(f);
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
-        dispatch(pushToast('Customer added')); onAdded(r.data); onClose();
+        dispatch(pushToast(t('Customer added'))); onAdded(r.data); onClose();
     };
     const row = (k, label, props = {}) => <div className="sa-field"><label htmlFor={`pc_${k}`}>{label}{props.required && <> <span className="req">*</span></>}</label><input id={`pc_${k}`} className="input" value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} {...props} /><span className="err">{errs[k]?.[0]}</span></div>;
     return (
-        <Modal title="Add Customer" onClose={onClose} footer={<><button type="button" className="btn" onClick={onClose}>Cancel</button><button form="pos-cust-form" className="btn primary" disabled={isLoading}>{isLoading ? 'Saving…' : 'Save'}</button></>}>
+        <Modal title={t('Add Customer')} onClose={onClose} footer={<><button type="button" className="btn" onClick={onClose}>{t('Cancel')}</button><button form="pos-cust-form" className="btn primary" disabled={isLoading}>{isLoading ? t('Saving…') : t('Save')}</button></>}>
             <form id="pos-cust-form" className="form-grid" onSubmit={submit}>
                 {row('first_name', 'First Name', { required: true })}{row('last_name', 'Last Name')}{row('phone', 'Phone', { required: true })}{row('email', 'Email', { type: 'email', required: true })}
-                <div className="sa-field"><label htmlFor="pc_gender">Gender</label><select id="pc_gender" className="input" value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}><option value="male">Male</option><option value="female">Female</option></select></div>
+                <div className="sa-field"><label htmlFor="pc_gender">{t('Gender')}</label><select id="pc_gender" className="input" value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}><option value="male">{t('Male')}</option><option value="female">{t('Female')}</option></select></div>
             </form>
         </Modal>
     );
@@ -179,15 +180,15 @@ export function PosSales() {
     const rows = data?.data ?? [];
     return (
         <>
-            <PageHead title="POS Sales" />
+            <PageHead title={t('POS Sales')} />
             <Card>
                 <div className="table-wrap" style={{ opacity: isFetching ? 0.6 : 1 }}><table>
-                    <thead><tr><th>SL</th><th>Order ID</th><th>Order Date</th><th>Customer</th><th>Total Amount</th><th>Payment Method</th><th>Status</th><th>Action</th></tr></thead>
+                    <thead><tr><th>{t('SL')}</th><th>{t('Order ID')}</th><th>{t('Order Date')}</th><th>{t('Customer')}</th><th>{t('Total Amount')}</th><th>{t('Payment Method')}</th><th>{t('Status')}</th><th>{t('Action')}</th></tr></thead>
                     <tbody>
-                        {rows.map((o, i) => <tr key={o.id}><td>{(data.current_page - 1) * data.per_page + i + 1}</td><td>{o.number}</td><td>{fdt(o.created_at)}</td><td>{o.user?.name}</td><td>{money(o.total)}</td><td>{o.payment_method}</td><td><Pill value={o.status} /></td><td><div className="actions"><a className="act" href={`/admin/orders/${o.id}/show`} title="View" aria-label="View"><SaIcon name="eye" /></a></div></td></tr>)}
-                        {!data && !isError && <tr><td colSpan={8} className="empty">Loading…</td></tr>}
-                        {isError && <tr><td colSpan={8} className="empty">Could not load sales.</td></tr>}
-                        {data && rows.length === 0 && <tr><td colSpan={8} className="empty">No Data Found</td></tr>}
+                        {rows.map((o, i) => <tr key={o.id}><td>{(data.current_page - 1) * data.per_page + i + 1}</td><td>{o.number}</td><td>{fdt(o.created_at)}</td><td>{o.user?.name}</td><td>{money(o.total)}</td><td>{o.payment_method}</td><td><Pill value={o.status} /></td><td><div className="actions"><a className="act" href={`/admin/orders/${o.id}/show`} title={t('View')} aria-label={t('View')}><SaIcon name="eye" /></a></div></td></tr>)}
+                        {!data && !isError && <tr><td colSpan={8} className="empty">{t('Loading…')}</td></tr>}
+                        {isError && <tr><td colSpan={8} className="empty">{t('Could not load sales.')}</td></tr>}
+                        {data && rows.length === 0 && <tr><td colSpan={8} className="empty">{t('No Data Found')}</td></tr>}
                     </tbody>
                 </table></div>
                 <Pager meta={data} count={rows.length} onPage={setPage} />
@@ -209,18 +210,18 @@ export function PosDrafts() {
     const rows = data?.data ?? [];
     return (
         <>
-            <PageHead title="POS Draft" />
+            <PageHead title={t('POS Draft')} />
             <Card>
                 <div className="table-wrap" style={{ opacity: isFetching ? 0.6 : 1 }}><table>
-                    <thead><tr><th>SL</th><th>Created Date</th><th>Customer</th><th>Total Products</th><th>Sub Total</th><th>Discount</th><th>Total</th><th>Action</th></tr></thead>
+                    <thead><tr><th>{t('SL')}</th><th>{t('Created Date')}</th><th>{t('Customer')}</th><th>{t('Total Products')}</th><th>{t('Sub Total')}</th><th>{t('Discount')}</th><th>{t('Total')}</th><th>{t('Action')}</th></tr></thead>
                     <tbody>
                         {rows.map((d, i) => (
-                            <tr key={d.id}><td>{(data.current_page - 1) * data.per_page + i + 1}</td><td>{fdt(d.created_at)}</td><td>{d.customer?.name ?? 'Walk-in'}</td><td>{d.items.length}</td><td>{money(d.subtotal)}</td><td>{money(d.discount)}</td><td>{money(d.total)}</td>
-                                <td><div className="actions"><button className="btn sm" onClick={() => resume(d)}>Resume</button>
-                                    <ActBtn icon="trash" title="Delete draft" onClick={async () => { if (window.confirm('Delete this draft?')) { const r = await del(d.id); dispatch(pushToast(r.error ? errorMessage(r.error) : 'Draft deleted', r.error ? 'error' : 'success')); } }} /></div></td></tr>))}
-                        {!data && !isError && <tr><td colSpan={8} className="empty">Loading…</td></tr>}
-                        {isError && <tr><td colSpan={8} className="empty">Could not load drafts.</td></tr>}
-                        {data && rows.length === 0 && <tr><td colSpan={8} className="empty">No Data Found</td></tr>}
+                            <tr key={d.id}><td>{(data.current_page - 1) * data.per_page + i + 1}</td><td>{fdt(d.created_at)}</td><td>{d.customer?.name ?? t('Walk-in')}</td><td>{d.items.length}</td><td>{money(d.subtotal)}</td><td>{money(d.discount)}</td><td>{money(d.total)}</td>
+                                <td><div className="actions"><button className="btn sm" onClick={() => resume(d)}>{t('Resume')}</button>
+                                    <ActBtn icon="trash" title={t('Delete draft')} onClick={async () => { if (window.confirm(t('Delete this draft?'))) { const r = await del(d.id); dispatch(pushToast(r.error ? errorMessage(r.error) : t('Draft deleted'), r.error ? 'error' : 'success')); } }} /></div></td></tr>))}
+                        {!data && !isError && <tr><td colSpan={8} className="empty">{t('Loading…')}</td></tr>}
+                        {isError && <tr><td colSpan={8} className="empty">{t('Could not load drafts.')}</td></tr>}
+                        {data && rows.length === 0 && <tr><td colSpan={8} className="empty">{t('No Data Found')}</td></tr>}
                     </tbody>
                 </table></div>
                 <Pager meta={data} count={rows.length} onPage={setPage} />
