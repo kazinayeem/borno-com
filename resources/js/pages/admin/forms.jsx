@@ -5,6 +5,7 @@ import { errorMessage, useAdminGetQuery, useAdminSaveMutation, useGetGroupQuery,
 import { pushToast } from '../../app/slices';
 import { Field, FormActions, ImagePicker, MultiSelect, PageTitle, Section, Select, TagInput, TextArea, TextInput } from '../../components/FormKit';
 import { t } from '../../i18n';
+import { RichEditor } from '../../components/RichEditor';
 
 // Shared create/edit plumbing: loads the record when editing, saves, shows toasts + server validation errors.
 function useAdminForm(res, initial, backTo) {
@@ -18,9 +19,9 @@ function useAdminForm(res, initial, backTo) {
     const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
     const errs = error?.data?.errors ?? {};
     const err = (k) => errs[k]?.[0];
-    const submit = async (e) => {
+    const submit = async (e, extra) => {
         e.preventDefault();
-        const r = await save({ res, id, ...form });
+        const r = await save({ res, id, ...form, ...(extra || {}) });
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
         dispatch(pushToast(id ? t('Updated successfully') : t('Created successfully')));
         navigate(backTo);
@@ -41,8 +42,8 @@ export function CategoryForm() {
                 <Field label={t('Name (2nd Language)')} error={err('name_ar')}><TextInput value={form.name_ar} onChange={set('name_ar')} placeholder={t('Enter Arabic name')} /></Field>
                 <Field label={t('Order By')} error={err('order_by')}><TextInput type="number" value={form.order_by} onChange={set('order_by')} placeholder={t('Enter category order')} /></Field>
                 <ImagePicker label={t('Icon *')} value={form.icon} onChange={set('icon')} error={err('icon')} width="w-60" ratio="aspect-[3/4]" />
-                <Field label={t('Description')}><TextArea value={form.description} onChange={set('description')} placeholder={t('Enter description')} /></Field>
-                <Field label={t('Description (2nd Language)')}><TextArea value={form.description_ar} onChange={set('description_ar')} placeholder={t('Enter Arabic description')} /></Field>
+                <Field label={t('Description')}><RichEditor value={form.description} onChange={set('description')} placeholder={t('Enter description')} /></Field>
+                <Field label={t('Description (2nd Language)')}><RichEditor value={form.description_ar} onChange={set('description_ar')} placeholder={t('Enter Arabic description')} /></Field>
             </Section>
             <FormActions saving={saving} onReset={id ? undefined : reset} back="/admin/categories" />
         </form>
@@ -78,10 +79,27 @@ export function ShopForm() {
                 <Field label={t('Shop Name (2nd Language)')}><TextInput value={form.name_ar} onChange={set('name_ar')} placeholder={t('Enter Arabic shop name')} /></Field>
                 <Field label={t('Address')}><TextInput value={form.address} onChange={set('address')} placeholder={t('Enter Address')} /></Field></div>
                 <div className="grid gap-x-6 md:grid-cols-2"><ImagePicker label={t('Shop logo(Ratio 1:1) *')} value={form.logo} onChange={set('logo')} error={err('logo')} width="w-36" /><ImagePicker label={t('Shop banner Ratio 4:1 (2000 x 500 px) *')} width="w-full max-w-sm" ratio="aspect-[4/1]" /></div>
-                <Field label={t('Description')}><TextArea value={form.description} onChange={set('description')} placeholder={t('Enter Description')} rows={4} /></Field></Section>
+                <Field label={t('Description')}><RichEditor value={form.description} onChange={set('description')} placeholder={t('Enter Description')} /></Field></Section>
             <FormActions saving={saving} back="/admin/shops" />
         </form>
     );
+}
+
+function optionIds(list) {
+    return (list || []).map(Number).filter((n) => n > 0);
+}
+
+function buildVariants(colorIds, sizeIds, prev, basePrice, baseStock) {
+    const colors = optionIds(colorIds);
+    const sizes = optionIds(sizeIds);
+    if (!colors.length && !sizes.length) return [];
+    const cs = colors.length ? colors : [null];
+    const ss = sizes.length ? sizes : [null];
+    const rows = Array.isArray(prev) ? prev : [];
+    return cs.flatMap((c) => ss.map((s) => {
+        const old = rows.find((v) => (v.color_id ? Number(v.color_id) : null) === c && (v.size_id ? Number(v.size_id) : null) === s);
+        return { color_id: c, size_id: s, price: old?.price ?? basePrice ?? '', stock: old?.stock ?? (cs.length * ss.length === 1 ? (baseStock ?? 0) : 0) };
+    }));
 }
 
 export function ProductForm() {
@@ -94,11 +112,19 @@ export function ProductForm() {
     useEffect(() => {
         if (singleShop && opt?.shops?.[0]) set('shop_id')(opt.shops[0].id);
     }, [singleShop, opt]); // eslint-disable-line
-    if (isLoading) return <Loading />;
+    if (isLoading) return <p className="p-6 text-sm text-muted">{t('Loading…')}</p>;
     const o = opt ?? { categories: [], brands: [], shops: [], colors: [], sizes: [], units: [] };
+    const variantRows = buildVariants(form.color_ids, form.size_ids, form.variants, form.price, form.stock);
+    const setOptions = (key, ids) => {
+        const next = { ...form, [key]: ids };
+        set(key)(ids);
+        set('variants')(buildVariants(next.color_ids, next.size_ids, form.variants, form.price, form.stock));
+    };
+    const setVariant = (colorId, sizeId, field, value) => set('variants')(variantRows.map((r) => ((r.color_id ? Number(r.color_id) : null) === colorId && (r.size_id ? Number(r.size_id) : null) === sizeId ? { ...r, [field]: value } : r)));
+    const labelOf = (list, id) => list.find((x) => Number(x.id) === Number(id))?.name ?? '—';
     const num = (k, label, extra = {}) => <Field label={label} required={extra.required} error={err(k)}><TextInput value={form[k]} onChange={set(k)} placeholder={label.replace(' *', '')} {...extra.input} /></Field>;
     return (
-        <form onSubmit={submit} className="mx-auto max-w-[1100px]">
+        <form onSubmit={(e) => submit(e, { variants: variantRows })} className="mx-auto max-w-[1100px]">
             <PageTitle icon="box">{id ? t('Edit Product') : t('Add New Product')}</PageTitle>
             <Section title={t('Product Info')}>
                 <Field label={t('Product Name')} required error={err('name')}><TextInput value={form.name} onChange={set('name')} placeholder={t('Enter Product Name')} /></Field>
@@ -106,16 +132,16 @@ export function ProductForm() {
                 <Field label={t('Product Slug')} hint={t('Leave blank to auto generate from product name')}><TextInput value={form.slug} onChange={set('slug')} placeholder={t('Enter Product Slug')} /></Field>
                 <Field label={t('Short Description')} required error={err('short_description')}><TextArea value={form.short_description} onChange={set('short_description')} placeholder={t('Enter short description')} /></Field>
                 <Field label={t('Short Description (2nd Language)')}><TextArea value={form.short_description_ar} onChange={set('short_description_ar')} placeholder={t('Enter Arabic short description')} /></Field>
-                <Field label={t('Description')} required error={err('description')}><TextArea rows={6} value={form.description} onChange={set('description')} placeholder={t('Enter description')} /></Field>
+                <Field label={t('Description')} required error={err('description')}><RichEditor minHeight={260} value={form.description} onChange={set('description')} placeholder={t('Enter description')} /></Field>
             </Section>
             <Section title={t('Thumbnail (Ratio 1280 x 960 px) *')}><ImagePicker value={form.image} onChange={set('image')} error={err('image')} width="w-60" ratio="aspect-[4/3]" /></Section>
                         <Section title={t('Product Information')}><div className="grid gap-x-6 md:grid-cols-3">
                 {!singleShop && <Field label={t('Select Shop')} required error={err('shop_id')}><Select value={form.shop_id} onChange={set('shop_id')} options={o.shops} placeholder={t('Select Shop')} /></Field>}
                 <Field label={t('Select Category')} required error={err('category_id')}><Select value={form.category_id} onChange={set('category_id')} options={o.categories} placeholder={t('Select Category')} /></Field>
                 <Field label={t('Select Brand')}><Select value={form.brand_id} onChange={set('brand_id')} options={o.brands} placeholder={t('Select Brand')} /></Field>
-                <Field label={t('Select Color')}><MultiSelect value={form.color_ids} onChange={set('color_ids')} options={o.colors} /></Field>
+                <Field label={t('Select Color')}><MultiSelect value={form.color_ids} onChange={(ids) => setOptions('color_ids', ids)} options={o.colors} /></Field>
                 <Field label={t('Select Unit')}><Select value={form.unit} onChange={set('unit')} options={o.units} placeholder={t('Select Unit')} /></Field>
-                <Field label={t('Select Size')}><MultiSelect value={form.size_ids} onChange={set('size_ids')} options={o.sizes} /></Field>
+                <Field label={t('Select Size')}><MultiSelect value={form.size_ids} onChange={(ids) => setOptions('size_ids', ids)} options={o.sizes} /></Field>
                 <Field label={t('Product SKU')} required error={err('sku')}><div className="flex gap-2"><TextInput value={form.sku} onChange={set('sku')} placeholder={t('Ex: 134543')} /><button type="button" onClick={() => set('sku')(String(Math.floor(100000 + Math.random() * 900000)))} className="whitespace-nowrap rounded-md bg-primary-soft px-3 text-xs text-primary">{t('Generate Code')}</button></div></Field>
                 {num('weight', 'Product Weight (in kg)')}
                 {num('buy_price', 'Buying Price *', { required: true })}
@@ -124,7 +150,9 @@ export function ProductForm() {
                 {num('discount_price', 'Discount')}
                 {num('stock', 'Current Stock Quantity')}
                 <Field label={t('Flash Sale')}><label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={!!form.is_flash_sale} onChange={(e) => set('is_flash_sale')(e.target.checked)} />{t('Show this product on the homepage flash sale')}</label></Field>
-            </div></Section>
+            </div>
+            {variantRows.length > 0 && <div className="mt-4 overflow-x-auto"><p className="mb-2 text-sm text-muted">{t('Each color and size has its own price and stock. The selling price above is only the starting price for a new combination.')}</p><table className="w-full text-sm"><thead><tr className="text-left text-muted"><th className="py-2">{t('Color')}</th><th>{t('Size')}</th><th>{t('Price')}</th><th>{t('Stock')}</th></tr></thead><tbody>{variantRows.map((r) => <tr key={`${r.color_id}-${r.size_id}`} className="border-t border-line"><td className="py-2">{labelOf(o.colors, r.color_id)}</td><td>{labelOf(o.sizes, r.size_id)}</td><td><input className="field !py-1.5" type="number" min="0" step="0.01" aria-label={t('Price')} value={r.price} onChange={(e) => setVariant(r.color_id, r.size_id, 'price', e.target.value)} /></td><td><input className="field !py-1.5" type="number" min="0" step="1" aria-label={t('Stock')} value={r.stock} onChange={(e) => setVariant(r.color_id, r.size_id, 'stock', e.target.value)} /></td></tr>)}</tbody></table></div>}
+            </Section>
             <Section title={t('Upload or Add Product Video')}>
                 <Field label={t('Select Video Type')}><Select value={form.video_type} onChange={set('video_type')} options={[{ id: 'file', name: 'Upload Video File' }, { id: 'youtube', name: 'YouTube Link' }, { id: 'vimeo', name: 'Vimeo Link' }, { id: 'dailymotion', name: 'Dailymotion Link' }]} /></Field>
                 {form.video_type === 'file' ? <Field label={t('Upload Product Video')}><input type="file" accept="video/*" className="text-[13px]" /></Field> : <Field label={t('Video Link')}><TextArea value={form.video_url} onChange={set('video_url')} placeholder={t('Paste the video link')} /></Field>}

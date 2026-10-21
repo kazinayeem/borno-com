@@ -153,7 +153,11 @@ class RecordController extends Controller
             if (! isset($fields[$k]) || str_ends_with($k, '_confirmation')) {
                 continue;
             }
-            $out[$k] = $fields[$k]['type'] === 'password' && $v !== null ? Hash::make($v) : $v;
+            $out[$k] = match (true) {
+                $fields[$k]['type'] === 'password' && $v !== null => Hash::make($v),
+                $fields[$k]['type'] === 'richtext' && is_string($v) => \App\Support\Html::clean($v),
+                default => $v,
+            };
         }
 
         return $out;

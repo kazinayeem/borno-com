@@ -344,4 +344,16 @@ class AdminEngineTest extends TestCase
         $this->getJson("/api/admin/products/{$theirs->id}")->assertForbidden();
         $this->assertSame('Theirs', $theirs->fresh()->name);
     }
+
+    public function test_rich_text_is_sanitized_on_save(): void
+    {
+        $out = \App\Support\Html::clean('<p class="ql-align-center evil" onclick="x()">Hi <strong>there</strong><script>alert(1)</script><a href="javascript:alert(1)">bad</a> <a href="https://ok.test">ok</a><span style="color:#ff0000;position:fixed">c</span><img src="x" onerror="y()"></p>');
+        $this->assertStringContainsString('<strong>there</strong>', $out);
+        $this->assertStringContainsString('ql-align-center', $out);
+        $this->assertStringContainsString('style="color:#ff0000"', $out);
+        $this->assertStringContainsString('https://ok.test', $out);
+        foreach (['<script', 'onclick', 'onerror', 'javascript:', 'evil', 'position'] as $bad) {
+            $this->assertStringNotContainsString($bad, $out);
+        }
+    }
 }

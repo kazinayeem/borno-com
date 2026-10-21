@@ -45,6 +45,8 @@ class AdminController extends Controller
                 'sku' => 'required|string|max:60', 'weight' => 'nullable|numeric|min:0', 'buy_price' => 'required|numeric|min:0',
                 'discount_type' => 'nullable|in:fixed,percent', 'unit' => 'nullable|string|max:20',
                 'color_ids' => 'nullable|array', 'size_ids' => 'nullable|array',
+                'variants' => 'nullable|array|max:200', 'variants.*.color_id' => 'nullable|integer', 'variants.*.size_id' => 'nullable|integer',
+                'variants.*.price' => 'required|numeric|min:0', 'variants.*.stock' => 'required|integer|min:0',
                 'video_type' => 'nullable|string|max:30', 'video_url' => 'nullable|string|max:255',
                 'meta_title' => 'nullable|string|max:255', 'meta_description' => 'nullable|string', 'meta_keywords' => 'nullable|array',
                 'old_price' => 'nullable|numeric|min:0', 'discount_price' => 'nullable|numeric|min:0', 'stock' => 'nullable|integer|min:0',
@@ -377,7 +379,7 @@ class AdminController extends Controller
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'brands' => Brand::orderBy('name')->get(['id', 'name']),
             'shops' => Shop::orderBy('name')->get(['id', 'name']),
-            'colors' => Color::where('active', true)->get(['id', 'name']),
+            'colors' => Color::where('active', true)->get(['id', 'name', 'code']),
             'sizes' => Size::where('active', true)->get(['id', 'name']),
             'units' => Unit::where('active', true)->pluck('name'),
         ];
@@ -467,6 +469,11 @@ class AdminController extends Controller
             }
             unset($data['last_name'], $data['password_confirmation'], $data['date_of_birth']);
         }
+        foreach (\App\Support\Html::RICH[$res] ?? [] as $k) {
+            if (array_key_exists($k, $data)) {
+                $data[$k] = \App\Support\Html::clean($data[$k]);
+            }
+        }
         // Nullable-but-NOT-NULL columns fall back to their defaults.
         foreach (['stock', 'order_by'] as $k) {
             if (array_key_exists($k, $data) && $data[$k] === null) {
@@ -476,6 +483,28 @@ class AdminController extends Controller
 
         if (in_array($res, ['categories', 'brands']) && empty($data['slug']) && isset($data['name'])) {
             $data['slug'] = \Illuminate\Support\Str::slug($data['name']).'-'.substr(md5(uniqid()), 0, 4);
+        }
+
+        if ($res === 'products' && array_key_exists('variants', $data)) {
+            $rows = [];
+            foreach ($data['variants'] ?? [] as $v) {
+                if (! is_array($v)) {
+                    continue;
+                }
+                $rows[] = [
+                    'color_id' => Product::optionId($v['color_id'] ?? null), 'size_id' => Product::optionId($v['size_id'] ?? null),
+                    'price' => round((float) ($v['price'] ?? 0), 2), 'stock' => (int) ($v['stock'] ?? 0),
+                ];
+            }
+            if ($rows === []) {
+                $data['variants'] = null;
+            } else {
+                $data['variants'] = $rows;
+                $data['color_ids'] = array_values(array_unique(array_filter(array_column($rows, 'color_id'))));
+                $data['size_ids'] = array_values(array_unique(array_filter(array_column($rows, 'size_id'))));
+                $data['stock'] = (int) array_sum(array_column($rows, 'stock'));
+                $data['price'] = min(array_column($rows, 'price'));
+            }
         }
 
         if ($res === 'flash-sales') {

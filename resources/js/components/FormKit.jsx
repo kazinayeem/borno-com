@@ -79,7 +79,7 @@ export function ImagePicker({ label, value, onChange, error, ratio = 'aspect-squ
                 {isLoading && <div className="absolute inset-0 grid place-items-center bg-sa-surface/70 text-xs">{t('Uploading…')}</div>}
             </div>
             <div className="flex items-center gap-3">
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={isLoading} onChange={pick} className="w-full text-[13px] file:mr-3 file:rounded file:border file:border-line file:bg-sa-surface file:px-3 file:py-1.5" />
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={isLoading} onChange={pick} className="w-full text-[13px] file:me-3 file:rounded file:border file:border-line file:bg-sa-surface file:px-3 file:py-1.5" />
                 {value && <button type="button" onClick={() => onChange('')} className="whitespace-nowrap text-xs text-red-500">{t('Remove')}</button>}
             </div>
             {(localError || error) && <p className="mt-1 text-xs text-red-500">{localError || error}</p>}

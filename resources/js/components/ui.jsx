@@ -65,9 +65,9 @@ export function Toasts() {
         return () => timers.forEach(clearTimeout);
     }, [toasts, dispatch]);
     return (
-        <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2">
+        <div className="fixed end-4 top-4 z-[100] flex flex-col gap-2">
             {toasts.map((t) => (
-                <div key={t.id} role="status" className={`min-w-64 rounded-lg border-l-4 bg-sa-surface px-4 py-3 text-sm shadow-lg ${t.type === 'error' ? 'border-red-500' : 'border-emerald-500'}`}>
+                <div key={t.id} role="status" className={`min-w-64 rounded-lg border-s-4 bg-sa-surface px-4 py-3 text-sm shadow-lg ${t.type === 'error' ? 'border-red-500' : 'border-emerald-500'}`}>
                     {t.message}
                 </div>
             ))}

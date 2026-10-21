@@ -16,7 +16,10 @@ class CheckoutController extends Controller
 {
     private function cartRules(): array
     {
-        return ['items' => 'required|array|min:1|max:100', 'items.*.product_id' => 'required|integer', 'items.*.qty' => 'required|integer|min:1|max:100', 'coupon' => 'nullable|string|max:40'];
+        return [
+            'items' => 'required|array|min:1|max:100', 'items.*.product_id' => 'required|integer', 'items.*.qty' => 'required|integer|min:1|max:100',
+            'items.*.color_id' => 'nullable|integer', 'items.*.size_id' => 'nullable|integer', 'coupon' => 'nullable|string|max:40',
+        ];
     }
 
     /** Cart preview: prices, shipping and any availability problems. Public, so the cart works before sign-in. */
@@ -71,12 +74,12 @@ class CheckoutController extends Controller
                 ]);
                 $order->update(['number' => 'RC'.str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]);
                 foreach ($o['lines'] as $l) {
-                    $order->items()->create(['product_id' => $l['product_id'], 'name' => $l['name'], 'price' => $l['price'], 'qty' => $l['qty']]);
-                    $before = (int) Product::whereKey($l['product_id'])->value('stock');
-                    Product::whereKey($l['product_id'])->decrement('stock', $l['qty']);
-                    $fresh = Product::find($l['product_id']);
-                    if ($fresh) {
-                        \App\Models\Setting::alertLowStock($fresh, $before);
+                    $order->items()->create(['product_id' => $l['product_id'], 'name' => $l['name'], 'price' => $l['price'], 'qty' => $l['qty'], 'color' => $l['color'], 'size' => $l['size']]);
+                    $product = Product::whereKey($l['product_id'])->lockForUpdate()->first();
+                    if ($product) {
+                        $before = (int) $product->stock;
+                        $product->take($l['qty'], $l['color_id'], $l['size_id']);
+                        Setting::alertLowStock($product->fresh(), $before);
                     }
                 }
                 $created[] = $order->load('items');

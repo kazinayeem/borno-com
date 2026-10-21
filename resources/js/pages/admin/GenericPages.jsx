@@ -11,6 +11,7 @@ import { isGenericResource, parseColumn, parseField, resolvePage, stripQuery, to
 import { BusinessSetup, ThemeColors } from './BusinessSettings';
 import { CUSTOM_PAGES } from './CustomPages';
 import { t } from '../../i18n';
+import { RichEditor } from '../../components/RichEditor';
 
 const label = (v) => String(v).replace(/_/g, ' ');
 function useNotify() {
@@ -42,7 +43,8 @@ function FieldInput({ f, value, onChange, error }) {
     const err = <span className="err">{error}</span>;
     const id = `f_${f.name}`;
     switch (f.type) {
-        case 'textarea': case 'richtext': return <div className={`sa-field${wide}`}>{lab}<textarea id={id} className={f.type === 'richtext' ? 'input' : 'input'} style={f.type === 'richtext' ? { minHeight: 140 } : undefined} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />{err}</div>;
+        case 'richtext': return <div className={`sa-field${wide}`}>{lab}<RichEditor id={id} value={value} onChange={onChange} placeholder={t(f.label)} />{err}</div>;
+        case 'textarea': return <div className={`sa-field${wide}`}>{lab}<textarea id={id} className={f.type === 'richtext' ? 'input' : 'input'} style={f.type === 'richtext' ? { minHeight: 140 } : undefined} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />{err}</div>;
         case 'checkbox': return <div className="sa-field check"><Switch checked={value} label={t(f.label)} onChange={() => onChange(!value)} /><label>{t(f.label)}</label></div>;
         case 'select': return <div className="sa-field">{lab}<select id={id} className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}><option value="">{t('Select {name}', { name: t(f.label) })}</option>{opts.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>{err}</div>;
         case 'multiselect': return <div className="sa-field">{lab}<select id={id} className="input" multiple size={4} value={(value ?? []).map(String)} onChange={(e) => onChange([...e.target.selectedOptions].map((o) => Number(o.value) || o.value))}>{opts.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>{err}</div>;

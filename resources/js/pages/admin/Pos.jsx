@@ -10,6 +10,29 @@ import { ActBtn, Card, CardB, CardH, fdt, Modal, money, PageHead, Pager, Pill, S
 import { t } from '../../i18n';
 
 const DRAFT_KEY = 'pos_resume';
+const optionId = (v) => (v ? Number(v) : null);
+const posKey = (id, colorId, sizeId) => `${id}-${colorId || 0}-${sizeId || 0}`;
+
+function posLine(line) {
+    const colorId = line.color_id ?? null;
+    const sizeId = line.size_id ?? null;
+    const v = (line.product.variants ?? []).find((row) => optionId(row.color_id) === optionId(colorId) && optionId(row.size_id) === optionId(sizeId));
+    const color = line.product.colors?.find((c) => c.id === colorId);
+    const size = line.product.sizes?.find((s) => s.id === sizeId);
+    return { ...line, color_id: colorId, size_id: sizeId, price: v ? Number(v.price) : line.product.price, stock: v ? Number(v.stock) : line.product.stock, color: color?.name ?? null, size: size?.name ?? null };
+}
+
+function VariantPicker({ product, colorId, sizeId, onColor, onSize, onClose, onAdd }) {
+    const match = (product.variants ?? []).find((row) => optionId(row.color_id) === optionId(colorId) && optionId(row.size_id) === optionId(sizeId));
+    return (
+        <Modal title={t('Choose options')} onClose={onClose} footer={<button className="btn primary" onClick={onAdd} disabled={!match || Number(match.stock) < 1}>{t('Add to cart')}</button>}>
+            <p style={{ marginBottom: 8 }}><b>{product.name}</b></p>
+            {(product.colors ?? []).length > 0 && <div className="sa-field"><label>{t('Color')}</label><div className="row">{product.colors.map((c) => <button type="button" key={c.id} className="btn sm" onClick={() => onColor(c.id)} style={colorId === c.id ? { borderColor: 'var(--primary)' } : undefined}>{c.code && <span className="swatch" style={{ background: c.code }} />} {c.name}</button>)}</div></div>}
+            {(product.sizes ?? []).length > 0 && <div className="sa-field"><label>{t('Size')}</label><div className="row">{product.sizes.map((s) => <button type="button" key={s.id} className="btn sm" onClick={() => onSize(s.id)} style={sizeId === s.id ? { borderColor: 'var(--primary)' } : undefined}>{s.name}</button>)}</div></div>}
+            <p>{match ? <><b>{money(match.price)}</b> <small className="muted">{Number(match.stock) > 0 ? t('{n} left', { n: match.stock }) : t('Out of stock')}</small></> : t('Choose a color and size')}</p>
+        </Modal>
+    );
+}
 
 export function Pos() {
     const dispatch = useDispatch();
@@ -27,6 +50,9 @@ export function Pos() {
     const [showPay, setShowPay] = useState(false);
     const [payment, setPayment] = useState('Cash Payment');
     const [draftId, setDraftId] = useState(null);
+    const [pick, setPick] = useState(null);
+    const [pickColor, setPickColor] = useState(null);
+    const [pickSize, setPickSize] = useState(null);
 
     const { data: opts } = useGetOptionsQuery();
     const { data: products, isFetching } = usePosProductsQuery(filters);
@@ -35,7 +61,7 @@ export function Pos() {
     const [checkout, { isLoading: paying }] = usePosCheckoutMutation();
     const [saveDraft] = usePosSaveDraftMutation();
 
-    const items = useMemo(() => cart.map((c) => ({ product_id: c.product.id, qty: c.qty })), [cart]);
+    const items = useMemo(() => cart.map((c) => ({ product_id: c.product.id, qty: c.qty, ...(c.color_id ? { color_id: c.color_id } : {}), ...(c.size_id ? { size_id: c.size_id } : {}) })), [cart]);
     const body = useMemo(() => ({ items, customer_id: customer || null, coupon: appliedCoupon || null }), [items, customer, appliedCoupon]);
 
     // Resume a draft chosen on the Drafts page.
@@ -45,7 +71,7 @@ export function Pos() {
             if (!raw) return;
             sessionStorage.removeItem(DRAFT_KEY);
             const d = JSON.parse(raw);
-            setCart(d.cart); setCustomer(d.customer_id ?? ''); setDraftId(d.id); setAppliedCoupon(d.coupon ?? ''); setCoupon(d.coupon ?? '');
+            setCart((d.cart ?? []).map(posLine)); setCustomer(d.customer_id ?? ''); setDraftId(d.id); setAppliedCoupon(d.coupon ?? ''); setCoupon(d.coupon ?? '');
         } catch { /* ignore bad draft */ }
     }, []);
 
@@ -64,16 +90,35 @@ export function Pos() {
         return () => { live = false; };
     }, [body, getQuote, items.length]);
 
-    const add = (p) => {
-        if (p.stock < 1) return dispatch(pushToast(t('Out of stock'), 'error'));
+    const pushLine = (p, colorId, sizeId, price, stock, color, size) => {
+        const key = posKey(p.id, colorId, sizeId);
         setCart((c) => {
-            const row = c.find((x) => x.product.id === p.id);
-            if (row) return c.map((x) => (x === row ? { ...x, qty: Math.min(x.qty + 1, p.stock) } : x));
-            return [...c, { product: p, qty: 1 }];
+            const row = c.find((x) => posKey(x.product.id, x.color_id, x.size_id) === key);
+            if (row) return c.map((x) => (x === row ? { ...x, qty: Math.min(x.qty + 1, stock), price, stock } : x));
+            return [...c, { product: p, qty: 1, color_id: colorId, size_id: sizeId, price, stock, color, size }];
         });
     };
-    const setQty = (id, qty) => setCart((c) => c.map((x) => (x.product.id === id ? { ...x, qty: Math.max(1, Math.min(Number(qty) || 1, x.product.stock)) } : x)));
-    const remove = (id) => setCart((c) => c.filter((x) => x.product.id !== id));
+    const add = (p) => {
+        if ((p.variants ?? []).length) {
+            setPick(p);
+            setPickColor(p.colors?.[0]?.id ?? null);
+            setPickSize(p.sizes?.[0]?.id ?? null);
+            return;
+        }
+        if (p.stock < 1) return dispatch(pushToast(t('Out of stock'), 'error'));
+        pushLine(p, null, null, p.price, p.stock, null, null);
+    };
+    const confirmPick = () => {
+        const v = (pick.variants ?? []).find((row) => optionId(row.color_id) === optionId(pickColor) && optionId(row.size_id) === optionId(pickSize));
+        if (!v) return dispatch(pushToast(t('Choose a color and size'), 'error'));
+        if (Number(v.stock) < 1) return dispatch(pushToast(t('Out of stock'), 'error'));
+        const color = pick.colors?.find((c) => c.id === pickColor);
+        const size = pick.sizes?.find((s) => s.id === pickSize);
+        pushLine(pick, pickColor, pickSize, Number(v.price), Number(v.stock), color?.name ?? null, size?.name ?? null);
+        setPick(null);
+    };
+    const setQty = (key, qty, stock) => setCart((c) => c.map((x) => (posKey(x.product.id, x.color_id, x.size_id) === key ? { ...x, qty: Math.max(1, Math.min(Number(qty) || 1, stock)) } : x)));
+    const remove = (key) => setCart((c) => c.filter((x) => posKey(x.product.id, x.color_id, x.size_id) !== key));
     const reset = () => { setCart([]); setCustomer(''); setCoupon(''); setAppliedCoupon(''); setDraftId(null); };
 
     const pay = async () => {
@@ -101,11 +146,15 @@ export function Pos() {
                         <select className="input" aria-label={t('Category')} value={filters.category_id} onChange={(e) => setFilters({ ...filters, category_id: e.target.value, page: 1 })}><option value="">{t('All Categories')}</option>{opts?.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     </form></CardH>
                     <CardB className="prod-grid" style={{ opacity: isFetching ? 0.6 : 1 }}>
-                        {rows.map((p) => (
+                        {rows.map((p) => {
+                            const prices = (p.variants ?? []).map((v) => Number(v.price)).filter((n) => !Number.isNaN(n));
+                            const show = prices.length ? Math.min(...prices) : p.price;
+                            return (
                             <button key={p.id} className="prod" disabled={p.stock < 1} onClick={() => add(p)} style={p.stock < 1 ? { opacity: 0.5 } : undefined}>
                                 <img src={p.image_url || `/placeholder/${encodeURIComponent(p.name)}.svg?h=${(p.id * 37) % 360}`} alt="" loading="lazy" referrerPolicy="no-referrer" />
-                                <div>{p.name}</div><b>{money(p.price)}</b> <small className="muted">{p.stock > 0 ? t('{n} left', { n: p.stock }) : t('Out of stock')}</small>
-                            </button>))}
+                                <div>{p.name}</div><b>{prices.length > 1 && Math.min(...prices) !== Math.max(...prices) ? `${t('From')} ` : ''}{money(show)}</b> <small className="muted">{p.stock > 0 ? t('{n} left', { n: p.stock }) : t('Out of stock')}</small>
+                            </button>);
+                        })}
                         {!products && <p className="muted">{t('Loading…')}</p>}
                         {products && rows.length === 0 && <p className="muted">{t('No products')}</p>}
                     </CardB>
@@ -121,13 +170,20 @@ export function Pos() {
                             <small className="muted">{customer ? t('Customer selected') : t('Walk-in customer if none selected')}</small></div>
                         <div id="cart">
                             {cart.length === 0 && <p className="muted">{t('Cart is empty — click a product to add it.')}</p>}
-                            {cart.map(({ product: p, qty }) => (
-                                <div key={p.id} className="cart-row">
-                                    <span>{p.name}</span>
-                                    <input className="input" type="number" min="1" max={p.stock} aria-label={t('Quantity for {name}', { name: p.name })} value={qty} onChange={(e) => setQty(p.id, e.target.value)} />
-                                    <span>{money(qty * p.price)}</span>
-                                    <button className="act" aria-label={t('Remove {name}', { name: p.name })} onClick={() => remove(p.id)}><SaIcon name="x" /></button>
-                                </div>))}
+                            {cart.map((row) => {
+                                const key = posKey(row.product.id, row.color_id, row.size_id);
+                                const quoted = (quote.lines ?? []).find((l) => l.key === key);
+                                const price = quoted?.price ?? row.price ?? row.product.price;
+                                const stock = row.stock ?? row.product.stock;
+                                const option = [row.color, row.size].filter(Boolean).join(' / ');
+                                return (
+                                <div key={key} className="cart-row">
+                                    <span>{row.product.name}{option ? <small className="muted"> {option}</small> : null}</span>
+                                    <input className="input" type="number" min="1" max={stock} aria-label={t('Quantity for {name}', { name: row.product.name })} value={row.qty} onChange={(e) => setQty(key, e.target.value, stock)} />
+                                    <span>{money(row.qty * price)}</span>
+                                    <button className="act" aria-label={t('Remove {name}', { name: row.product.name })} onClick={() => remove(key)}><SaIcon name="x" /></button>
+                                </div>);
+                            })}
                         </div>
                         <form className="row" style={{ margin: '12px 0' }} onSubmit={(e) => { e.preventDefault(); setAppliedCoupon(coupon.trim()); setCouponError(null); }}>
                             <input className="input" aria-label={t('Coupon code')} placeholder={t('Coupon code')} value={coupon} onChange={(e) => setCoupon(e.target.value)} /><button className="btn">{t('Apply')}</button>
@@ -148,6 +204,7 @@ export function Pos() {
                 </Card>
             </div>
             {showCustomer && <AddCustomer onClose={() => setShowCustomer(false)} onAdded={(c) => { setCustomer(String(c.id)); setCustSearch(`${c.name} (${c.phone})`); }} />}
+            {pick && <VariantPicker product={pick} colorId={pickColor} sizeId={pickSize} onColor={setPickColor} onSize={setPickSize} onClose={() => setPick(null)} onAdd={confirmPick} />}
         </>
     );
 }

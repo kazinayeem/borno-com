@@ -39,6 +39,7 @@ export const api = createApi({
         getShops: b.query({ query: (page = 1) => ({ url: '/shops', params: { page } }) }),
         getBrands: b.query({ query: (params) => ({ url: '/brands', params }) }),
         getBlogs: b.query({ query: (params) => ({ url: '/blogs', params }) }),
+        getBlog: b.query({ query: (id) => `/blogs/${id}` }),
         sendContact: b.mutation({ query: (body) => ({ url: '/contact', method: 'POST', body }) }),
         // auth
         login: b.mutation({ query: (body) => ({ url: '/auth/login', method: 'POST', body }) }),
@@ -136,7 +137,7 @@ export const api = createApi({
 });
 
 export const {
-    useGetHomeQuery, useGetPageQuery, useGetCategoriesQuery, useGetProductsQuery, useGetProductQuery, useGetShopsQuery, useGetBrandsQuery, useGetBlogsQuery,
+    useGetHomeQuery, useGetPageQuery, useGetCategoriesQuery, useGetProductsQuery, useGetProductQuery, useGetShopsQuery, useGetBrandsQuery, useGetBlogsQuery, useGetBlogQuery,
     useSendContactMutation, useLoginMutation, useLogoutMutation, useGetDashboardQuery, useShopCatalogQuery, useAdminListQuery,
     useAdminSaveMutation, useAdminDeleteMutation, useGetMessagesQuery, useGetOptionsQuery, useGetStatisticsQuery, useGetBellQuery, useReadAllNotificationsMutation, useGetMasterQuery, useQuoteCartMutation, useCustRegisterMutation, useCustLoginMutation, useCustGoogleMutation, useCustLogoutMutation, useGetAccountQuery, useSaveAccountMutation, useChangeAccountPasswordMutation, useAccountSummaryQuery, useAccountOrdersQuery, useAccountOrderQuery, useCancelMyOrderMutation, useGetAddressesQuery, useSaveAddressMutation, useDeleteAddressMutation, usePlaceOrderMutation, useReportAnalyticsQuery, useEarningSummaryQuery, usePreorderStatsQuery, useGetProfileQuery, useSaveProfileMutation, useChangePasswordMutation, useGetMyShopQuery, useSaveMyShopMutation, useGetGatewaysQuery, useSaveGatewayMutation, useChatUsersQuery, useChatMessagesQuery, useChatSendMutation, usePushSendMutation, useImportProductsMutation, useGetGalleryQuery, useDeleteImageMutation, useRecListQuery, useRecGetQuery, useRecSaveMutation, useRecDeleteMutation, useRecToggleMutation, useRecDecideMutation, useGetLookupQuery, useGetGroupQuery, useSaveGroupMutation, useApproveProductMutation, useGetSettingsQuery, useSaveSettingsMutation, usePosProductsQuery, usePosCustomersQuery, usePosAddCustomerMutation, usePosQuoteMutation, usePosCheckoutMutation, usePosSalesQuery, usePosDraftsQuery, usePosSaveDraftMutation, usePosDeleteDraftMutation, useUploadImageMutation, useAdminGetQuery, useGetOrdersQuery, useGetRidersQuery, useGetOrderQuery, useUpdateOrderMutation, useGetCustomersQuery, useMarkMessageMutation,
 } = api;

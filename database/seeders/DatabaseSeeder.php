@@ -71,6 +71,7 @@ class DatabaseSeeder extends Seeder
                 'is_digital' => false, 'is_preorder' => $i % 17 === 0, 'is_flash_sale' => $i % 9 === 0, 'active' => $i % 31 !== 0,
             ]);
         }
+        $this->seedSampleVariants();
         // A category with no products stays switched off.
         foreach ($cats as $c) {
             $c->update(['active' => Product::where('category_id', $c->id)->exists()]);
@@ -170,5 +171,46 @@ class DatabaseSeeder extends Seeder
         // Shop-product approval states, in the same proportions as the reference seed.
         $approvals = $ref['product_approval'];
         Product::orderBy('id')->each(fn (Product $p, $i) => $p->update(['approval' => $approvals[$i % count($approvals)]]));
+    }
+
+    /** A few catalog products so color, size, and price can be tried on a fresh install. */
+    private function seedSampleVariants(): void
+    {
+        $colors = Color::pluck('id', 'name');
+        $sizes = Size::pluck('id', 'name');
+        $specs = [
+            'Tartan Dress' => ['colors' => ['Red', 'Blue', 'Black'], 'sizes' => ['S', 'M', 'L'], 'prices' => ['Red' => 39.99, 'Blue' => 44.99, 'Black' => 49.99]],
+            'Brown Leather Belt Watch' => ['colors' => ['Brown', 'Black', 'Orange'], 'sizes' => [], 'prices' => ['Brown' => 89.99, 'Black' => 94.99, 'Orange' => 79.99]],
+            'Nike Air Jordan 1 Red And Black' => ['colors' => ['Red', 'Black'], 'sizes' => ['M', 'L', 'XL'], 'prices' => ['Red' => 149.99, 'Black' => 159.99]],
+        ];
+        foreach ($specs as $name => $spec) {
+            $p = Product::where('name', $name)->first();
+            if (! $p) {
+                continue;
+            }
+            $colorIds = array_values(array_filter(array_map(fn ($n) => $colors[$n] ?? null, $spec['colors'])));
+            $sizeIds = array_values(array_filter(array_map(fn ($n) => $sizes[$n] ?? null, $spec['sizes'])));
+            $cs = $colorIds ?: [null];
+            $ss = $sizeIds ?: [null];
+            $combos = count($cs) * count($ss);
+            $each = intdiv(max(0, (int) $p->stock), $combos);
+            $extra = max(0, (int) $p->stock) - $each * $combos;
+            $i = 0;
+            $variants = [];
+            foreach ($cs as $c) {
+                $cname = $c ? $colors->search($c) : null;
+                foreach ($ss as $s) {
+                    $variants[] = ['color_id' => $c, 'size_id' => $s, 'price' => $spec['prices'][$cname] ?? (float) $p->price, 'stock' => $each + ($i === 0 ? $extra : 0)];
+                    $i++;
+                }
+            }
+            $p->update([
+                'variants' => $variants,
+                'color_ids' => $colorIds,
+                'size_ids' => $sizeIds,
+                'stock' => (int) array_sum(array_column($variants, 'stock')),
+                'price' => min(array_column($variants, 'price')),
+            ]);
+        }
     }
 }

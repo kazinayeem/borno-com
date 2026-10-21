@@ -29,7 +29,7 @@ class PosController extends Controller
             $q->where('category_id', $c);
         }
 
-        return $q->orderBy('id')->paginate(10, ['id', 'name', 'price', 'old_price', 'stock', 'image', 'shop_id']);
+        return $q->orderBy('id')->paginate(10, ['id', 'name', 'price', 'old_price', 'stock', 'image', 'shop_id', 'color_ids', 'size_ids', 'variants']);
     }
 
     public function customers(Request $request)
@@ -77,13 +77,14 @@ class PosController extends Controller
             foreach ($quote['lines'] as $l) {
                 // Lock the row so two cashiers cannot sell the same last unit.
                 $p = Product::lockForUpdate()->find($l['product_id']);
-                if ($p->stock < $l['qty']) {
-                    throw ValidationException::withMessages(['items' => ["Not enough stock for {$p->name} (only {$p->stock} left)."]]);
+                $sel = $p->selection($l['color_id'] ?? null, $l['size_id'] ?? null);
+                if (! $sel || $sel['stock'] < $l['qty']) {
+                    throw ValidationException::withMessages(['items' => ["Not enough stock for {$p->name} (only ".($sel['stock'] ?? 0)." left)."]]);
                 }
                 $before = (int) $p->stock;
-                $p->decrement('stock', $l['qty']);
+                $p->take($l['qty'], $l['color_id'] ?? null, $l['size_id'] ?? null);
                 \App\Models\Setting::alertLowStock($p->fresh(), $before);
-                $order->items()->create(['product_id' => $p->id, 'name' => $p->name, 'price' => $l['price'], 'qty' => $l['qty']]);
+                $order->items()->create(['product_id' => $p->id, 'name' => $p->name, 'price' => $l['price'], 'qty' => $l['qty'], 'color' => $l['color'] ?? null, 'size' => $l['size'] ?? null]);
             }
             if ($request->filled('draft_id')) {
                 PosDraft::where('id', $request->input('draft_id'))->delete();
@@ -107,10 +108,12 @@ class PosController extends Controller
     {
         $page = PosDraft::with('customer:id,name')->where('created_by', request()->user()->id)->latest('id')->paginate(10);
         $products = Product::whereIn('id', $page->getCollection()->pluck('items')->flatten(1)->pluck('product_id')->unique())
-            ->get(['id', 'name', 'price', 'old_price', 'stock', 'image', 'shop_id'])->keyBy('id');
+            ->get(['id', 'name', 'price', 'old_price', 'stock', 'image', 'shop_id', 'color_ids', 'size_ids', 'variants'])->keyBy('id');
         // Attach product rows so the POS can rebuild the cart without extra requests.
         $page->getCollection()->transform(function ($d) use ($products) {
-            $d->setAttribute('lines', collect($d->items)->filter(fn ($i) => $products->has($i['product_id']))->map(fn ($i) => ['product' => $products[$i['product_id']], 'qty' => $i['qty']])->values());
+            $d->setAttribute('lines', collect($d->items)->filter(fn ($i) => $products->has($i['product_id']))->map(fn ($i) => [
+                'product' => $products[$i['product_id']], 'qty' => $i['qty'], 'color_id' => $i['color_id'] ?? null, 'size_id' => $i['size_id'] ?? null,
+            ])->values());
 
             return $d;
         });
@@ -125,7 +128,10 @@ class PosController extends Controller
 
         return response()->json(PosDraft::create([
             'customer_id' => $data['customer_id'] ?? null, 'created_by' => $request->user()->id,
-            'items' => collect($data['items'])->map(fn ($i) => ['product_id' => (int) $i['product_id'], 'qty' => (int) $i['qty']])->all(),
+            'items' => collect($data['items'])->map(fn ($i) => [
+                'product_id' => (int) $i['product_id'], 'qty' => (int) $i['qty'],
+                'color_id' => Product::optionId($i['color_id'] ?? null), 'size_id' => Product::optionId($i['size_id'] ?? null),
+            ])->all(),
             'subtotal' => $quote['subtotal'], 'discount' => $quote['discount'], 'total' => $quote['total'], 'coupon' => $data['coupon'] ?? null,
         ]), 201);
     }
@@ -141,6 +147,7 @@ class PosController extends Controller
     {
         return [
             'items' => 'required|array|min:1', 'items.*.product_id' => 'required|exists:products,id', 'items.*.qty' => 'required|integer|min:1|max:1000',
+            'items.*.color_id' => 'nullable|integer', 'items.*.size_id' => 'nullable|integer',
             'customer_id' => 'nullable|exists:users,id', 'coupon' => 'nullable|string|max:40',
         ];
     }
@@ -155,8 +162,19 @@ class PosController extends Controller
             if ($user->role === 'shop' && ! Shop::where('user_id', $user->id)->where('id', $p->shop_id)->exists()) {
                 abort(403, 'You can only sell your own shop\'s products.');
             }
-            $sub += $p->price * $i['qty'];
-            $lines[] = ['product_id' => $p->id, 'shop_id' => $p->shop_id, 'name' => $p->name, 'price' => $p->price, 'qty' => (int) $i['qty']];
+            $sel = $p->selection(Product::optionId($i['color_id'] ?? null), Product::optionId($i['size_id'] ?? null));
+            if (! $sel) {
+                throw ValidationException::withMessages(['items' => ["Choose a color and size for {$p->name}."]]);
+            }
+            if ($sel['stock'] < $i['qty']) {
+                throw ValidationException::withMessages(['items' => ["Not enough stock for {$p->name} (only {$sel['stock']} left)."]]);
+            }
+            $sub += $sel['price'] * $i['qty'];
+            $lines[] = [
+                'key' => $p->id.'-'.($sel['color_id'] ?? 0).'-'.($sel['size_id'] ?? 0),
+                'product_id' => $p->id, 'shop_id' => $p->shop_id, 'name' => $p->name, 'price' => $sel['price'], 'qty' => (int) $i['qty'],
+                'color' => $sel['color'], 'size' => $sel['size'], 'color_id' => $sel['color_id'], 'size_id' => $sel['size_id'],
+            ];
         }
 
         $discount = 0;

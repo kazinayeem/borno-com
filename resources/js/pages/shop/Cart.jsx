@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useQuoteCartMutation } from '../../app/api';
-import { removeFromCart, setCartQty } from '../../app/slices';
+import { cartKey, removeFromCart, setCartQty } from '../../app/slices';
 import { Empty, Icon, Img, money } from '../../components/ui';
 import { t } from '../../i18n';
 
@@ -12,7 +12,7 @@ export function useCartQuote(coupon) {
     const [quote, { isLoading }] = useQuoteCartMutation();
     const [data, setData] = useState(null);
     const [couponError, setCouponError] = useState(null);
-    const items = useMemo(() => cart.map((i) => ({ product_id: i.id, qty: i.qty })), [cart]);
+    const items = useMemo(() => cart.map((i) => ({ product_id: i.id, qty: i.qty, ...(i.color_id ? { color_id: i.color_id } : {}), ...(i.size_id ? { size_id: i.size_id } : {}) })), [cart]);
     useEffect(() => {
         if (!items.length) { setData(null); return undefined; }
         let live = true;
@@ -23,7 +23,7 @@ export function useCartQuote(coupon) {
         });
         return () => { live = false; };
     }, [items, coupon, quote]);
-    return { cart, data, couponError, loading: isLoading, issues: Object.fromEntries((data?.issues ?? []).map((i) => [i.product_id, i])) };
+    return { cart, data, couponError, loading: isLoading, issues: Object.fromEntries((data?.issues ?? []).map((i) => [i.key || String(i.product_id), i])) };
 }
 
 export function CouponBox({ applied, onApply, error }) {
@@ -59,7 +59,7 @@ export default function Cart() {
     const signedIn = useSelector((s) => !!s.customer.token);
     const [coupon, setCoupon] = useState('');
     const { cart, data, couponError, issues, loading } = useCartQuote(coupon);
-    const fresh = Object.fromEntries((data?.orders ?? []).flatMap((o) => o.lines).map((l) => [l.product_id, l]));
+    const fresh = Object.fromEntries((data?.orders ?? []).flatMap((o) => o.lines).map((l) => [l.key || String(l.product_id), l]));
     const blocked = Object.keys(issues).length > 0;
 
     if (cart.length === 0) return <div className="py-10"><Empty title={t('Your cart is empty')} hint={t('Browse the shop and add something you like.')} /><div className="text-center"><Link to="/products" className="btn-primary">{t('Continue shopping')}</Link></div></div>;
@@ -69,23 +69,26 @@ export default function Cart() {
             <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
                 <div className="space-y-3">
                     {cart.map((i) => {
-                        const f = fresh[i.id];
-                        const issue = issues[i.id];
+                        const key = cartKey(i);
+                        const f = fresh[key];
+                        const issue = issues[key];
                         const price = f?.price ?? i.price;
+                        const option = [i.color, i.size].filter(Boolean).join(' / ');
                         return (
-                            <div key={i.id} className={`card flex gap-4 p-4 ${issue ? '!border-red-300' : ''}`}>
+                            <div key={key} className={`card flex gap-4 p-4 ${issue ? '!border-red-300' : ''}`}>
                                 <Link to={`/products/${i.id}/details`} className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-surface text-gray-300"><Img src={f?.image_url ?? i.image} alt={i.name} className="h-full w-full object-contain" fallback={<Icon name="box" size={32} />} /></Link>
                                 <div className="min-w-0 flex-1">
                                     <Link to={`/products/${i.id}/details`} className="line-clamp-2 font-medium">{i.name}</Link>
+                                    {option && <p className="mt-1 flex items-center gap-2 text-xs text-muted">{i.color_code && <span className="inline-block h-3 w-3 rounded-full border border-line" style={{ background: i.color_code }} />}{option}</p>}
                                     <p className="mt-1 font-semibold text-primary">{money(price)}</p>
-                                    {issue && <p className="mt-1 text-xs text-red-600">{issue.message} {issue.available > 0 && <button className="underline" onClick={() => dispatch(setCartQty({ id: i.id, qty: issue.available }))}>{t('Set to {n}', { n: issue.available })}</button>}</p>}
+                                    {issue && <p className="mt-1 text-xs text-red-600">{issue.message} {issue.available > 0 && <button className="underline" onClick={() => dispatch(setCartQty({ key, qty: issue.available }))}>{t('Set to {n}', { n: issue.available })}</button>}</p>}
                                     <div className="mt-2 flex items-center gap-3">
                                         <div className="flex items-center rounded-md border border-line">
-                                            <button aria-label={t('Decrease {name}', { name: i.name })} className="px-3 py-1" onClick={() => dispatch(setCartQty({ id: i.id, qty: i.qty - 1 }))}>−</button>
+                                            <button aria-label={t('Decrease {name}', { name: i.name })} className="px-3 py-1" onClick={() => dispatch(setCartQty({ key, qty: i.qty - 1 }))}>−</button>
                                             <span className="w-9 text-center text-sm font-semibold" aria-label={t('Quantity')}>{i.qty}</span>
-                                            <button aria-label={t('Increase {name}', { name: i.name })} className="px-3 py-1" disabled={i.stock != null && i.qty >= i.stock} onClick={() => dispatch(setCartQty({ id: i.id, qty: i.qty + 1 }))}>+</button>
+                                            <button aria-label={t('Increase {name}', { name: i.name })} className="px-3 py-1" disabled={i.stock != null && i.qty >= i.stock} onClick={() => dispatch(setCartQty({ key, qty: i.qty + 1 }))}>+</button>
                                         </div>
-                                        <button className="text-xs text-red-500" onClick={() => dispatch(removeFromCart(i.id))}><Icon name="trash" size={14} className="mr-1 inline" />{t('Remove')}</button>
+                                        <button className="text-xs text-red-500" onClick={() => dispatch(removeFromCart(key))}><Icon name="trash" size={14} className="me-1 inline" />{t('Remove')}</button>
                                     </div>
                                 </div>
                                 <b className="shrink-0 text-sm">{money(price * i.qty)}</b>

@@ -13,7 +13,7 @@ export default function Shops() {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 {isLoading ? Array.from({ length: 8 }, (_, i) => <div key={i} className="skeleton h-52" />) : data.data.map((s) => (
                     <div key={s.id} className="card relative p-5 text-center">
-                        <span className={`absolute right-3 top-3 rounded px-2 py-0.5 text-[10px] font-semibold text-white ${s.online ? 'bg-lime-600' : 'bg-slate-500'}`}>{s.online ? t('Online') : t('Offline')}</span>
+                        <span className={`absolute end-3 top-3 rounded px-2 py-0.5 text-[10px] font-semibold text-white ${s.online ? 'bg-lime-600' : 'bg-slate-500'}`}>{s.online ? t('Online') : t('Offline')}</span>
                         <div className="mx-auto mb-2 grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-primary-soft text-xl font-bold text-primary"><Img src={s.image_url} alt={s.name} className="h-full w-full object-cover" fallback={s.name[0]} /></div>
                         <p className="font-semibold">{s.name}</p><p className="text-xs text-muted">{s.products_count}+</p>
                         <p className="my-1 text-xs text-muted">★ {s.rating} ({s.reviews_count})</p>

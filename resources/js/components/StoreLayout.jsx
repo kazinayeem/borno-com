@@ -28,11 +28,11 @@ function TopBar() {
                 <div className="flex items-center gap-4">
                     <div className="relative">
                         <button type="button" aria-expanded={open} aria-label={t('Language')} onClick={() => setOpen(!open)} className="flex items-center gap-1">{current.short} <Icon name="chevron" size={12} /></button>
-                        {open && <ul className="card absolute right-0 z-30 mt-2 w-36 p-1 shadow-lg">{LANGS.map((l) => <li key={l.code}><button type="button" className="w-full rounded px-3 py-2 text-left hover:bg-primary-soft" onClick={() => { dispatch(setLang(l.code)); setOpen(false); }}>{l.name}</button></li>)}</ul>}
+                        {open && <ul className="card absolute end-0 z-30 mt-2 w-36 p-1 shadow-lg">{LANGS.map((l) => <li key={l.code}><button type="button" className="w-full rounded px-3 py-2 text-start hover:bg-primary-soft" onClick={() => { dispatch(setLang(l.code)); setOpen(false); }}>{l.name}</button></li>)}</ul>}
                     </div>
                     <div className="relative">
                         <button type="button" aria-expanded={curOpen} aria-label={t('Currency')} onClick={() => setCurOpen(!curOpen)} className="flex items-center gap-1">{currentCur ? `${currentCur.symbol} ${currentCur.name}` : t('$ USD')} <Icon name="chevron" size={12} /></button>
-                        {curOpen && <ul className="card absolute right-0 z-30 mt-2 w-32 p-1 shadow-lg">{currencies.map((c) => <li key={c.name}><button type="button" className="w-full rounded px-3 py-2 text-left hover:bg-primary-soft" onClick={() => { dispatch(setCurrency(c.name)); setCurOpen(false); }}>{c.symbol} {c.name}</button></li>)}</ul>}
+                        {curOpen && <ul className="card absolute end-0 z-30 mt-2 w-32 p-1 shadow-lg">{currencies.map((c) => <li key={c.name}><button type="button" className="w-full rounded px-3 py-2 text-start hover:bg-primary-soft" onClick={() => { dispatch(setCurrency(c.name)); setCurOpen(false); }}>{c.symbol} {c.name}</button></li>)}</ul>}
                     </div>
                     <button type="button" aria-label={t('Switch to Dark')} onClick={() => dispatch(toggleTheme())}><Icon name="moon" size={15} /></button>
                 </div>
@@ -51,7 +51,7 @@ function CategoryMenu() {
                 <span className="flex items-center gap-2"><Icon name="menu" size={16} /> {t('All Categories')}</span> <Icon name="chevron" size={14} />
             </button>
             {open && (
-                <ul className="card absolute left-0 top-full z-30 w-64 p-2 shadow-lg">
+                <ul className="card absolute start-0 top-full z-30 w-64 p-2 shadow-lg">
                     {data.filter((c) => c.image_url).map((c) => (
                         <li key={c.id}><Link onClick={() => setOpen(false)} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-primary-soft"><span className="flex items-center gap-2"><Img src={c.image_url} alt="" className="h-5 w-5 rounded object-cover" />{(lang === 'ar' && c.name_ar) || c.name}</span><Icon name="right" size={14} /></Link></li>
                     ))}
@@ -85,7 +85,7 @@ function Header() {
                     <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search for products, brands and more...')} className="min-w-0 flex-1 px-4 py-2.5 text-sm outline-none" />
                     <button className="bg-primary px-5 text-white" aria-label={t('Search')}><Icon name="search" /></button>
                 </form>
-                <div className="ml-auto flex items-center gap-3">
+                <div className="ms-auto flex items-center gap-3">
                     {[['heart', wishlist.length, '/wishlist'], ['bag', qtyInCart, '/cart']].map(([i, n, to]) => (
                         <Link key={i} to={to} className="relative grid h-10 w-10 place-items-center rounded-full border border-line"><Icon name={i} />
                             <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] text-white">{n}</span></Link>
@@ -158,7 +158,7 @@ function MiniCart() {
     const cart = useSelector((s) => s.shop.cart);
     const total = cart.reduce((a, i) => a + i.price * i.qty, 0);
     return (
-        <Link to="/cart" aria-label={t('Open cart')} className="fixed right-0 top-1/2 z-20 block w-14 overflow-hidden rounded-l-lg border border-r-0 border-line bg-sa-surface text-center text-xs shadow-md print:hidden">
+        <Link to="/cart" aria-label={t('Open cart')} className="fixed end-0 top-1/2 z-20 block w-14 overflow-hidden rounded-s-lg border border-e-0 border-line bg-sa-surface text-center text-xs shadow-md print:hidden">
             <div className="py-2 text-primary"><Icon name="bag" fill className="mx-auto" /><div className="text-ink">{cart.reduce((a, i) => a + i.qty, 0)}</div></div>
             <div className="bg-primary py-1 font-semibold text-white">{money(total)}</div>
         </Link>

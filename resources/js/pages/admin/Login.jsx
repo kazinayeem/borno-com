@@ -32,7 +32,7 @@ export default function Login() {
     return (
         <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fdf7f3] px-4 py-8">
             <div className="pointer-events-none absolute inset-0 opacity-60" style={{ background: 'radial-gradient(circle at 10% 20%, #fde8c9 0, transparent 35%), radial-gradient(circle at 15% 85%, #dff3ee 0, transparent 35%), radial-gradient(circle at 90% 90%, #fdecf0 0, transparent 30%)' }} />
-            <div className="absolute bottom-[28%] left-0 hidden items-center gap-2 lg:flex">
+            <div className="absolute bottom-[28%] start-0 hidden items-center gap-2 lg:flex">
                 <img src={brand?.favicon || '/assets/favicon.png'} alt={name} className="h-10 w-10 object-contain" />
                 <span className="text-xl font-bold text-gray-500">{name}</span>
             </div>
@@ -49,8 +49,8 @@ export default function Login() {
                         <input id="email" type="email" autoComplete="username" placeholder={t('Enter Email Address')} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="field !border-primary/70 !py-3" />
                         {errs.email && <p className="mt-1 text-xs text-red-500">{errs.email[0]}</p>}</div>
                     <div className="mb-5"><label htmlFor="password" className="mb-1 block text-[15px]">{t('Password')}</label>
-                        <div className="relative"><input id="password" type={show ? 'text' : 'password'} autoComplete="current-password" placeholder={t('Enter Password')} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="field !border-primary/70 !py-3 pr-11" />
-                            <button type="button" onClick={() => setShow(!show)} aria-label={t('Toggle password')} className="absolute right-3 top-1/2 -translate-y-1/2"><Icon name={show ? 'eye' : 'eyeOff'} /></button></div>
+                        <div className="relative"><input id="password" type={show ? 'text' : 'password'} autoComplete="current-password" placeholder={t('Enter Password')} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="field !border-primary/70 !py-3 pe-11" />
+                            <button type="button" onClick={() => setShow(!show)} aria-label={t('Toggle password')} className="absolute end-3 top-1/2 -translate-y-1/2"><Icon name={show ? 'eye' : 'eyeOff'} /></button></div>
                         {errs.password && <p className="mt-1 text-xs text-red-500">{errs.password[0]}</p>}</div>
                     <button disabled={isLoading} className="btn-primary w-full !rounded-md !py-3 text-base">{isLoading ? t('Logging in…') : t('Login')}</button>
                     <div className="mt-3 text-xs leading-5 text-gray-600">

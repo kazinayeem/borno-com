@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\Color;
 use App\Models\Coupon;
 use App\Models\FlashSale;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Record;
 use App\Models\Shop;
+use App\Models\Size;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -304,5 +306,41 @@ class CustomerShopTest extends TestCase
         $home = $this->getJson('/api/home')->assertOk()->json();
         $this->assertArrayNotHasKey('buy_price', $home['popular'][0]);
         $this->assertArrayNotHasKey('user_id', $this->getJson('/api/shops')->json('data.0'));
+    }
+
+    public function test_cart_uses_the_chosen_variant_price_and_stock(): void
+    {
+        $shop = Shop::create(['name' => 'S']);
+        $red = Color::create(['name' => 'Red', 'code' => '#ff0000', 'active' => true]);
+        $blue = Color::create(['name' => 'Blue', 'code' => '#0000ff', 'active' => true]);
+        $m = Size::create(['name' => 'M', 'active' => true]);
+        $p = $this->product($shop, [
+            'price' => 10, 'stock' => 5, 'color_ids' => [$red->id, $blue->id], 'size_ids' => [$m->id],
+            'variants' => [
+                ['color_id' => $red->id, 'size_id' => $m->id, 'price' => 25, 'stock' => 2],
+                ['color_id' => $blue->id, 'size_id' => $m->id, 'price' => 40, 'stock' => 3],
+            ],
+        ]);
+
+        $missing = $this->postJson('/api/checkout/quote', ['items' => [['product_id' => $p->id, 'qty' => 1]]])->assertOk();
+        $this->assertNotEmpty($missing->json('issues'));
+        $this->assertEquals(0, $missing->json('subtotal'));
+
+        $this->postJson('/api/checkout/quote', ['items' => [['product_id' => $p->id, 'qty' => 1, 'color_id' => $red->id, 'size_id' => $m->id]]])
+            ->assertOk()->assertJsonPath('orders.0.lines.0.price', 25)->assertJsonPath('orders.0.lines.0.color', 'Red')->assertJsonPath('subtotal', 25);
+
+        $this->postJson('/api/checkout/quote', ['items' => [['product_id' => $p->id, 'qty' => 3, 'color_id' => $red->id, 'size_id' => $m->id]]])
+            ->assertOk()->assertJsonPath('issues.0.available', 2);
+
+        Sanctum::actingAs($this->customer());
+        $this->postJson('/api/account/checkout', [
+            'items' => [['product_id' => $p->id, 'qty' => 1, 'color_id' => $blue->id, 'size_id' => $m->id]],
+            'payment_method' => 'Cash Payment', 'address' => $this->addr(),
+        ])->assertCreated()->assertJsonPath('orders.0.items.0.price', 40)->assertJsonPath('orders.0.items.0.color', 'Blue')->assertJsonPath('orders.0.items.0.size', 'M');
+
+        $fresh = $p->fresh();
+        $this->assertSame(4, $fresh->stock);
+        $this->assertSame(2, (int) collect($fresh->variants)->firstWhere('color_id', $red->id)['stock']);
+        $this->assertSame(2, (int) collect($fresh->variants)->firstWhere('color_id', $blue->id)['stock']);
     }
 }

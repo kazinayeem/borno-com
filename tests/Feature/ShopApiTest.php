@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\Color;
 use App\Models\Coupon;
 use App\Models\Currency;
 use App\Models\Order;
@@ -132,6 +133,25 @@ class ShopApiTest extends TestCase
             ->assertCreated()->assertJsonPath('source', 'pos');
         $this->assertSame(3, $p->fresh()->stock);
         $this->assertDatabaseHas('orders', ['source' => 'pos', 'status' => 'delivered', 'total' => 20]);
+    }
+
+    public function test_pos_uses_the_chosen_variant_price(): void
+    {
+        $this->admin();
+        $shop = Shop::create(['name' => 'S']);
+        $red = Color::create(['name' => 'Red', 'code' => '#ff0000']);
+        $p = $this->product($shop, [
+            'price' => 10, 'stock' => 4, 'color_ids' => [$red->id],
+            'variants' => [['color_id' => $red->id, 'size_id' => null, 'price' => 18, 'stock' => 4]],
+        ]);
+
+        $this->postJson('/api/admin/pos/quote', ['items' => [['product_id' => $p->id, 'qty' => 2, 'price' => 0.01]]])->assertStatus(422);
+        $this->postJson('/api/admin/pos/quote', ['items' => [['product_id' => $p->id, 'qty' => 2, 'color_id' => $red->id, 'price' => 0.01]]])
+            ->assertOk()->assertJsonPath('total', 36)->assertJsonPath('lines.0.color', 'Red');
+        $this->postJson('/api/admin/pos/checkout', ['items' => [['product_id' => $p->id, 'qty' => 1, 'color_id' => $red->id]], 'payment_method' => 'Cash Payment'])
+            ->assertCreated()->assertJsonPath('items.0.color', 'Red')->assertJsonPath('total', 18);
+        $this->assertSame(3, (int) collect($p->fresh()->variants)->first()['stock']);
+        $this->assertSame(3, $p->fresh()->stock);
     }
 
     public function test_pos_coupon_rules(): void

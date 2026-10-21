@@ -5,6 +5,7 @@ import { useGetHomeQuery, useGetMasterQuery } from '../../app/api';
 import ProductCard from '../../components/ProductCard';
 import { Icon, Img } from '../../components/ui';
 import { t } from '../../i18n';
+import { stripHtml } from '../../components/RichText';
 
 const catName = (c, lang) => (lang === 'ar' && c.name_ar) || c.name;
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -35,7 +36,7 @@ function BannerSlider({ banners }) {
     return (
         <div className="relative h-[280px] overflow-hidden rounded-[14px] bg-white md:h-[460px]">
             <Link to={b.url || '/products'} className="block h-full"><Img src={b.image} alt={b.title} className="h-full w-full object-cover" /></Link>
-            {banners.length > 1 && <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">{banners.map((slide, n) => <button key={slide.id} aria-label={t('Go to slide {n}', { n: n + 1 })} onClick={() => setI(n)} className={`h-2.5 w-2.5 rounded-full ${n === i ? 'bg-primary' : 'bg-white/80'}`} />)}</div>}
+            {banners.length > 1 && <div className="absolute bottom-3 start-0 end-0 flex justify-center gap-2">{banners.map((slide, n) => <button key={slide.id} aria-label={t('Go to slide {n}', { n: n + 1 })} onClick={() => setI(n)} className={`h-2.5 w-2.5 rounded-full ${n === i ? 'bg-primary' : 'bg-white/80'}`} />)}</div>}
         </div>
     );
 }
@@ -50,7 +51,7 @@ export default function Home() {
     const side = [data?.banners?.[1], ...(data?.ads ?? [])].filter(Boolean).slice(0, 2);
     const deal = data?.flash_deal;
     const dealName = deal?.name || t('FLASH SALE');
-    const dealText = deal?.description || t('Don\'t miss our Mega Flash Sale! Save up to 70% on thousands of products including electronics, fashion, beauty, home essentials, and fast nationwide delivery.');
+    const dealText = stripHtml(deal?.description) || t('Don\'t miss our Mega Flash Sale! Save up to 70% on thousands of products including electronics, fashion, beauty, home essentials, and fast nationwide delivery.');
 
     return (
         <div className="space-y-10 pb-4">

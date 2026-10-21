@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { errorMessage, useGetAccountQuery, useGetAddressesQuery, useGetMasterQuery, usePlaceOrderMutation } from '../../app/api';
-import { clearCart, pushToast } from '../../app/slices';
+import { cartKey, clearCart, pushToast } from '../../app/slices';
 import { Field, TextArea, TextInput } from '../../components/FormKit';
 import { Empty, money } from '../../components/ui';
 import { Totals, useCartQuote } from './Cart';
@@ -38,7 +38,7 @@ export default function Checkout() {
     const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
     const submit = async (e) => {
         e.preventDefault();
-        const body = { items: cart.map((i) => ({ product_id: i.id, qty: i.qty })), coupon: coupon || undefined, payment_method: 'Cash Payment', notes: notes || undefined, ...(chosen ? { address_id: chosen.id } : { address: form, save_address: save }) };
+        const body = { items: cart.map((i) => ({ product_id: i.id, qty: i.qty, ...(i.color_id ? { color_id: i.color_id } : {}), ...(i.size_id ? { size_id: i.size_id } : {}) })), coupon: coupon || undefined, payment_method: 'Cash Payment', notes: notes || undefined, ...(chosen ? { address_id: chosen.id } : { address: form, save_address: save }) };
         const r = await place(body);
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
         dispatch(clearCart());
@@ -69,7 +69,7 @@ export default function Checkout() {
                                 <Field label={t('Area / city')}><TextInput value={form.area} onChange={set('area')} /></Field>
                                 <Field label={t('Address type')}><select className="field" value={form.type} onChange={(e) => set('type')(e.target.value)}><option value="home">{t('Home')}</option><option value="office">{t('Office')}</option><option value="other">{t('Other')}</option></select></Field>
                                 <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" className="accent-primary" checked={save} onChange={(e) => setSave(e.target.checked)} />{t('Save this address for next time')}</label>
-                                {addresses?.length > 0 && <button type="button" className="text-left text-sm text-primary underline sm:col-span-2" onClick={() => setAddrId(null)}>{t('Use a saved address instead')}</button>}
+                                {addresses?.length > 0 && <button type="button" className="text-start text-sm text-primary underline sm:col-span-2" onClick={() => setAddrId(null)}>{t('Use a saved address instead')}</button>}
                                 {master?.data?.show_address_map && mapQuery && <iframe title={t('Address map')} className="h-48 w-full rounded-lg border border-line sm:col-span-2" src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=14&output=embed`} />}
                             </div>)}
                     </section>
@@ -82,7 +82,7 @@ export default function Checkout() {
                     <section className="card p-5"><Field label={t('Order notes (optional)')}><TextArea value={notes} onChange={setNotes} placeholder={t('Delivery instructions…')} rows={3} /></Field></section>
                 </div>
                 <div className={loading ? 'opacity-60' : ''}>
-                    <div className="card mb-3 p-4"><h2 className="mb-2 text-sm font-semibold">{t('Items ({n})', { n: cart.reduce((a, i) => a + i.qty, 0) })}</h2>{cart.map((i) => <div key={i.id} className="flex justify-between gap-2 py-1 text-sm"><span className="line-clamp-1">{i.qty} × {i.name}</span><span className="shrink-0">{money(i.price * i.qty)}</span></div>)}</div>
+                    <div className="card mb-3 p-4"><h2 className="mb-2 text-sm font-semibold">{t('Items ({n})', { n: cart.reduce((a, i) => a + i.qty, 0) })}</h2>{cart.map((i) => { const option = [i.color, i.size].filter(Boolean).join(' / '); const line = (data?.orders ?? []).flatMap((o) => o.lines).find((l) => l.key === cartKey(i)); const price = line?.price ?? i.price; return <div key={cartKey(i)} className="flex justify-between gap-2 py-1 text-sm"><span className="line-clamp-1">{i.qty} × {i.name}{option ? ` (${option})` : ''}</span><span className="shrink-0">{money(price * i.qty)}</span></div>; })}</div>
                     <Totals data={data} coupon={coupon} couponError={couponError} onCoupon={setCoupon} />
                     {data?.orders.length > 1 && <p className="mt-2 text-xs text-muted">{t('Your items come from {n} shops, so they are delivered as {n} separate orders.', { n: data.orders.length })}</p>}
                     <button disabled={isLoading || blocked || !data || !cashOnDelivery} className="btn-primary mt-3 w-full !py-3">{isLoading ? t('Placing order…') : t('Place order · {total}', { total: money(data?.total) })}</button>

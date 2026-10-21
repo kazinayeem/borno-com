@@ -12,7 +12,7 @@ import { Empty, Icon, Img, Modal, money } from '../../components/ui';
 import { t } from '../../i18n';
 
 const card = 'card rounded-xl !border-line';
-const Toggle = ({ on, onChange, label }) => <button role="switch" aria-checked={!!on} aria-label={label} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-primary' : 'bg-gray-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-sa-surface shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} /></button>;
+const Toggle = ({ on, onChange, label }) => <button role="switch" aria-checked={!!on} aria-label={label} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-primary' : 'bg-gray-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-sa-surface shadow transition-all ${on ? 'start-[22px]' : 'start-0.5'}`} /></button>;
 const useNotify = () => { const d = useDispatch(); return (r, ok) => { d(r.error ? pushToast(errorMessage(r.error), 'error') : pushToast(ok)); return !r.error; }; };
 const Stat = ({ label, value, tone = 'border-sky-300 bg-sky-50' }) => <div className={`rounded-lg border p-4 ${tone}`}><p className="text-2xl font-bold">{value}</p><p className="mt-2 text-sm text-muted">{label}</p></div>;
 const authHeader = () => { try { return { Authorization: `Bearer ${JSON.parse(localStorage.getItem('token'))}` }; } catch { return {}; } };
@@ -183,10 +183,10 @@ function Chats() {
     return (
         <div><PageTitle icon="mail">{t('Conversations')}</PageTitle>
             <div className={`${card} grid min-h-[480px] md:grid-cols-[280px_1fr]`}>
-                <ul className="border-b border-line md:border-b-0 md:border-r">
+                <ul className="border-b border-line md:border-b-0 md:border-e">
                     {!users && <li className="p-4"><div className="skeleton h-12" /></li>}
                     {users?.length === 0 && <li className="p-6 text-center text-sm text-muted">{t('No conversations yet.')}</li>}
-                    {users?.map((u) => <li key={u.id}><button onClick={() => setSel(u.id)} className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm ${sel === u.id ? 'bg-primary-soft' : 'hover:bg-surface'}`}><span className="min-w-0"><b className="block truncate">{u.name}</b><span className="block truncate text-xs text-muted">{u.last_message}</span></span>{u.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] text-white">{u.unread}</span>}</button></li>)}
+                    {users?.map((u) => <li key={u.id}><button onClick={() => setSel(u.id)} className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-start text-sm ${sel === u.id ? 'bg-primary-soft' : 'hover:bg-surface'}`}><span className="min-w-0"><b className="block truncate">{u.name}</b><span className="block truncate text-xs text-muted">{u.last_message}</span></span>{u.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] text-white">{u.unread}</span>}</button></li>)}
                 </ul>
                 <div className="flex flex-col">
                     {!sel ? <p className="m-auto text-sm text-muted">{t('Select a conversation')}</p> : (<>

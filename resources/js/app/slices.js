@@ -33,23 +33,28 @@ export const customerSlice = createSlice({
     },
 });
 
+export const cartKey = (item) => item.key || `${item.id}-${item.color_id || 0}-${item.size_id || 0}`;
+
 export const shopSlice = createSlice({
     name: 'shop',
     initialState: { cart: load('cart', []), wishlist: load('wishlist', []), currency: readPref('currency') || 'USD' },
     reducers: {
-        // payload: product row (+ optional qty). Quantity never exceeds the stock we last saw.
+        // payload: product row (+ optional qty, color, size). The same product in two colors is two lines.
         addToCart: (s, { payload }) => {
             const add = payload.qty ?? 1;
             const max = payload.stock ?? Infinity;
-            const row = s.cart.find((i) => i.id === payload.id);
-            if (row) { row.qty = Math.min(row.qty + add, max); row.stock = payload.stock ?? row.stock; row.price = payload.price; row.image = payload.image_url ?? row.image; }
-            else s.cart.push({ id: payload.id, name: payload.name, price: payload.price, qty: Math.min(add, max), stock: payload.stock, image: payload.image_url ?? null });
+            const colorId = payload.color_id || null;
+            const sizeId = payload.size_id || null;
+            const key = `${payload.id}-${colorId || 0}-${sizeId || 0}`;
+            const row = s.cart.find((i) => cartKey(i) === key);
+            if (row) { row.qty = Math.min(row.qty + add, max); row.stock = payload.stock ?? row.stock; row.price = payload.price; row.image = payload.image_url ?? row.image; row.key = key; }
+            else s.cart.push({ key, id: payload.id, name: payload.name, price: payload.price, qty: Math.min(add, max), stock: payload.stock, image: payload.image_url ?? null, color_id: colorId, size_id: sizeId, color: payload.color || null, size: payload.size || null, color_code: payload.color_code || null });
         },
-        setCartQty: (s, { payload: { id, qty } }) => {
-            const row = s.cart.find((i) => i.id === id);
+        setCartQty: (s, { payload: { key, qty } }) => {
+            const row = s.cart.find((i) => cartKey(i) === key);
             if (row) row.qty = Math.max(1, Math.min(Number(qty) || 1, row.stock ?? 100));
         },
-        removeFromCart: (s, { payload }) => { s.cart = s.cart.filter((i) => i.id !== payload); },
+        removeFromCart: (s, { payload }) => { s.cart = s.cart.filter((i) => cartKey(i) !== payload); },
         clearCart: (s) => { s.cart = []; },
         toggleWish: (s, { payload }) => {
             s.wishlist = s.wishlist.includes(payload) ? s.wishlist.filter((i) => i !== payload) : [...s.wishlist, payload];
