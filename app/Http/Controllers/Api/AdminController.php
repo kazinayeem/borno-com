@@ -42,7 +42,7 @@ class AdminController extends Controller
                 'description' => 'required|string', 'price' => 'required|numeric|min:0',
                 'name_ar' => 'nullable|string|max:255', 'image' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'slug' => 'nullable|string|max:255',
                 'short_description' => 'required|string|max:1000', 'short_description_ar' => 'nullable|string|max:1000',
-                'sku' => 'required|string|max:60', 'weight' => 'nullable|numeric|min:0', 'buy_price' => 'required|numeric|min:0',
+                'gallery' => 'nullable|array|max:5', 'gallery.*' => 'string|max:500', 'sku' => 'required|string|max:60', 'weight' => 'nullable|numeric|min:0', 'buy_price' => 'required|numeric|min:0',
                 'discount_type' => 'nullable|in:fixed,percent', 'unit' => 'nullable|string|max:20',
                 'color_ids' => 'nullable|array', 'size_ids' => 'nullable|array',
                 'variants' => 'nullable|array|max:200', 'variants.*.color_id' => 'nullable|integer', 'variants.*.size_id' => 'nullable|integer',
@@ -269,7 +269,9 @@ class AdminController extends Controller
         if ($res === 'products') {
             $this->pinSingleShop($request);
         }
-        $data = $this->prepare($res, $request->validate($rules));
+        $valid = $request->validate($rules);
+        $this->checkGallery($res, $valid, []);
+        $data = $this->prepare($res, $valid);
         if ($res === 'products' && $request->user()->role === 'shop') {
             $data['shop_id'] = Shop::where('user_id', $request->user()->id)->value('id') ?? $data['shop_id'];
             $data['approval'] = 'pending'; // seller products wait for an admin to accept them
@@ -296,7 +298,9 @@ class AdminController extends Controller
         if ($res === 'coupons') {
             $rules['code'] = 'sometimes|required|string|max:40|unique:coupons,code,'.$id;
         }
-        $data = $this->prepare($res, $request->validate($rules));
+        $valid = $request->validate($rules);
+        $this->checkGallery($res, $valid, (array) ($row->gallery ?? []));
+        $data = $this->prepare($res, $valid);
         if ($res === 'products' && $request->user()->role === 'shop') {
             unset($data['shop_id']); // a seller can edit their product but never move it into another shop
         }
@@ -456,6 +460,20 @@ class AdminController extends Controller
         $user = request()->user();
         if ($user->role === 'shop') {
             $query->whereIn('shop_id', Shop::where('user_id', $user->id)->pluck('id'));
+        }
+    }
+
+    /** Gallery entries must be uploaded files, or images the product already had (seeded URLs). */
+    private function checkGallery(string $res, array &$valid, array $existing): void
+    {
+        if ($res !== 'products' || ! isset($valid['gallery'])) {
+            return;
+        }
+        $valid['gallery'] = array_values(array_unique($valid['gallery']));
+        foreach ($valid['gallery'] as $g) {
+            if (! preg_match('/^uploads\/[\w.\-]+$/', $g) && ! in_array($g, $existing, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['gallery' => 'Invalid image.']);
+            }
         }
     }
 

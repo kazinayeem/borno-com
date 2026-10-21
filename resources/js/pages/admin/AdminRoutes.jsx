@@ -13,6 +13,7 @@ import { OrderDetail, OrderDocument } from './OrderDetail';
 import GenericPage from './GenericPages';
 import ShopCatalog from './ShopCatalog';
 import Messages from './Messages';
+import Collections from './Collections';
 
 const AdminResource = () => {
     const { res } = useParams();
@@ -31,6 +32,7 @@ export function AdminRoutes() {
                     <Route path="orders/:id/slip" element={<OrderDocument kind="slip" />} />
                     <Route path="customers" element={<Customers />} />
                     <Route path="messages" element={<Messages />} />
+                    <Route path="collections" element={<Collections />} />
                     <Route path="category/create" element={<CategoryForm />} />
                     <Route path="categories/:id/edit" element={<CategoryForm />} />
                     <Route path="shops/create" element={<ShopForm />} />
@@ -55,6 +57,7 @@ export function ShopRoutes() {
                     <Route index element={<Dashboard />} />
                     <Route path="orders" element={<Orders />} />
                     <Route path="orders/:status" element={<Orders />} />
+                    <Route path="orders/:id/invoice" element={<OrderDocument kind="invoice" />} />
                     <Route path="pos" element={<Pos />} />
                     <Route path="pos/sales" element={<PosSales />} />
                     <Route path="pos/draft" element={<PosDrafts />} />

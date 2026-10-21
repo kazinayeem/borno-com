@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { useGetHomeQuery, useGetMasterQuery } from '../../app/api';
+import { useGetHomeCollectionsQuery, useGetHomeQuery, useGetMasterQuery } from '../../app/api';
 import ProductCard from '../../components/ProductCard';
 import { Icon, Img } from '../../components/ui';
 import { t } from '../../i18n';
@@ -43,6 +43,7 @@ function BannerSlider({ banners }) {
 
 export default function Home() {
     const { data, isLoading, isError, refetch } = useGetHomeQuery();
+    const { data: collections = [] } = useGetHomeCollectionsQuery();
     const { data: master } = useGetMasterQuery();
     const lang = useSelector((s) => s.ui.lang);
     if (isError) return <div className="py-20 text-center">{t('Failed to load.')} <button className="text-primary underline" onClick={refetch}>{t('Retry')}</button></div>;
@@ -119,6 +120,11 @@ export default function Home() {
                     {isLoading ? Array.from({ length: 5 }, (_, i) => <div key={i} className="skeleton h-72" />) : data.flash_sale.map((p) => <ProductCard key={p.id} p={p} />)}
                 </div>
             </section>
+
+            {collections.map((c) => <section key={c.id}>
+                <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">{c.title}</h2><Link to={`/collections/${c.slug}`} className="text-sm text-primary">{t('View all')}</Link></div>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">{c.products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
+            </section>)}
 
             <section>
                 <h2 className="mb-4 text-xl font-semibold">{t('Popular Products')}</h2>

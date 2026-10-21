@@ -212,5 +212,37 @@ class DatabaseSeeder extends Seeder
                 'price' => min(array_column($variants, 'price')),
             ]);
         }
+
+        $this->fashionVariants();
+    }
+
+    /** Clothing gets sizes and colors where each choice has its own price, so the variant UI has real data. */
+    public function fashionVariants(): void
+    {
+        $colors = \App\Models\Color::pluck('id', 'name');
+        $sizes = \App\Models\Size::pluck('id', 'name');
+        $cat = \App\Models\Category::where('name', 'like', 'Fashion%')->value('id');
+        $palette = ['Black', 'White', 'Blue', 'Red', 'Gray'];
+        $steps = ['S' => 0, 'M' => 0, 'L' => 0.04, 'XL' => 0.08];
+        foreach (Product::where('category_id', $cat)->get() as $p) {
+            if (! empty($p->variants)) {
+                continue;
+            }
+            $cn = [$palette[$p->id % 5], $palette[($p->id + 2) % 5]];
+            $base = (float) $p->price;
+            $variants = [];
+            foreach ($cn as $ci => $name) {
+                foreach ($steps as $sn => $step) {
+                    $variants[] = [
+                        'color_id' => $colors[$name], 'size_id' => $sizes[$sn],
+                        'price' => round($base * (1 + $step) + $ci * 2, 2), 'stock' => 5 + (($p->id + $ci) % 7) * 3,
+                    ];
+                }
+            }
+            $p->update([
+                'variants' => $variants, 'color_ids' => array_map(fn ($n) => $colors[$n], $cn), 'size_ids' => array_values(array_map(fn ($n) => $sizes[$n], array_keys($steps))),
+                'stock' => array_sum(array_column($variants, 'stock')), 'price' => min(array_column($variants, 'price')),
+            ]);
+        }
     }
 }

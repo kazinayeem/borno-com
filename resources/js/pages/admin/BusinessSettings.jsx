@@ -68,7 +68,7 @@ export function BusinessSetup() {
     };
 
     return (
-        <form onSubmit={submit} className="mx-auto max-w-[1100px]">
+        <form onSubmit={submit} className="mx-auto w-full max-w-[1100px]">
             <h2 className="page-head mb-4 text-[22px] font-semibold">{t('Business Settings')}</h2>
             <Section title={t('Business Settings')}>
                 <div className="grid gap-x-6 md:grid-cols-2">
@@ -131,7 +131,7 @@ export function ThemeColors() {
     };
 
     return (
-        <form onSubmit={submit} className="mx-auto max-w-[1100px]">
+        <form onSubmit={submit} className="mx-auto w-full max-w-[1100px]">
             <h2 className="mb-4 text-[22px] font-semibold">{t('Theme Colors')}</h2>
             <Section title={t('Theme Colors Settings')}>
                 <div className="grid gap-x-6 md:grid-cols-2">

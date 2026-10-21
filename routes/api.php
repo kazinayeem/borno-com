@@ -60,6 +60,8 @@ Route::controller(StoreController::class)->group(function () {
     Route::get('blogs/{post}', 'blog');
     Route::post('contact', 'contact')->middleware('throttle:5,1');
 });
+Route::get('collections', [\App\Http\Controllers\Api\CollectionController::class, 'home']);
+Route::get('collections/{slug}', [\App\Http\Controllers\Api\CollectionController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me', [AuthController::class, 'me']);
@@ -67,6 +69,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('admin')->middleware('staff')->controller(AdminController::class)->group(function () {
         Route::get('dashboard', 'dashboard');
+        Route::prefix('collections')->controller(\App\Http\Controllers\Api\CollectionController::class)->middleware('staff:admin')->group(function () {
+            Route::get('/', 'index');
+            Route::get('product-search', 'productSearch');
+            Route::get('{id}', 'showAdmin')->whereNumber('id');
+            Route::post('/', 'store');
+            Route::put('{id}', 'update')->whereNumber('id');
+            Route::delete('{id}', 'destroy')->whereNumber('id');
+        });
         Route::get('shop-catalog/{res}', 'shopCatalog')->middleware('staff:shop');
         Route::get('messages', 'messages')->middleware('staff:admin');
         Route::patch('messages/{id}/read', 'markMessage')->middleware('staff:admin');

@@ -133,6 +133,7 @@ class PosController extends Controller
                 'color_id' => Product::optionId($i['color_id'] ?? null), 'size_id' => Product::optionId($i['size_id'] ?? null),
             ])->all(),
             'subtotal' => $quote['subtotal'], 'discount' => $quote['discount'], 'total' => $quote['total'], 'coupon' => $data['coupon'] ?? null,
+            'discount_type' => $data['discount_type'] ?? null, 'discount_value' => $data['discount_value'] ?? 0,
         ]), 201);
     }
 
@@ -149,6 +150,7 @@ class PosController extends Controller
             'items' => 'required|array|min:1', 'items.*.product_id' => 'required|exists:products,id', 'items.*.qty' => 'required|integer|min:1|max:1000',
             'items.*.color_id' => 'nullable|integer', 'items.*.size_id' => 'nullable|integer',
             'customer_id' => 'nullable|exists:users,id', 'coupon' => 'nullable|string|max:40',
+            'discount_type' => 'nullable|in:percent,fixed', 'discount_value' => 'nullable|numeric|min:0|max:1000000',
         ];
     }
 
@@ -186,7 +188,18 @@ class PosController extends Controller
             $discount = $c->discount_type === 'percent' ? $sub * $c->discount / 100 : min($c->discount, $sub);
         }
 
-        return ['lines' => $lines, 'subtotal' => round($sub, 2), 'discount' => round($discount, 2), 'total' => round($sub - $discount, 2)];
+        // The cashier's own discount comes off what is left after the coupon, and can never push the total below zero.
+        $left = $sub - $discount;
+        $manual = 0;
+        if (! empty($data['discount_type']) && (float) ($data['discount_value'] ?? 0) > 0) {
+            $v = (float) $data['discount_value'];
+            if ($data['discount_type'] === 'percent' && $v > 100) {
+                throw ValidationException::withMessages(['discount_value' => ['A percentage cannot be more than 100.']]);
+            }
+            $manual = $data['discount_type'] === 'percent' ? $left * $v / 100 : min($v, $left);
+        }
+
+        return ['lines' => $lines, 'subtotal' => round($sub, 2), 'coupon_discount' => round($discount, 2), 'manual_discount' => round($manual, 2), 'discount' => round($discount + $manual, 2), 'total' => round($sub - $discount - $manual, 2)];
     }
 
     private function walkIn(): User

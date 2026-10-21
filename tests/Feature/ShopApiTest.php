@@ -337,4 +337,19 @@ class ShopApiTest extends TestCase
         Setting::alertLowStock($product->fresh(), 5);
         $this->getJson('/api/admin/bell')->assertJsonPath('count', 1);
     }
+
+    public function test_pos_cashier_discount_percent_and_fixed_never_exceed_the_total(): void
+    {
+        $this->admin();
+        $p = $this->product(Shop::create(['name' => 'S']), ['price' => 10, 'stock' => 9]);
+        $items = [['product_id' => $p->id, 'qty' => 2]];
+
+        $this->postJson('/api/admin/pos/quote', ['items' => $items, 'discount_type' => 'percent', 'discount_value' => 25])
+            ->assertJsonPath('manual_discount', 5)->assertJsonPath('total', 15);
+        $this->postJson('/api/admin/pos/quote', ['items' => $items, 'discount_type' => 'fixed', 'discount_value' => 4])->assertJsonPath('total', 16);
+        $this->postJson('/api/admin/pos/quote', ['items' => $items, 'discount_type' => 'fixed', 'discount_value' => 500])->assertJsonPath('total', 0);
+        $this->postJson('/api/admin/pos/quote', ['items' => $items, 'discount_type' => 'percent', 'discount_value' => 150])->assertStatus(422);
+        $this->postJson('/api/admin/pos/checkout', ['items' => $items, 'payment_method' => 'Cash Payment', 'discount_type' => 'percent', 'discount_value' => 10])
+            ->assertCreated()->assertJsonPath('total', 18);
+    }
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
     errorMessage, useAdminListQuery, useGetOptionsQuery, usePosAddCustomerMutation, usePosCheckoutMutation, usePosCustomersQuery,
@@ -10,6 +10,15 @@ import { ActBtn, Card, CardB, CardH, fdt, Modal, money, PageHead, Pager, Pill, S
 import { t } from '../../i18n';
 
 const DRAFT_KEY = 'pos_resume';
+const TABS_KEY = 'pos_tabs';
+let tabSeq = 0;
+const newTab = () => ({ id: `o${Date.now().toString(36)}${tabSeq++}`, cart: [], customer: '', custSearch: '', coupon: '', appliedCoupon: '', discType: 'percent', discValue: '', draftId: null, payment: 'Cash Payment' });
+// Open orders survive navigating away from the POS (kept for the browser session only).
+const loadTabs = () => {
+    try { const d = JSON.parse(sessionStorage.getItem(TABS_KEY)); if (Array.isArray(d?.tabs) && d.tabs.length) return d; } catch { /* start fresh */ }
+    const first = newTab();
+    return { tabs: [first], active: first.id };
+};
 const optionId = (v) => (v ? Number(v) : null);
 const posKey = (id, colorId, sizeId) => `${id}-${colorId || 0}-${sizeId || 0}`;
 
@@ -36,20 +45,23 @@ function VariantPicker({ product, colorId, sizeId, onColor, onSize, onClose, onA
 
 export function Pos() {
     const dispatch = useDispatch();
-    const navigate = useNavigate();
     const [filters, setFilters] = useState({ brand_id: '', category_id: '', search: '', page: 1 });
     const [q, setQ] = useState('');
-    const [cart, setCart] = useState([]); // [{ product, qty }]
-    const [customer, setCustomer] = useState('');
-    const [custSearch, setCustSearch] = useState('');
-    const [coupon, setCoupon] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState('');
+    const [{ tabs, active }, setBoard] = useState(loadTabs);
+    const cur = tabs.find((x) => x.id === active) ?? tabs[0];
+    const { cart, customer, custSearch, coupon, appliedCoupon, draftId, payment, discType = 'percent', discValue = '' } = cur;
+    const patchTab = (id, p) => setBoard((b) => ({ ...b, tabs: b.tabs.map((x) => (x.id === id ? { ...x, ...(typeof p === 'function' ? p(x) : p) } : x)) }));
+    const patch = (p) => patchTab(cur.id, p);
+    const field = (k) => (v) => patch((x) => ({ [k]: typeof v === 'function' ? v(x[k]) : v }));
+    const setCart = field('cart'); const setCustomer = field('customer'); const setCustSearch = field('custSearch');
+    const setCoupon = field('coupon'); const setAppliedCoupon = field('appliedCoupon'); const setDraftId = field('draftId'); const setPayment = field('payment'); const setDiscType = field('discType'); const setDiscValue = field('discValue');
+    useEffect(() => { try { sessionStorage.setItem(TABS_KEY, JSON.stringify({ tabs, active: cur.id })); } catch { /* storage full or blocked */ } }, [tabs, cur.id]);
     const [quote, setQuote] = useState({ subtotal: 0, discount: 0, total: 0 });
     const [couponError, setCouponError] = useState(null);
     const [showCustomer, setShowCustomer] = useState(false);
     const [showPay, setShowPay] = useState(false);
-    const [payment, setPayment] = useState('Cash Payment');
-    const [draftId, setDraftId] = useState(null);
+    const [done, setDone] = useState(null); // last placed order, offers receipt printing
+    const base = useLocation().pathname.startsWith('/shop') ? '/shop' : '/admin';
     const [pick, setPick] = useState(null);
     const [pickColor, setPickColor] = useState(null);
     const [pickSize, setPickSize] = useState(null);
@@ -62,7 +74,8 @@ export function Pos() {
     const [saveDraft] = usePosSaveDraftMutation();
 
     const items = useMemo(() => cart.map((c) => ({ product_id: c.product.id, qty: c.qty, ...(c.color_id ? { color_id: c.color_id } : {}), ...(c.size_id ? { size_id: c.size_id } : {}) })), [cart]);
-    const body = useMemo(() => ({ items, customer_id: customer || null, coupon: appliedCoupon || null }), [items, customer, appliedCoupon]);
+    const dv = Number(discValue) > 0 ? Number(discValue) : 0;
+    const body = useMemo(() => ({ items, customer_id: customer || null, coupon: appliedCoupon || null, discount_type: dv ? discType : null, discount_value: dv || null }), [items, customer, appliedCoupon, discType, dv]);
 
     // Resume a draft chosen on the Drafts page.
     useEffect(() => {
@@ -71,7 +84,15 @@ export function Pos() {
             if (!raw) return;
             sessionStorage.removeItem(DRAFT_KEY);
             const d = JSON.parse(raw);
-            setCart((d.cart ?? []).map(posLine)); setCustomer(d.customer_id ?? ''); setDraftId(d.id); setAppliedCoupon(d.coupon ?? ''); setCoupon(d.coupon ?? '');
+            const filled = { cart: (d.cart ?? []).map(posLine), customer: d.customer_id ?? '', draftId: d.id, appliedCoupon: d.coupon ?? '', coupon: d.coupon ?? '', discType: d.discount_type || 'percent', discValue: Number(d.discount_value) > 0 ? String(d.discount_value) : '' };
+            setBoard((b) => {
+                const open = b.tabs.find((x) => x.draftId === d.id);
+                if (open) return { ...b, active: open.id };
+                const empty = b.tabs.find((x) => x.id === b.active && !x.cart.length);
+                if (empty) return { ...b, tabs: b.tabs.map((x) => (x === empty ? { ...x, ...filled } : x)) };
+                const t2 = { ...newTab(), ...filled };
+                return { tabs: [...b.tabs, t2], active: t2.id };
+            });
         } catch { /* ignore bad draft */ }
     }, []);
 
@@ -119,25 +140,49 @@ export function Pos() {
     };
     const setQty = (key, qty, stock) => setCart((c) => c.map((x) => (posKey(x.product.id, x.color_id, x.size_id) === key ? { ...x, qty: Math.max(1, Math.min(Number(qty) || 1, stock)) } : x)));
     const remove = (key) => setCart((c) => c.filter((x) => posKey(x.product.id, x.color_id, x.size_id) !== key));
-    const reset = () => { setCart([]); setCustomer(''); setCoupon(''); setAppliedCoupon(''); setDraftId(null); };
+    const resetTab = (id) => patchTab(id, { cart: [], customer: '', custSearch: '', coupon: '', appliedCoupon: '', discType: 'percent', discValue: '', draftId: null });
+    const addTab = () => { const n = newTab(); setBoard((b) => ({ tabs: [...b.tabs, n], active: n.id })); };
+    const closeTab = (id) => {
+        const tab = tabs.find((x) => x.id === id);
+        if (tab?.cart.length && !window.confirm(t('Close this order? Its cart will be lost.'))) return;
+        setBoard((b) => {
+            const left = b.tabs.filter((x) => x.id !== id);
+            if (!left.length) { const n = newTab(); return { tabs: [n], active: n.id }; }
+            return { tabs: left, active: b.active === id ? left[Math.max(0, b.tabs.findIndex((x) => x.id === id) - 1)].id : b.active };
+        });
+    };
 
     const pay = async () => {
+        const id = cur.id;
         const r = await checkout({ ...body, payment_method: payment, draft_id: draftId });
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
         dispatch(pushToast(t('Order {number} placed', { number: r.data.number })));
-        setShowPay(false); reset();
+        setDone({ id: r.data.id, number: r.data.number });
+        setShowPay(false); resetTab(id);
     };
     const draft = async () => {
         if (!items.length) return dispatch(pushToast(t('Add products first'), 'error'));
+        const id = cur.id;
         const r = await saveDraft(body);
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
-        dispatch(pushToast(t('Saved as draft'))); reset();
+        dispatch(pushToast(t('Saved as draft'))); resetTab(id);
     };
 
     const rows = products?.data ?? [];
     return (
         <>
-            <PageHead title={t('POS')}>{draftId && <span className="muted">{t('Resuming draft #{id}', { id: draftId })} <button className="btn sm" onClick={() => navigate(0)}>{t('Discard')}</button></span>}</PageHead>
+            <PageHead title={t('POS')}>{draftId && <span className="muted">{t('Resuming draft #{id}', { id: draftId })} <button className="btn sm" onClick={() => resetTab(cur.id)}>{t('Discard')}</button></span>}</PageHead>
+            <div className="pos-tabs" role="tablist" aria-label={t('Open orders')}>
+                {tabs.map((o, i) => {
+                    const n = o.cart.reduce((a, l) => a + l.qty, 0);
+                    return (
+                        <div key={o.id} className={`pos-tab ${o.id === cur.id ? 'active' : ''}`}>
+                            <button role="tab" aria-selected={o.id === cur.id} onClick={() => setBoard((b) => ({ ...b, active: o.id }))}>{t('Order {n}', { n: i + 1 })}{n > 0 && <span className="pos-tab-n">{n}</span>}</button>
+                            <button className="pos-tab-x" aria-label={t('Close order {n}', { n: i + 1 })} onClick={() => closeTab(o.id)}><SaIcon name="x" /></button>
+                        </div>);
+                })}
+                <button className="pos-tab-add" onClick={addTab} aria-label={t('New order')}><SaIcon name="plus" /> {t('New order')}</button>
+            </div>
             <div className="pos">
                 <Card>
                     <CardH><form className="toolbar" style={{ flex: 1 }} onSubmit={(e) => { e.preventDefault(); setFilters({ ...filters, search: q, page: 1 }); }}>
@@ -188,10 +233,16 @@ export function Pos() {
                         <form className="row" style={{ margin: '12px 0' }} onSubmit={(e) => { e.preventDefault(); setAppliedCoupon(coupon.trim()); setCouponError(null); }}>
                             <input className="input" aria-label={t('Coupon code')} placeholder={t('Coupon code')} value={coupon} onChange={(e) => setCoupon(e.target.value)} /><button className="btn">{t('Apply')}</button>
                         </form>
+                        <div className="sa-field" style={{ marginBottom: 8 }}><label htmlFor="pos-disc">{t('Discount')}</label>
+                            <div className="row"><select className="input" aria-label={t('Discount type')} value={discType} onChange={(e) => setDiscType(e.target.value)} style={{ maxWidth: 120 }}><option value="percent">{t('Percent (%)')}</option><option value="fixed">{t('Fixed amount')}</option></select>
+                                <input id="pos-disc" className="input" type="number" min="0" max={discType === 'percent' ? 100 : undefined} step="0.01" placeholder="0" value={discValue} onChange={(e) => setDiscValue(e.target.value)} />
+                                {dv > 0 && <button type="button" className="btn sm" onClick={() => setDiscValue('')}>{t('Clear')}</button>}</div></div>
                         {couponError && <p className="err" style={{ margin: '0 0 8px', color: 'var(--danger)', fontSize: 12 }}>{couponError}</p>}
                         <div className="totals">
                             <div><span>{t('Sub total')}</span><span>{money(quote.subtotal)}</span></div>
-                            <div><span>{t('Discount')}{appliedCoupon && quote.discount ? ` (${appliedCoupon})` : ''}</span><span>-{money(quote.discount)}</span></div>
+                            {(quote.coupon_discount ?? quote.discount) > 0 && <div><span>{t('Coupon')}{appliedCoupon ? ` (${appliedCoupon})` : ''}</span><span>-{money(quote.coupon_discount ?? quote.discount)}</span></div>}
+                            {quote.manual_discount > 0 && <div><span>{t('Discount')}{discType === 'percent' ? ` (${dv}%)` : ''}</span><span>-{money(quote.manual_discount)}</span></div>}
+                            {!(quote.discount > 0) && <div><span>{t('Discount')}</span><span>-{money(0)}</span></div>}
                             <div className="grand"><span>{t('Total')}</span><span>{money(quote.total)}</span></div>
                         </div>
                         <div className="sa-field" style={{ marginTop: 12 }}><label htmlFor="pos-pay">{t('Payment Method')}</label>
@@ -204,6 +255,14 @@ export function Pos() {
                 </Card>
             </div>
             {showCustomer && <AddCustomer onClose={() => setShowCustomer(false)} onAdded={(c) => { setCustomer(String(c.id)); setCustSearch(`${c.name} (${c.phone})`); }} />}
+            {done && (
+                <Modal title={t('Order {number} placed', { number: done.number })} onClose={() => setDone(null)} footer={<button className="btn primary" onClick={() => setDone(null)}>{t('New order')}</button>}>
+                    <p style={{ marginBottom: 12 }}>{t('Print the receipt for the customer?')}</p>
+                    <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
+                        <Link className="btn primary" to={`${base}/orders/${done.id}/invoice?size=pos`}><SaIcon name="download" /> {t('Print POS receipt (80mm)')}</Link>
+                        <Link className="btn" to={`${base}/orders/${done.id}/invoice?size=a4`}><SaIcon name="download" /> {t('Print A4 invoice')}</Link>
+                    </div>
+                </Modal>)}
             {pick && <VariantPicker product={pick} colorId={pickColor} sizeId={pickSize} onColor={setPickColor} onSize={setPickSize} onClose={() => setPick(null)} onAdd={confirmPick} />}
         </>
     );
@@ -261,7 +320,7 @@ export function PosDrafts() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const resume = (d) => {
-        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ cart: d.lines, customer_id: d.customer_id, id: d.id, coupon: d.coupon }));
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ cart: d.lines, customer_id: d.customer_id, id: d.id, coupon: d.coupon, discount_type: d.discount_type, discount_value: d.discount_value }));
         navigate('/admin/pos');
     };
     const rows = data?.data ?? [];

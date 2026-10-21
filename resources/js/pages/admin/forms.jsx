@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { errorMessage, useAdminGetQuery, useAdminSaveMutation, useGetGroupQuery, useGetOptionsQuery } from '../../app/api';
 import { pushToast } from '../../app/slices';
-import { Field, FormActions, ImagePicker, MultiSelect, PageTitle, Section, Select, TagInput, TextArea, TextInput } from '../../components/FormKit';
+import { Field, FormActions, GalleryPicker, inputCls, ImagePicker, MultiSelect, PageTitle, Section, Select, TagInput, TextArea, TextInput } from '../../components/FormKit';
 import { t } from '../../i18n';
 import { RichEditor } from '../../components/RichEditor';
 
@@ -60,7 +60,7 @@ export function ShopForm() {
     }
     if (isLoading) return <Loading />;
     return (
-        <form onSubmit={submit} className="mx-auto max-w-[1100px]">
+        <form onSubmit={submit} className="mx-auto w-full max-w-[1100px]">
             <PageTitle icon="store">{id ? t('Edit Shop') : t('Add New Shop')}</PageTitle>
             {!id && (<>
                 <Section title={t('User Information')} icon="user"><div className="grid gap-x-6 md:grid-cols-[1fr_1fr_220px]">
@@ -103,7 +103,7 @@ function buildVariants(colorIds, sizeIds, prev, basePrice, baseStock) {
 }
 
 export function ProductForm() {
-    const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], image: '', is_flash_sale: false, active: true };
+    const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], image: '', gallery: [], is_flash_sale: false, active: true };
     const { id, form, set, err, submit, saving, isLoading, reset } = useAdminForm('products', empty, '/admin/products');
     const isAdmin = useSelector((s) => s.auth.user?.role === 'admin');
     const { data: business } = useGetGroupQuery('business', { skip: !isAdmin });
@@ -124,7 +124,7 @@ export function ProductForm() {
     const labelOf = (list, id) => list.find((x) => Number(x.id) === Number(id))?.name ?? '—';
     const num = (k, label, extra = {}) => <Field label={label} required={extra.required} error={err(k)}><TextInput value={form[k]} onChange={set(k)} placeholder={label.replace(' *', '')} {...extra.input} /></Field>;
     return (
-        <form onSubmit={(e) => submit(e, { variants: variantRows })} className="mx-auto max-w-[1100px]">
+        <form onSubmit={(e) => submit(e, { variants: variantRows })} className="mx-auto w-full max-w-[1100px]">
             <PageTitle icon="box">{id ? t('Edit Product') : t('Add New Product')}</PageTitle>
             <Section title={t('Product Info')}>
                 <Field label={t('Product Name')} required error={err('name')}><TextInput value={form.name} onChange={set('name')} placeholder={t('Enter Product Name')} /></Field>
@@ -135,13 +135,12 @@ export function ProductForm() {
                 <Field label={t('Description')} required error={err('description')}><RichEditor minHeight={260} value={form.description} onChange={set('description')} placeholder={t('Enter description')} /></Field>
             </Section>
             <Section title={t('Thumbnail (Ratio 1280 x 960 px) *')}><ImagePicker value={form.image} onChange={set('image')} error={err('image')} width="w-60" ratio="aspect-[4/3]" /></Section>
+            <Section title={t('Product Gallery (up to 5 images)')}><GalleryPicker value={form.gallery} onChange={set('gallery')} error={err('gallery')} /></Section>
                         <Section title={t('Product Information')}><div className="grid gap-x-6 md:grid-cols-3">
                 {!singleShop && <Field label={t('Select Shop')} required error={err('shop_id')}><Select value={form.shop_id} onChange={set('shop_id')} options={o.shops} placeholder={t('Select Shop')} /></Field>}
                 <Field label={t('Select Category')} required error={err('category_id')}><Select value={form.category_id} onChange={set('category_id')} options={o.categories} placeholder={t('Select Category')} /></Field>
                 <Field label={t('Select Brand')}><Select value={form.brand_id} onChange={set('brand_id')} options={o.brands} placeholder={t('Select Brand')} /></Field>
-                <Field label={t('Select Color')}><MultiSelect value={form.color_ids} onChange={(ids) => setOptions('color_ids', ids)} options={o.colors} /></Field>
                 <Field label={t('Select Unit')}><Select value={form.unit} onChange={set('unit')} options={o.units} placeholder={t('Select Unit')} /></Field>
-                <Field label={t('Select Size')}><MultiSelect value={form.size_ids} onChange={(ids) => setOptions('size_ids', ids)} options={o.sizes} /></Field>
                 <Field label={t('Product SKU')} required error={err('sku')}><div className="flex gap-2"><TextInput value={form.sku} onChange={set('sku')} placeholder={t('Ex: 134543')} /><button type="button" onClick={() => set('sku')(String(Math.floor(100000 + Math.random() * 900000)))} className="whitespace-nowrap rounded-md bg-primary-soft px-3 text-xs text-primary">{t('Generate Code')}</button></div></Field>
                 {num('weight', 'Product Weight (in kg)')}
                 {num('buy_price', 'Buying Price *', { required: true })}
@@ -151,7 +150,27 @@ export function ProductForm() {
                 {num('stock', 'Current Stock Quantity')}
                 <Field label={t('Flash Sale')}><label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={!!form.is_flash_sale} onChange={(e) => set('is_flash_sale')(e.target.checked)} />{t('Show this product on the homepage flash sale')}</label></Field>
             </div>
-            {variantRows.length > 0 && <div className="mt-4 overflow-x-auto"><p className="mb-2 text-sm text-muted">{t('Each color and size has its own price and stock. The selling price above is only the starting price for a new combination.')}</p><table className="w-full text-sm"><thead><tr className="text-left text-muted"><th className="py-2">{t('Color')}</th><th>{t('Size')}</th><th>{t('Price')}</th><th>{t('Stock')}</th></tr></thead><tbody>{variantRows.map((r) => <tr key={`${r.color_id}-${r.size_id}`} className="border-t border-line"><td className="py-2">{labelOf(o.colors, r.color_id)}</td><td>{labelOf(o.sizes, r.size_id)}</td><td><input className="field !py-1.5" type="number" min="0" step="0.01" aria-label={t('Price')} value={r.price} onChange={(e) => setVariant(r.color_id, r.size_id, 'price', e.target.value)} /></td><td><input className="field !py-1.5" type="number" min="0" step="1" aria-label={t('Stock')} value={r.stock} onChange={(e) => setVariant(r.color_id, r.size_id, 'stock', e.target.value)} /></td></tr>)}</tbody></table></div>}
+            </Section>
+            <Section title={t('Variants: Color & Size')}>
+                <p className="mb-3 text-sm text-muted">{t('Tap the colors and sizes this product comes in. Each combination gets its own price and stock below.')}</p>
+                <div className="grid gap-x-6 md:grid-cols-2">
+                    <Field label={t('Select Color')}><MultiSelect swatch value={form.color_ids} onChange={(ids) => setOptions('color_ids', ids)} options={o.colors} /></Field>
+                    <Field label={t('Select Size')}><MultiSelect value={form.size_ids} onChange={(ids) => setOptions('size_ids', ids)} options={o.sizes} /></Field>
+                </div>
+                {variantRows.length > 0 && (
+                    <div className="mt-2 overflow-x-auto"><p className="mb-2 text-sm text-muted">{t('Each color and size has its own price and stock. The selling price above is only the starting price for a new combination.')}</p>
+                        <table className="w-full text-sm"><thead><tr className="text-start text-muted"><th className="py-1 pe-3">{t('Color')}</th><th className="py-1 pe-3">{t('Size')}</th><th className="py-1 pe-3">{t('Price')}</th><th className="py-1">{t('Stock')}</th></tr></thead>
+                            <tbody>{variantRows.map((r) => {
+                                const c = r.color_id ? Number(r.color_id) : null; const z = r.size_id ? Number(r.size_id) : null;
+                                return (
+                                    <tr key={`${c}-${z}`} className="border-t border-line">
+                                        <td className="py-1.5 pe-3">{c ? labelOf(o.colors, c) : '—'}</td><td className="py-1.5 pe-3">{z ? labelOf(o.sizes, z) : '—'}</td>
+                                        <td className="py-1.5 pe-3"><input type="number" min="0" step="0.01" className={`${inputCls} w-28`} aria-label={t('Price')} value={r.price} onChange={(e) => setVariant(c, z, 'price', e.target.value)} /></td>
+                                        <td className="py-1.5"><input type="number" min="0" className={`${inputCls} w-24`} aria-label={t('Stock')} value={r.stock} onChange={(e) => setVariant(c, z, 'stock', e.target.value)} /></td>
+                                    </tr>);
+                            })}</tbody></table>
+                    </div>)}
+                {variantRows.length === 0 && <p className="text-sm text-muted">{t('No color or size selected. The product is sold as a single option.')}</p>}
             </Section>
             <Section title={t('Upload or Add Product Video')}>
                 <Field label={t('Select Video Type')}><Select value={form.video_type} onChange={set('video_type')} options={[{ id: 'file', name: 'Upload Video File' }, { id: 'youtube', name: 'YouTube Link' }, { id: 'vimeo', name: 'Vimeo Link' }, { id: 'dailymotion', name: 'Dailymotion Link' }]} /></Field>

@@ -17,6 +17,7 @@ import { AccountAddresses, AccountHome, AccountLayout, AccountOrderDetail, Accou
 import Brands from './pages/shop/Brands';
 import Blogs from './pages/shop/Blogs';
 import BlogDetail from './pages/shop/BlogDetail';
+import CollectionPage from './pages/shop/CollectionPage';
 import Contact from './pages/shop/Contact';
 import CmsPage from './pages/shop/Page';
 const AdminRoutes = React.lazy(() => import('./pages/admin/AdminRoutes').then((m) => ({ default: m.AdminRoutes })));
@@ -56,6 +57,7 @@ export default function App() {
                     <Route path="brands" element={<Brands />} />
                     <Route path="blogs" element={<Blogs />} />
                     <Route path="blogs/:id" element={<BlogDetail />} />
+                    <Route path="collections/:slug" element={<CollectionPage />} />
                     <Route path="contact-us" element={<Contact />} />
                     <Route path="pages/:slug" element={<CmsPage />} />
                     <Route path="best-deal" element={<Navigate to="/products?sort=price_asc" replace />} />

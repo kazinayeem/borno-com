@@ -28,7 +28,7 @@ const baseQueryWithAuth = async (args, api, extra) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithAuth,
-    tagTypes: ['Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts', 'Master', 'Home'],
+    tagTypes: ['Collections', 'Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts', 'Master', 'Home'],
     endpoints: (b) => ({
         // storefront
         getHome: b.query({ query: () => '/home', providesTags: ['Home'] }),
@@ -127,6 +127,13 @@ export const api = createApi({
         deleteAddress: b.mutation({ query: (id) => ({ url: `/account/addresses/${id}`, method: 'DELETE' }), invalidatesTags: ['Addresses'] }),
         placeOrder: b.mutation({ query: (body) => ({ url: '/account/checkout', method: 'POST', body }), invalidatesTags: ['CustOrders', 'Addresses'] }),
         getStatistics: b.query({ query: (params) => ({ url: '/admin/statistics', params }), providesTags: ['Admin'] }),
+        getHomeCollections: b.query({ query: () => '/collections', providesTags: ['Collections'] }),
+        getCollection: b.query({ query: (slug) => `/collections/${slug}`, providesTags: ['Collections'] }),
+        adminCollections: b.query({ query: () => '/admin/collections', providesTags: ['Collections'] }),
+        adminCollection: b.query({ query: (id) => `/admin/collections/${id}`, providesTags: ['Collections'] }),
+        collectionProductSearch: b.query({ query: (q) => ({ url: '/admin/collections/product-search', params: { q } }) }),
+        saveCollection: b.mutation({ query: ({ id, ...body }) => ({ url: `/admin/collections${id ? `/${id}` : ''}`, method: id ? 'PUT' : 'POST', body }), invalidatesTags: ['Collections', 'Home'] }),
+        deleteCollection: b.mutation({ query: (id) => ({ url: `/admin/collections/${id}`, method: 'DELETE' }), invalidatesTags: ['Collections', 'Home'] }),
         getBell: b.query({ query: () => '/admin/bell', providesTags: ['Bell'] }),
         readAllNotifications: b.mutation({ query: () => ({ url: '/admin/notifications/read-all', method: 'POST' }), invalidatesTags: ['Bell'] }),
         getOptions: b.query({ query: () => '/admin/options' }),
@@ -137,6 +144,7 @@ export const api = createApi({
 });
 
 export const {
+    useGetHomeCollectionsQuery, useGetCollectionQuery, useAdminCollectionsQuery, useAdminCollectionQuery, useCollectionProductSearchQuery, useSaveCollectionMutation, useDeleteCollectionMutation,
     useGetHomeQuery, useGetPageQuery, useGetCategoriesQuery, useGetProductsQuery, useGetProductQuery, useGetShopsQuery, useGetBrandsQuery, useGetBlogsQuery, useGetBlogQuery,
     useSendContactMutation, useLoginMutation, useLogoutMutation, useGetDashboardQuery, useShopCatalogQuery, useAdminListQuery,
     useAdminSaveMutation, useAdminDeleteMutation, useGetMessagesQuery, useGetOptionsQuery, useGetStatisticsQuery, useGetBellQuery, useReadAllNotificationsMutation, useGetMasterQuery, useQuoteCartMutation, useCustRegisterMutation, useCustLoginMutation, useCustGoogleMutation, useCustLogoutMutation, useGetAccountQuery, useSaveAccountMutation, useChangeAccountPasswordMutation, useAccountSummaryQuery, useAccountOrdersQuery, useAccountOrderQuery, useCancelMyOrderMutation, useGetAddressesQuery, useSaveAddressMutation, useDeleteAddressMutation, usePlaceOrderMutation, useReportAnalyticsQuery, useEarningSummaryQuery, usePreorderStatsQuery, useGetProfileQuery, useSaveProfileMutation, useChangePasswordMutation, useGetMyShopQuery, useSaveMyShopMutation, useGetGatewaysQuery, useSaveGatewayMutation, useChatUsersQuery, useChatMessagesQuery, useChatSendMutation, usePushSendMutation, useImportProductsMutation, useGetGalleryQuery, useDeleteImageMutation, useRecListQuery, useRecGetQuery, useRecSaveMutation, useRecDeleteMutation, useRecToggleMutation, useRecDecideMutation, useGetLookupQuery, useGetGroupQuery, useSaveGroupMutation, useApproveProductMutation, useGetSettingsQuery, useSaveSettingsMutation, usePosProductsQuery, usePosCustomersQuery, usePosAddCustomerMutation, usePosQuoteMutation, usePosCheckoutMutation, usePosSalesQuery, usePosDraftsQuery, usePosSaveDraftMutation, usePosDeleteDraftMutation, useUploadImageMutation, useAdminGetQuery, useGetOrdersQuery, useGetRidersQuery, useGetOrderQuery, useUpdateOrderMutation, useGetCustomersQuery, useMarkMessageMutation,

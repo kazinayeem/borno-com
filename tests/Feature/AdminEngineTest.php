@@ -356,4 +356,34 @@ class AdminEngineTest extends TestCase
             $this->assertStringNotContainsString($bad, $out);
         }
     }
+
+    public function test_product_gallery_is_limited_to_five_uploaded_images(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->first());
+        $p = \App\Models\Product::first();
+        $this->putJson("/api/admin/products/{$p->id}", ['gallery' => ['uploads/a.png', 'uploads/b.png']])->assertOk();
+        $this->assertCount(2, $p->refresh()->gallery);
+        $this->putJson("/api/admin/products/{$p->id}", ['gallery' => array_map(fn ($i) => "uploads/$i.png", range(1, 6))])->assertStatus(422);
+        $this->putJson("/api/admin/products/{$p->id}", ['gallery' => ['https://evil.test/x.png']])->assertStatus(422);
+    }
+
+    public function test_collection_holds_up_to_ten_products_and_shows_publicly(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->first());
+        $ids = \App\Models\Product::where('approval', '!=', 'pending')->orderBy('id')->limit(11)->pluck('id')->all();
+
+        $this->postJson('/api/admin/collections', ['title' => 'New Sell', 'product_ids' => $ids])->assertStatus(422);
+        $this->postJson('/api/admin/collections', ['title' => 'New Sell', 'product_ids' => array_slice($ids, 0, 10), 'description' => '<p>Hot <script>x()</script></p>'])
+            ->assertCreated()->assertJsonPath('slug', 'new-sell')->assertJsonPath('count', 10);
+
+        app('auth')->forgetGuards();
+        $this->getJson('/api/collections/new-sell')->assertOk()->assertJsonCount(10, 'products')->assertJsonMissingPath('products.0.buy_price');
+        $this->assertStringNotContainsString('script', $this->getJson('/api/collections/new-sell')->json('description'));
+        $this->getJson('/api/collections')->assertOk()->assertJsonPath('0.slug', 'new-sell');
+        \App\Models\Collection::first()->update(['active' => false]);
+        $this->getJson('/api/collections/new-sell')->assertNotFound();
+        $this->getJson('/api/collections')->assertOk()->assertJsonCount(0);
+    }
 }

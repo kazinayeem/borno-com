@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { OrderPrint, PrintBar } from '../../components/OrderPrint';
 import { useDispatch, useSelector } from 'react-redux';
 import { errorMessage, useGetMasterQuery, useGetOrderQuery, useGetRidersQuery, useUpdateOrderMutation } from '../../app/api';
 import { pushToast } from '../../app/slices';
@@ -89,33 +90,19 @@ export function OrderDetail() {
     );
 }
 
-// Printable invoice / payment slip. "Download" = browser print → Save as PDF.
+// Printable invoice / payment slip, A4 or 80 mm POS receipt. "Download" = browser print → Save as PDF.
 export function OrderDocument({ kind }) {
     const { id } = useParams();
+    const [sp, setSp] = useSearchParams();
+    const size = sp.get('size') === 'pos' ? 'pos' : 'a4';
     const { data: o, isLoading, isError } = useGetOrderQuery(id);
     const { data: master } = useGetMasterQuery();
-    const brand = master?.data;
     if (isError) return <Card><div className="empty">{t('Order not found.')}</div></Card>;
     if (isLoading || !o) return <Card><div className="empty">{t('Loading…')}</div></Card>;
-    const slip = kind === 'slip';
     return (
-        <div className="mx-auto max-w-[820px]">
-            <div className="mb-4 flex justify-between print:hidden"><Link to={`/admin/orders/${o.id}/show`} className="btn">{t('← Back')}</Link><button onClick={() => window.print()} className="btn primary"><SaIcon name="download" />{slip ? t('Print / Save Slip') : t('Print / Save PDF')}</button></div>
-            <article className="card" style={{ padding: 32, background: '#fff', color: '#1f2330' }}>
-                <header className="flex items-start justify-between border-b border-line pb-5"><img src={brand?.web_logo || '/assets/logo.png'} alt={brand?.company_name || brand?.app_name || t('ReadyEcommerce')} className="h-12 max-w-[180px] object-contain" /><div className="text-end text-sm"><h1 className="text-2xl font-bold uppercase tracking-wide">{slip ? t('Payment Slip') : t('Invoice')}</h1><p>{brand?.company_name || brand?.app_name}</p><p>#{o.number}</p><p className="text-muted">{fdate(o.created_at)}</p></div></header>
-                <section className="grid gap-6 py-5 text-sm sm:grid-cols-2">
-                    <div><h2 className="mb-1 font-semibold">{t('Billed to')}</h2><p>{o.user?.name}</p><p className="text-muted">{o.user?.phone}</p><p className="text-muted">{o.user?.email}</p></div>
-                    <div><h2 className="mb-1 font-semibold">{t('Ship to')}</h2><p>{o.address_name}</p><p className="text-muted">{o.shipping_address}{o.area ? `, ${o.area}` : ''}</p><p className="text-muted">{o.address_phone}</p></div>
-                </section>
-                <div className="mb-4 flex flex-wrap gap-x-8 gap-y-1 rounded-lg bg-surface p-3 text-sm"><span>{t('Payment:')} <b>{o.payment_method}</b></span><span>{t('Payment status:')} <b>{o.payment_status === 'paid' ? t('Paid') : t('Pending')}</b></span><span>{t('Order status:')} <b>{label(o.status)}</b></span>{o.shop && <span>{t('Shop:')} <b>{o.shop.name}</b></span>}</div>
-                {!slip && <table className="w-full text-start text-sm"><thead><tr className="border-b border-line text-xs uppercase text-muted">{['#', 'Item', 'Qty', 'Price', 'Total'].map((h) => <th key={h} className="py-2">{t(h)}</th>)}</tr></thead>
-                    <tbody>{o.items.map((i, n) => <tr key={i.id} className="border-b border-line"><td className="py-2">{n + 1}</td><td>{i.name}{(i.size || i.color) && <span className="text-xs text-muted"> ({[i.size, i.color].filter(Boolean).join(', ')})</span>}</td><td>{i.qty}</td><td>{money(i.price)}</td><td>{money(i.price * i.qty)}</td></tr>)}</tbody></table>}
-                <dl className="ms-auto mt-4 w-full max-w-[300px] space-y-1.5 text-sm">
-                    <div className="flex justify-between"><dt>{t('Sub Total')}</dt><dd>{money(o.subtotal)}</dd></div><div className="flex justify-between"><dt>{t('Coupon Discount')}</dt><dd>- {money(o.coupon_discount)}</dd></div>
-                    <div className="flex justify-between"><dt>{t('Delivery Charge')}</dt><dd>{money(o.shipping)}</dd></div><div className="flex justify-between"><dt>{t('VAT & Tax')}</dt><dd>{money(o.vat_tax)}</dd></div>
-                    <div className="flex justify-between border-t border-line pt-2 text-base font-bold"><dt>{slip ? t('Amount') : t('Grand Total')}</dt><dd>{money(o.total)}</dd></div></dl>
-                <footer className="mt-8 border-t border-line pt-4 text-center text-xs text-muted">{t('Thank you for shopping with {name}.', { name: brand?.company_name || brand?.app_name || t('ReadyEcommerce') })}</footer>
-            </article>
+        <div>
+            <PrintBar size={size} kind={kind} onSize={(v) => setSp({ size: v }, { replace: true })} onBack={() => window.history.back()} backLabel={t('← Back')} />
+            <OrderPrint o={o} brand={master?.data} size={size} kind={kind} money={money} />
         </div>
     );
 }

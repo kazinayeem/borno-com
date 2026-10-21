@@ -106,6 +106,7 @@ export default function AdminLayout() {
                         <button className="icon-btn" aria-label={t('Toggle sidebar')} onClick={toggleSide}><SaIcon name="menu" /></button>
                         <div className="hello"><h2>{t('Welcome Back, {name}', { name })}</h2><p>{t('Monitor your business analytics and statistics.')}</p></div>
                         <div className="spacer" />
+                        <Link to={loc.pathname.startsWith('/shop') ? '/shop/pos' : '/admin/pos'} className="btn primary sm" style={{ gap: 6 }}><SaIcon name="cart" /> {t('POS')}</Link>
                         <button className="icon-btn" aria-label={t('Toggle dark mode')} onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}><SaIcon name="moon" /></button>
                         <div className="rel">
                             <button className="icon-btn" data-dd aria-label={t('Language')} aria-expanded={dd === 'lang'} onClick={() => setDd(dd === 'lang' ? null : 'lang')} style={{ width: 'auto', padding: '0 10px', fontSize: 13, fontWeight: 600 }}>{LANGS.find((l) => l.code === lang)?.short ?? 'EN'}</button>

@@ -30,7 +30,7 @@ export default function Settings() {
     const img = (k, label, props = {}) => <ImagePicker label={label} value={f[k]} onChange={set(k)} error={err(k)} {...props} />;
 
     return (
-        <form onSubmit={submit} className="mx-auto max-w-[1100px]">
+        <form onSubmit={submit} className="mx-auto w-full max-w-[1100px]">
             <h2 className="mb-4 flex items-center gap-3 text-[22px] font-semibold"><Icon name="grid" size={22} />{t('Admin Settings')}</h2>
             <Section>
                 <div className="grid gap-x-6 md:grid-cols-2">

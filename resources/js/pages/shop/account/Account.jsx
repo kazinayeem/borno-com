@@ -8,6 +8,7 @@ import { OrderBadge, ORDER_STATUSES, statusLabel } from '../../../components/Ord
 import ProductCard from '../../../components/ProductCard';
 import { Empty, Icon, Img, Modal, Pagination, money } from '../../../components/ui';
 import { t } from '../../../i18n';
+import { OrderPrint, PrintBar } from '../../../components/OrderPrint';
 
 const date = (d, t) => (d ? new Date(d).toLocaleString('en-GB', t ? { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' } : { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 const notifier = (dispatch) => (r, ok) => { dispatch(r.error ? pushToast(errorMessage(r.error), 'error') : pushToast(ok)); return !r.error; };
@@ -72,6 +73,7 @@ export function AccountOrderDetail() {
     const { data: o, isLoading, isError } = useAccountOrderQuery(id);
     const { data: master } = useGetMasterQuery();
     const [cancel, { isLoading: cancelling }] = useCancelMyOrderMutation();
+    const [doc, setDoc] = useState(null); // null | 'a4' | 'pos': invoice overlay
     const dispatch = useDispatch();
     const notify = notifier(dispatch);
     if (isError) return <Empty title={t('Order not found')} hint={t('It may belong to a different account.')} />;
@@ -83,8 +85,9 @@ export function AccountOrderDetail() {
     const returnOpen = returnUntil ? returnUntil.getTime() > Date.now() : o.status !== 'cancelled';
     return (
         <div>
+            {doc && <div className="fixed inset-0 z-[80] overflow-auto bg-surface p-4 print:static print:bg-white print:p-0"><PrintBar size={doc} onSize={setDoc} onBack={() => setDoc(null)} backLabel={t('← Back')} /><OrderPrint o={o} brand={master?.data} size={doc} money={money} /></div>}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden"><Link to="/account/orders" className="text-sm text-muted hover:text-primary">{t('← All orders')}</Link>
-                <div className="flex gap-2"><button onClick={() => window.print()} className="btn-outline !py-2"><Icon name="doc" size={14} />{t('Print invoice')}</button>
+                <div className="flex gap-2"><button onClick={() => setDoc('a4')} className="btn-outline !py-2"><Icon name="doc" size={14} />{t('Print invoice')}</button>
                     {o.status === 'pending' && <button disabled={cancelling} onClick={async () => { if (window.confirm(t('Cancel this order? Items go back into stock.'))) notify(await cancel(o.id), t('Order cancelled')); }} className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">{cancelling ? t('Cancelling…') : t('Cancel order')}</button>}</div></div>
             <div className="card p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-semibold">{t('Order {number}', { number: o.number })}</h1><p className="text-sm text-muted">{t('Placed {date}', { date: date(o.created_at, true) })} · {o.shop?.name}</p></div><OrderBadge status={o.status} /></div>

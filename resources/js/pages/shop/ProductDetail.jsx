@@ -27,6 +27,7 @@ export default function ProductDetail() {
     const variants = Array.isArray(p?.variants) ? p.variants : [];
     const match = variants.find((v) => optionId(v.color_id) === optionId(colorId) && optionId(v.size_id) === optionId(sizeId));
     const needsChoice = variants.length > 0;
+    const variantFor = (c, z) => variants.find((v) => optionId(v.color_id) === optionId(c) && optionId(v.size_id) === optionId(z));
     const price = match ? Number(match.price) : p?.price;
     const stock = match ? Number(match.stock) : (needsChoice ? 0 : (p?.stock ?? 0));
 
@@ -67,10 +68,12 @@ export default function ProductDetail() {
                     <p className="mt-3 flex items-center gap-2 text-sm"><Icon name="star" size={15} fill className="text-amber-400" /><b>{p.rating}</b>({p.reviews_count}){master?.data?.show_product_stock && <><span className="text-line">|</span><span className="text-muted">{stock < 1 ? t('Out of stock') : t('{n} in stock', { n: stock })}</span></>}</p>
                     <hr className="my-5 border-line" />
                     <p className="flex items-baseline gap-3 text-3xl font-bold">{money(price)}{p.old_price > price && <span className="text-lg font-medium text-gray-400 line-through">{money(p.old_price)}</span>}</p>
-                    {colors.length > 0 && <div className="mt-5 flex items-center gap-3"><span className="w-16 text-sm text-muted">{t('Color:')}</span>
-                        {colors.map((c) => <button key={c.id} aria-label={c.name} onClick={() => { setColorId(c.id); setQty(1); }} style={{ background: c.code || '#ccc' }} className={`h-6 w-6 rounded-full ring-offset-2 ${colorId === c.id ? 'ring-2 ring-primary' : ''}`} />)}<b className="text-sm">{chosenColor?.name}</b></div>}
-                    {sizes.length > 0 && <div className="mt-4 flex items-center gap-3"><span className="w-16 text-sm text-muted">{t('Size:')}</span>
-                        {sizes.map((s) => <button key={s.id} onClick={() => { setSizeId(s.id); setQty(1); }} className={`rounded-md border px-4 py-1.5 text-sm ${sizeId === s.id ? 'border-primary bg-primary-soft text-primary' : 'border-line'}`}>{s.name}</button>)}</div>}
+                    {colors.length > 0 && <div className="mt-5 flex flex-wrap items-center gap-3"><span className="w-16 text-sm text-muted">{t('Color:')}</span>
+                        {colors.map((c) => { const v = variantFor(c.id, sizeId); const gone = needsChoice && (!v || Number(v.stock) < 1);
+                            return <button key={c.id} aria-label={`${c.name}${v ? ` ${money(v.price)}` : ''}`} title={`${c.name}${v ? ` · ${money(v.price)}` : ''}`} onClick={() => { setColorId(c.id); setQty(1); }} style={{ background: c.code || '#ccc' }} className={`h-6 w-6 rounded-full ring-offset-2 ${colorId === c.id ? 'ring-2 ring-primary' : ''} ${gone ? 'opacity-40' : ''}`} />; })}<b className="text-sm">{chosenColor?.name}</b></div>}
+                    {sizes.length > 0 && <div className="mt-4 flex flex-wrap items-center gap-3"><span className="w-16 text-sm text-muted">{t('Size:')}</span>
+                        {sizes.map((s) => { const v = variantFor(colorId, s.id); const gone = needsChoice && (!v || Number(v.stock) < 1);
+                            return <button key={s.id} onClick={() => { setSizeId(s.id); setQty(1); }} className={`rounded-md border px-4 py-1.5 text-sm ${sizeId === s.id ? 'border-primary bg-primary-soft text-primary' : 'border-line'} ${gone ? 'opacity-50' : ''}`}><span className={gone ? 'line-through' : ''}>{s.name}</span>{v && <span className="ms-1.5 text-xs text-muted">{money(v.price)}</span>}</button>; })}</div>}
                     <div className="mt-4 flex items-center gap-4"><span className="w-16 text-sm text-muted">{t('Qty:')}</span>
                         <div className="flex items-center rounded-md border border-line"><button className="px-3 py-1.5" onClick={() => setQty(Math.max(1, qty - 1))} aria-label={t('Decrease')}>−</button><span className="w-10 text-center text-sm font-semibold">{qty}</span><button className="px-3 py-1.5" disabled={qty >= stock} onClick={() => setQty(Math.min(qty + 1, stock))} aria-label={t('Increase')}>+</button></div>
                         <span className={`text-sm font-medium ${stock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{stock > 0 ? t('In Stock') : t('Out of Stock')}</span></div>
