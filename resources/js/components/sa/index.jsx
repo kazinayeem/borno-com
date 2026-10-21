@@ -1,3 +1,4 @@
+import ExportMenu from '../ExportMenu';
 import React from 'react';
 import { statusLabel } from '../OrderBadge';
 import { paths } from './iconPaths';
@@ -34,7 +35,7 @@ export function Switch({ checked, onChange, label = 'Status', disabled }) {
     return <label className="switch"><input type="checkbox" checked={!!checked} onChange={onChange} disabled={disabled} aria-label={label} /><span /></label>;
 }
 
-export const PageHead = ({ title, children }) => <div className="page-head"><h1>{title}</h1>{children}</div>;
+export const PageHead = ({ title, children }) => <div className="page-head"><h1>{title}</h1><div className="head-actions"><ExportMenu />{children}</div></div>;
 export const Card = ({ children, className = '', ...rest }) => <div className={`card ${className}`} {...rest}>{children}</div>;
 export const CardH = ({ children, className = '' }) => <div className={`card-h ${className}`}>{children}</div>;
 export const CardB = ({ children, className = '' }) => <div className={`card-b ${className}`}>{children}</div>;

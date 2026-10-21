@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'role', 'phone', 'gender', 'birth_date', 'password', 'google_id', 'password_set'])]
+#[Fillable(['name', 'email', 'role', 'phone', 'gender', 'birth_date', 'password', 'google_id', 'password_set', 'staff_role_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,5 +32,17 @@ class User extends Authenticatable
             'password' => 'hashed',
             'password_set' => 'boolean',
         ];
+    }
+
+    public function staffRole() { return $this->belongsTo(StaffRole::class); }
+
+    /** null = unrestricted (super admin, sellers keep their own shop scoping); otherwise { module: [actions] }. */
+    public function staffPermissions(): ?array
+    {
+        if ($this->role !== 'admin' || ! $this->staff_role_id) {
+            return null;
+        }
+
+        return $this->staffRole?->permissions ?? [];
     }
 }

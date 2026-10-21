@@ -10,6 +10,7 @@ import { pushToast } from '../../app/slices';
 import { Field, ImagePicker, PageTitle, Section, Select, TextArea, TextInput } from '../../components/FormKit';
 import { Empty, Icon, Img, Modal, money } from '../../components/ui';
 import { t } from '../../i18n';
+import * as RP from './Reports';
 
 const card = 'card rounded-xl !border-line';
 const Toggle = ({ on, onChange, label }) => <button role="switch" aria-checked={!!on} aria-label={label} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-primary' : 'bg-gray-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-sa-surface shadow transition-all ${on ? 'start-[22px]' : 'start-0.5'}`} /></button>;
@@ -246,7 +247,8 @@ function Gallery() {
 }
 
 export const CUSTOM_PAGES = {
-    profile: Profile, shopProfile: ShopProfile, paymentGateways: Gateways, reportAnalytics: ReportAnalytics, earningSummary: EarningSummary,
+    profile: Profile, shopProfile: ShopProfile, paymentGateways: Gateways, reportAnalytics: RP.ReportAnalytics, earningSummary: RP.EarningSummaryPage,
+    reportSales: RP.ReportSales, reportCommissions: RP.ReportCommissions, reportPayouts: RP.ReportPayouts,
     preorderAnalytics: PreorderAnalytics, pushNotification: PushNotification, chats: Chats, productExport: ProductExport, productImport: ProductImport, gallery: Gallery,
 };
 void Link;

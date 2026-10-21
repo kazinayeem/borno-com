@@ -30,6 +30,7 @@ class StoreController extends Controller
             'shops' => Shop::withCount('products')->orderBy('id')->limit(Setting::shopType() === 'single' ? 1 : 6)->get()->makeHidden('user_id'),
             'banners' => $this->promo('banners', 'thumbnail'),
             'ads' => $this->promo('ads', 'thumbnail'),
+            'grid_ads' => $this->gridAds(),
             'support' => $this->promo('support_items', 'icon'),
             'social' => $this->promo('social_links', null),
             'quick' => Product::with($with)->where('active', true)->where('approval', '!=', 'pending')->latest('id')->limit(6)->get()->makeHidden(self::PRIVATE_PRODUCT),
@@ -66,7 +67,7 @@ class StoreController extends Controller
             'currency' => ['name' => $cur?->name ?? 'USD', 'symbol' => $cur?->symbol ?? '$', 'position' => $business['currency_position'] ?? $c['currency_position'], 'rate' => $cur?->rate ?? 1],
             'currencies' => \App\Models\Currency::all(['name', 'symbol', 'rate']),
             'languages' => [['name' => 'English', 'code' => 'en']],
-            'show_download_app' => (bool) $c['show_download_app'], 'google_client_id' => config('services.google.client_id') ?: null, 'google_playstore_link' => $c['google_playstore_url'], 'app_store_link' => $c['app_store_url'],
+            'show_download_app' => (bool) $c['show_download_app'], 'google_client_id' => config('services.google.client_id') ?: null, 'recaptcha_site_key' => \App\Support\Recaptcha::enabled() ? \App\Support\Recaptcha::config()['site_key'] : null, 'google_playstore_link' => $c['google_playstore_url'], 'app_store_link' => $c['app_store_url'],
             'cash_on_delivery' => Setting::flag('cash_on_delivery', true), 'online_payment' => Setting::flag('online_payment', true),
             'multi_vendor' => Setting::shopType() === 'multi', 'preOrder' => true,
             'return_order_within_days' => (int) ($business['return_order_within_days'] ?? 7),
@@ -167,6 +168,22 @@ class StoreController extends Controller
     }
 
     /** Active admin records (banners, ads, support items, social links) shaped for the storefront. */
+    /** Grid advertisements grouped by home-page section, in the admin's chosen order. */
+    private function gridAds(): array
+    {
+        $out = ['home_top' => [], 'home_middle' => [], 'home_bottom' => []];
+        $rows = Record::where('resource', 'grid_ads')->get()->map->flat()->filter(fn ($r) => ($r['is_active'] ?? true) !== false)
+            ->sortBy(fn ($r) => [(int) ($r['order'] ?? 0), (int) $r['id']]);
+        foreach ($rows as $r) {
+            $image = $this->mediaUrl($r['thumbnail'] ?? null);
+            if ($image && isset($out[$r['section'] ?? ''])) {
+                $out[$r['section']][] = ['id' => $r['id'], 'title' => $r['title'] ?? '', 'url' => $r['url'] ?? '/', 'image' => $image];
+            }
+        }
+
+        return array_map(fn ($v) => array_slice($v, 0, 8), $out);
+    }
+
     private function promo(string $resource, ?string $imageKey): array
     {
         return Record::where('resource', $resource)->orderBy('rid')->get()->map->flat()
@@ -233,6 +250,7 @@ class StoreController extends Controller
 
     public function contact(Request $request)
     {
+        \App\Support\Recaptcha::verify($request);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:160'],

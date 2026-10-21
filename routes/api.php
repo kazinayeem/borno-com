@@ -67,8 +67,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
-    Route::prefix('admin')->middleware('staff')->controller(AdminController::class)->group(function () {
+    Route::prefix('admin')->middleware(['staff', 'access'])->controller(AdminController::class)->group(function () {
         Route::get('dashboard', 'dashboard');
+        Route::get('customers/{id}/profile', [\App\Http\Controllers\Api\CustomerProfileController::class, 'show'])->whereNumber('id')->middleware('staff:admin');
+        Route::controller(\App\Http\Controllers\Api\StaffController::class)->middleware('staff:admin')->group(function () {
+            Route::get('permissions-catalog', 'catalog');
+            Route::get('roles', 'roles');
+            Route::post('roles', 'storeRole');
+            Route::put('roles/{id}', 'updateRole')->whereNumber('id');
+            Route::delete('roles/{id}', 'destroyRole')->whereNumber('id');
+            Route::get('staff', 'staff');
+            Route::post('staff', 'storeStaff');
+            Route::put('staff/{id}', 'updateStaff')->whereNumber('id');
+            Route::delete('staff/{id}', 'destroyStaff')->whereNumber('id');
+            Route::get('activity-logs', 'logs');
+        });
+        Route::controller(\App\Http\Controllers\Api\IntegrationController::class)->middleware('staff:admin')->group(function () {
+            Route::get('email-templates', 'templates');
+            Route::put('email-templates/{key}', 'updateTemplate');
+            Route::post('send-test-mail', 'testMail')->middleware('throttle:10,1');
+            Route::post('test-sms', 'testSms')->middleware('throttle:10,1');
+        });
         Route::prefix('collections')->controller(\App\Http\Controllers\Api\CollectionController::class)->middleware('staff:admin')->group(function () {
             Route::get('/', 'index');
             Route::get('product-search', 'productSearch');
@@ -86,6 +105,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('notifications/read-all', 'readAllNotifications')->middleware('staff:admin');
         Route::get('reports/analytics', [ReportController::class, 'analytics']);
         Route::get('reports/earning-summary', [ReportController::class, 'earningSummary']);
+        Route::get('reports/overview', [ReportController::class, 'overview']);
+        Route::get('reports/sales', [ReportController::class, 'sales']);
+        Route::get('reports/commissions', [ReportController::class, 'commissions']);
+        Route::get('reports/payouts', [ReportController::class, 'payouts']);
         Route::get('reports/preorder', [ReportController::class, 'preorderAnalytics'])->middleware('staff:admin');
         Route::get('profile', [ProfileController::class, 'show']);
         Route::put('profile', [ProfileController::class, 'update']);

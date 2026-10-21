@@ -12,6 +12,7 @@ import { BusinessSetup, ThemeColors } from './BusinessSettings';
 import { CUSTOM_PAGES } from './CustomPages';
 import { t } from '../../i18n';
 import { RichEditor } from '../../components/RichEditor';
+import { useSendTestMailMutation, useSendTestSmsMutation } from '../../app/api';
 
 const label = (v) => String(v).replace(/_/g, ' ');
 function useNotify() {
@@ -190,6 +191,26 @@ export function GenericForm({ page }) {
 }
 
 // ---- settings groups ----------------------------------------------------------------------------------------------------
+function TestSend({ page }) {
+    const mail = !!page.testMail;
+    const [to, setTo] = useState('');
+    const [sendMail, { isLoading: m }] = useSendTestMailMutation();
+    const [sendSms, { isLoading: sm }] = useSendTestSmsMutation();
+    const [result, setResult] = useState(null);
+    const go = async () => { const r = await (mail ? sendMail({ to }) : sendSms({ to })); setResult(r.error ? { ok: false, text: r.error.data?.message ?? errorMessage(r.error) } : { ok: true, text: r.data.message }); };
+    return (
+        <div className="card-b" style={{ borderTop: '1px solid var(--border)' }}>
+            <h4 style={{ margin: '0 0 4px' }}>{mail ? t('Send a test email') : t('Send a test SMS')}</h4>
+            <small className="muted">{t('Save your settings first. The test uses what is saved.')}</small>
+            <div className="row" style={{ marginTop: 8, flexWrap: 'wrap', gap: 10 }}>
+                <input className="input" style={{ maxWidth: 280 }} type={mail ? 'email' : 'tel'} aria-label={mail ? t('Email address') : t('Phone number')} placeholder={mail ? 'you@example.com' : '01XXXXXXXXX'} value={to} onChange={(e) => setTo(e.target.value)} />
+                <button type="button" className="btn" disabled={!to || m || sm} onClick={go}>{m || sm ? t('Sending…') : t('Send test')}</button>
+            </div>
+            {result && <p role="status" style={{ margin: '8px 0 0', color: result.ok ? 'var(--success, #16a34a)' : 'var(--danger, #dc2626)' }}>{result.text}</p>}
+        </div>
+    );
+}
+
 export function GenericSettings({ page }) {
     const fields = useMemo(() => page.fields.map(parseField), [page]);
     const { data, isError } = useGetGroupQuery(page.key);
@@ -207,6 +228,7 @@ export function GenericSettings({ page }) {
                 <div className="card-b form-grid">{fields.map((fl) => <FieldInput key={fl.name} f={fl} value={form[fl.name]} onChange={(v) => setForm((x) => ({ ...x, [fl.name]: v }))} error={errs[fl.name]?.[0]} />)}</div>
                 <div className="modal-f"><button className="btn primary" disabled={saving}>{saving ? t('Saving…') : t('Save And Update')}</button></div>
             </form>
+            {(page.testMail || page.testSms) && <div className="card" style={{ marginTop: 16 }}><TestSend page={page} /></div>}
         </>
     );
 }

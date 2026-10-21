@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { errorMessage, useSendContactMutation } from '../../app/api';
+import { errorMessage, useGetMasterQuery, useSendContactMutation } from '../../app/api';
+import ReCaptcha from '../../components/ReCaptcha';
 import { pushToast } from '../../app/slices';
 import { Icon } from '../../components/ui';
 import { t } from '../../i18n';
@@ -11,12 +12,17 @@ export default function Contact() {
     const [form, setForm] = useState(empty);
     const [send, { isLoading, error }] = useSendContactMutation();
     const dispatch = useDispatch();
+    const { data: master } = useGetMasterQuery();
+    const [captcha, setCaptcha] = useState('');
+    const [sent, setSent] = useState(0);
     const errs = error?.data?.errors ?? {};
     const submit = async (e) => {
         e.preventDefault();
-        const r = await send(form);
+        if (master?.data?.recaptcha_site_key && !captcha) return dispatch(pushToast(t('Please confirm you are not a robot.'), 'error'));
+        const r = await send({ ...form, recaptcha_token: captcha });
         if (r.error) dispatch(pushToast(errorMessage(r.error), 'error'));
         else { dispatch(pushToast(r.data.message)); setForm(empty); }
+        setSent((n) => n + 1);
     };
     const F = ({ k, label, area }) => (
         <div><label className="mb-1 block text-sm font-medium">{label} <span className="text-primary">*</span></label>
@@ -33,6 +39,7 @@ export default function Contact() {
                 <form onSubmit={submit} className="card space-y-4 p-6"><h2 className="text-lg font-semibold">{t('Send Us a Message')}</h2>
                     <div className="grid gap-4 sm:grid-cols-2"><F k="name" label={t('Name')} /><F k="email" label={t('Email')} /></div>
                     <F k="subject" label={t('Subject')} /><F k="message" label={t('Message')} area />
+                    <ReCaptcha siteKey={master?.data?.recaptcha_site_key} onToken={setCaptcha} resetKey={sent} />
                     <button disabled={isLoading} className="btn-primary">{isLoading ? t('Sending…') : t('Send Message')}</button></form>
             </div>
         </div>

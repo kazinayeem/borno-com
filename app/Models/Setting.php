@@ -44,6 +44,7 @@ class Setting extends Model
                 'low_stock_mail_notification' => false, 'show_product_stock' => false, 'default_phone_code' => '',
                 'show_address_map' => false, 'cash_on_delivery' => true, 'online_payment' => true,
             ],
+            'mail' => ['is_active' => true],
             'theme' => ['primary_color' => '#ee456b', 'secondary_color' => '#111827', 'generated_color_variants' => ''],
             default => [],
         };
@@ -92,10 +93,7 @@ class Setting extends Model
         if ($to === '') {
             return;
         }
-        try {
-            \Illuminate\Support\Facades\Mail::raw($content, fn ($message) => $message->to($to)->subject($title));
-        } catch (\Throwable) {
-            // A mail problem must not undo the sale that lowered the stock.
-        }
+        // Mailer swallows its own errors: a mail problem must not undo the sale that lowered the stock.
+        \App\Services\Mailer::send('low_stock', $to, ['product_name' => $product->name, 'stock_left' => $product->stock]);
     }
 }

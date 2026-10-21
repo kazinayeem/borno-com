@@ -8,33 +8,55 @@ import { LANGS, t } from '../i18n';
 
 const nav = [['/', 'Home'], ['/products', 'Products'], ['/shops', 'Shops'], ['/brands', 'Brands'], ['/contact-us', 'Contact'], ['/blogs', 'Blogs']];
 
+/** Small dropdown: opens on hover (mouse) or tap/click, closes on outside click, Escape or after a choice. */
+function Dropdown({ label, button, children }) {
+    const [open, setOpen] = useState(false);
+    const ref = React.useRef(null);
+    React.useEffect(() => {
+        if (!open) return undefined;
+        const out = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+        const esc = (e) => e.key === 'Escape' && setOpen(false);
+        document.addEventListener('mousedown', out); document.addEventListener('keydown', esc);
+        return () => { document.removeEventListener('mousedown', out); document.removeEventListener('keydown', esc); };
+    }, [open]);
+    return (
+        <div ref={ref} className="relative" onMouseEnter={(e) => e.pointerType !== 'touch' && setOpen(true)} onMouseLeave={() => setOpen(false)}>
+            <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} onClick={() => setOpen((v) => !v)}
+                className="flex items-center gap-1 rounded-md px-2 py-1 transition hover:bg-primary-soft hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">{button} <Icon name="chevron" size={12} className={`transition ${open ? 'rotate-180' : ''}`} /></button>
+            {open && <ul role="listbox" className="card absolute end-0 top-full z-50 w-40 p-1 shadow-lg">{typeof children === 'function' ? children(() => setOpen(false)) : children}</ul>}
+        </div>
+    );
+}
+const Option = ({ active, onClick, children }) => (
+    <li role="option" aria-selected={active}><button type="button" onClick={onClick} className={`flex w-full items-center justify-between rounded px-3 py-2 text-start transition hover:bg-primary-soft hover:text-primary ${active ? 'font-semibold text-primary' : ''}`}>{children}{active && <span aria-hidden="true">✓</span>}</button></li>
+);
+
 function TopBar() {
     const dispatch = useDispatch();
     const lang = useSelector((s) => s.ui.lang);
+    const theme = useSelector((s) => s.ui.theme);
     const code = useSelector((s) => s.shop.currency);
     const { data: master } = useGetMasterQuery();
     const currencies = master?.data?.currencies ?? [];
     const currentCur = currencies.find((c) => c.name === code) ?? currencies[0];
-    const [open, setOpen] = useState(false);
-    const [curOpen, setCurOpen] = useState(false);
     const current = LANGS.find((l) => l.code === lang) ?? LANGS[0];
+    const dark = theme === 'dark';
     return (
         <div className="border-b border-line text-[13px] text-ink print:hidden">
-            <div className="mx-auto flex max-w-[1320px] items-center justify-between px-4 py-2.5">
+            <div className="mx-auto flex max-w-[1320px] items-center justify-between px-4 py-1.5">
                 <span className="flex items-center gap-2"><Icon name="truck" size={14} className="text-primary" /> {t('Free Delivery on orders over $999.00')}</span>
                 <div className="hidden items-center gap-6 md:flex">
-                    <Link to="/best-deal">{t('Daily Deals')}</Link><Link to="/pages/refund-policy">{t('Easy Returns')}</Link><Link to="/contact-us">{t('Help Center')}</Link>
+                    <Link className="hover:text-primary" to="/best-deal">{t('Daily Deals')}</Link><Link className="hover:text-primary" to="/pages/refund-policy">{t('Easy Returns')}</Link><Link className="hover:text-primary" to="/contact-us">{t('Help Center')}</Link>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <button type="button" aria-expanded={open} aria-label={t('Language')} onClick={() => setOpen(!open)} className="flex items-center gap-1">{current.short} <Icon name="chevron" size={12} /></button>
-                        {open && <ul className="card absolute end-0 z-30 mt-2 w-36 p-1 shadow-lg">{LANGS.map((l) => <li key={l.code}><button type="button" className="w-full rounded px-3 py-2 text-start hover:bg-primary-soft" onClick={() => { dispatch(setLang(l.code)); setOpen(false); }}>{l.name}</button></li>)}</ul>}
-                    </div>
-                    <div className="relative">
-                        <button type="button" aria-expanded={curOpen} aria-label={t('Currency')} onClick={() => setCurOpen(!curOpen)} className="flex items-center gap-1">{currentCur ? `${currentCur.symbol} ${currentCur.name}` : t('$ USD')} <Icon name="chevron" size={12} /></button>
-                        {curOpen && <ul className="card absolute end-0 z-30 mt-2 w-32 p-1 shadow-lg">{currencies.map((c) => <li key={c.name}><button type="button" className="w-full rounded px-3 py-2 text-start hover:bg-primary-soft" onClick={() => { dispatch(setCurrency(c.name)); setCurOpen(false); }}>{c.symbol} {c.name}</button></li>)}</ul>}
-                    </div>
-                    <button type="button" aria-label={t('Switch to Dark')} onClick={() => dispatch(toggleTheme())}><Icon name="moon" size={15} /></button>
+                <div className="flex items-center gap-1">
+                    <Dropdown label={t('Language')} button={current.short}>
+                        {(close) => LANGS.map((l) => <Option key={l.code} active={l.code === lang} onClick={() => { dispatch(setLang(l.code)); close(); }}>{l.name}</Option>)}
+                    </Dropdown>
+                    <Dropdown label={t('Currency')} button={currentCur ? `${currentCur.symbol} ${currentCur.name}` : t('$ USD')}>
+                        {(close) => currencies.map((c) => <Option key={c.name} active={currentCur?.name === c.name} onClick={() => { dispatch(setCurrency(c.name)); close(); }}>{c.symbol} {c.name}</Option>)}
+                    </Dropdown>
+                    <button type="button" role="switch" aria-checked={dark} aria-label={dark ? t('Switch to Light') : t('Switch to Dark')} title={dark ? t('Switch to Light') : t('Switch to Dark')} onClick={() => dispatch(toggleTheme())}
+                        className="grid h-8 w-8 place-items-center rounded-full transition hover:bg-primary-soft hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><Icon name={dark ? 'sun' : 'moon'} size={16} /></button>
                 </div>
             </div>
         </div>
@@ -78,7 +100,8 @@ function Header() {
     const qtyInCart = cart.reduce((a, i) => a + i.qty, 0);
     const submit = (e) => { e.preventDefault(); navigate(`/products?search=${encodeURIComponent(q)}`); };
     return (
-        <header className="mx-auto max-w-[1320px] px-4 print:hidden">
+        <div className="sticky top-0 z-40 border-b border-line bg-sa-surface shadow-sm print:static print:hidden">
+        <header className="mx-auto max-w-[1320px] px-4">
             <div className="flex items-center gap-4 py-4">
                 <Link to="/" aria-label={brand?.app_name || t('ReadyEcommerce')}><BrandImg src={logo} name={brand?.app_name} className="h-12 w-auto max-w-[200px] object-contain" /></Link>
                 <form onSubmit={submit} className="mx-auto flex w-full max-w-xl overflow-hidden rounded-md border border-line shadow-sm">
@@ -102,6 +125,7 @@ function Header() {
                 </nav>
             </div>
         </header>
+        </div>
     );
 }
 

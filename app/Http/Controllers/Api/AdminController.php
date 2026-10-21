@@ -355,7 +355,11 @@ class AdminController extends Controller
         $o = Order::findOrFail($id);
         // Delivery date follows the status: set when delivered, cleared otherwise.
         $data['delivered_at'] = $data['status'] === 'delivered' ? ($o->delivered_at ?? now()) : null;
+        $changed = $o->status !== $data['status'];
         $o->update($data);
+        if ($changed && $o->source === 'web' && ($cust = $o->user)) {
+            \App\Services\Mailer::send('order_status', $cust->email, ['customer_name' => $cust->name, 'order_number' => $o->number, 'order_status' => ucwords(str_replace('_', ' ', $o->status)), 'order_link' => url('/account/orders/'.$o->id)]);
+        }
 
         return $o->load('rider:id,name,phone');
     }

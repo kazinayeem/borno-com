@@ -294,7 +294,7 @@
 
 /* Settings sub-pages: toggles as tiles, roomier cards, readable on phones */
 .sa .form-grid .sa-field.check { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface-2, transparent); justify-content: space-between; flex-direction: row-reverse; }
-.sa .form-grid .sa-field.check > label { margin: 0; font-weight: 500; flex: 1; }
+.sa .form-grid .sa-field.check > label:not(.switch) { margin: 0; font-weight: 500; }
 .sa .card > .card-b.form-grid { padding: 20px; }
 .sa .card .modal-f { display: flex; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid var(--border); }
 .sa .radio-row { flex-wrap: wrap; }
@@ -320,3 +320,17 @@
 /* Inline grid templates on a few pages must still stack on small screens */
 @media (max-width: 1100px) { .sa .sa-grid[style*="380px"] { grid-template-columns: minmax(0, 1fr) !important; } }
 @media (max-width: 820px) { .sa .sa-grid[style*="grid-template-columns"] { grid-template-columns: minmax(0, 1fr) !important; } }
+
+/* Dashboard statistics: orders chart and user donut sit side by side; they only stack on phones */
+.sa .sa-stats { display: grid; grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr); gap: 24px; align-items: start; }
+.sa .sa-stats .chart { width: 100%; height: auto; }
+@media (max-width: 640px) { .sa .sa-stats { grid-template-columns: minmax(0, 1fr); } }
+
+/* On/off switches keep their size everywhere (a flex:1 label rule had stretched the track inside settings tiles) */
+.sa .switch { flex: 0 0 40px; min-width: 40px; max-width: 40px; }
+.sa .form-grid .sa-field.check > label:not(.switch) { flex: 1; }
+.sa .form-grid .sa-field.check > label.switch { flex: 0 0 40px; margin: 0; }
+
+.sa .head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sa .page-head { gap: 12px; flex-wrap: wrap; }
+@media print { .sa .head-actions, .sa .page-head .btn { display: none !important; } }

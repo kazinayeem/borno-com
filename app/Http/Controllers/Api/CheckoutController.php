@@ -91,6 +91,10 @@ class CheckoutController extends Controller
             return $created;
         });
 
+        foreach ($orders as $o) {
+            \App\Services\Mailer::send('order_placed', $user->email, ['customer_name' => $user->name, 'order_number' => $o->number, 'order_total' => '$'.number_format($o->total, 2), 'order_link' => url('/account/orders/'.$o->id)]);
+        }
+
         return response()->json(['orders' => $orders, 'total' => round(collect($orders)->sum('total'), 2)], 201);
     }
 }

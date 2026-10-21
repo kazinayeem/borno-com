@@ -386,4 +386,153 @@ class AdminEngineTest extends TestCase
         $this->getJson('/api/collections/new-sell')->assertNotFound();
         $this->getJson('/api/collections')->assertOk()->assertJsonCount(0);
     }
+
+    public function test_promotion_pages_create_edit_delete_and_reach_the_storefront(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->first());
+        $img = 'https://cdn.test/x.png';
+
+        foreach (['banners' => ['title' => 'B1', 'url' => '/products'], 'ads' => ['title' => 'A1', 'url' => '/products'], 'grid_ads' => ['title' => 'G1', 'section' => 'home_top', 'url' => '/products']] as $res => $body) {
+            $id = $this->postJson("/api/admin/r/$res", $body)->assertCreated()->json('id');
+            $this->putJson("/api/admin/r/$res/$id", ['title' => 'Edited'])->assertOk()->assertJsonPath('title', 'Edited');
+            $this->postJson("/api/admin/r/$res", [])->assertStatus(422);
+            $this->deleteJson("/api/admin/r/$res/$id")->assertNoContent();
+        }
+        $this->postJson('/api/admin/r/grid_ads', ['title' => 'G', 'section' => 'nowhere'])->assertStatus(422);
+
+        // seeded rows with an image URL show up on the storefront; an inactive one does not
+        $row = \App\Models\Record::where('resource', 'grid_ads')->get()->first(fn ($r) => ($r->data['section'] ?? '') === 'home_top');
+        $row->update(['data' => array_merge($row->data, ['thumbnail' => $img, 'is_active' => true])]);
+        $home = $this->getJson('/api/home')->assertOk()->json();
+        $this->assertContains($img, array_column($home['grid_ads']['home_top'], 'image'));
+        $row->update(['data' => array_merge($row->data, ['is_active' => false])]);
+        $this->assertNotContains($img, array_column($this->getJson('/api/home')->json('grid_ads.home_top'), 'image'));
+    }
+
+    public function test_third_party_settings_pages_load_save_and_never_leak_secrets(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->first());
+        $cases = [
+            'courier' => ['api_key' => 'ck-123', 'secret_key' => 'cs-456', 'base_url' => 'https://courier.test', 'is_active' => true],
+            'sms' => ['provider' => 'twilio', 'twilio_sid' => 'AC1', 'twilio_token' => 'tok-secret'],
+            'pusher' => ['app_id' => '1', 'app_key' => 'k', 'app_secret' => 'pusher-secret', 'app_cluster' => 'ap2'],
+            'google_maps' => ['google_maps_key' => 'maps-secret'],
+            'mail' => ['mailer' => 'smtp', 'host' => 'smtp.test', 'port' => '587', 'username' => 'u', 'password' => 'mail-secret', 'from_address' => 'a@b.test'],
+            'openai' => ['api_key' => 'sk-secret', 'organization' => 'org'],
+            'firebase' => ['fcm_web_config' => '{"apiKey":"x"}'],
+            'recaptcha' => ['is_active' => true, 'site_key' => 'site', 'secret_key' => 'recaptcha-secret'],
+        ];
+        foreach ($cases as $key => $body) {
+            $this->getJson("/api/admin/settings-group/$key")->assertOk();
+            $res = $this->putJson("/api/admin/settings-group/$key", $body)->assertOk();
+            foreach ($body as $f => $v) {
+                if (in_array($f, ['api_key', 'secret_key', 'twilio_token', 'app_secret', 'google_maps_key', 'password'], true)) {
+                    $this->assertNotSame($v, $res->json($f), "$key.$f leaked");
+                }
+            }
+            // sending the mask back must not overwrite the stored secret
+            $this->putJson("/api/admin/settings-group/$key", $res->json())->assertOk();
+            $dump = json_encode($this->getJson("/api/admin/settings-group/$key")->json());
+            foreach (['ck-123', 'cs-456', 'tok-secret', 'pusher-secret', 'maps-secret', 'mail-secret', 'sk-secret', 'recaptcha-secret'] as $plain) {
+                $this->assertStringNotContainsString($plain, $dump);
+            }
+        }
+        $this->assertSame('mail-secret', \App\Models\Setting::group('mail')['password']);
+    }
+
+    public function test_staff_role_limits_what_a_staff_member_can_do_and_actions_are_logged(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+
+        // sign in as the "Order Handler" demo staff: login is logged with an IP and the response carries permissions
+        $login = $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.7'])->postJson('/api/auth/login', ['email' => 'order.handler@readyecommerce.com', 'password' => 'secret'])->assertOk();
+        $this->assertSame(['view', 'edit'], $login->json('user.permissions.orders'));
+        $this->assertDatabaseHas('activity_logs', ['action' => 'login', 'ip' => '203.0.113.7', 'email' => 'order.handler@readyecommerce.com']);
+        $this->postJson('/api/auth/login', ['email' => 'order.handler@readyecommerce.com', 'password' => 'nope'])->assertStatus(422);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'login_failed']);
+
+        $staff = \App\Models\User::where('email', 'order.handler@readyecommerce.com')->first();
+        Sanctum::actingAs($staff);
+        $this->getJson('/api/admin/orders')->assertOk();
+        $this->getJson('/api/admin/dashboard')->assertOk();                          // open to every staff member
+        $this->getJson('/api/admin/products')->assertForbidden();                    // no catalog access
+        $this->deleteJson('/api/admin/orders/1')->assertForbidden();                 // view+edit only, no delete
+        $this->getJson('/api/admin/roles')->assertForbidden();                       // not even a super admin area
+        $this->postJson('/api/admin/roles', ['name' => 'x', 'permissions' => []])->assertForbidden();
+        $this->getJson('/api/admin/settings-group/mail')->assertForbidden();
+
+        $order = \App\Models\Order::first();
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'confirm'])->assertOk();
+        $this->assertDatabaseHas('activity_logs', ['action' => 'update', 'subject' => 'orders', 'subject_id' => (string) $order->id, 'user_id' => $staff->id]);
+
+        // the super admin sees the log and can manage roles
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->whereNull('staff_role_id')->first());
+        $this->getJson('/api/admin/activity-logs?kind=login')->assertOk()->assertJsonPath('data.0.action', 'login_failed');
+        $role = $this->postJson('/api/admin/roles', ['name' => 'Viewer', 'permissions' => ['orders' => ['delete']]])->assertCreated();
+        $this->assertSame(['view', 'delete'], $role->json('permissions.orders'));      // view is implied
+        $this->postJson('/api/admin/staff', ['name' => 'V', 'email' => 'v@x.test', 'password' => 'password1', 'password_confirmation' => 'password1', 'staff_role_id' => $role->json('id')])->assertCreated();
+        $this->deleteJson('/api/admin/roles/'.$role->json('id'))->assertStatus(422);   // still assigned
+    }
+
+    public function test_email_templates_switch_and_sms_providers(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->whereNull('staff_role_id')->first());
+
+        $this->assertCount(5, $this->getJson('/api/admin/email-templates')->assertOk()->json('templates'));
+        $this->putJson('/api/admin/email-templates/welcome', ['subject' => 'Hi {customer_name}', 'body' => '<p>Hello <script>x()</script><b>{customer_name}</b></p>'])->assertOk();
+        $this->assertStringNotContainsString('script', \App\Support\EmailTemplates::get('welcome')['body']);
+
+        // register sends the welcome email with the edited subject
+        app('auth')->forgetGuards();
+        $this->postJson('/api/account/register', ['name' => 'Ann', 'email' => 'ann@x.test', 'password' => 'password1', 'password_confirmation' => 'password1'])->assertCreated();
+        $sent = fn () => app('mail.manager')->mailer('array')->getSymfonyTransport()->messages();
+        $this->assertCount(1, $sent());
+        $this->assertStringContainsString('Hi Ann', $sent()[0]->getOriginalMessage()->getSubject());
+        $this->assertStringContainsString('bornosoft.bd', $sent()[0]->getOriginalMessage()->getHtmlBody());
+
+        // master switch off: nothing goes out; a single template off: that one stays quiet
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->whereNull('staff_role_id')->first());
+        $this->putJson('/api/admin/settings-group/mail', ['is_active' => false])->assertOk();
+        $this->assertFalse(\App\Services\Mailer::send('welcome', 'z@x.test', ['customer_name' => 'Z'])[0]);
+        $this->putJson('/api/admin/settings-group/mail', ['is_active' => true])->assertOk();
+        $this->putJson('/api/admin/email-templates/welcome', ['enabled' => false])->assertOk();
+        $this->assertFalse(\App\Services\Mailer::send('welcome', 'z@x.test', ['customer_name' => 'Z'])[0]);
+        $before = count($sent());
+        $this->postJson('/api/admin/send-test-mail', ['to' => 'me@x.test', 'template' => 'welcome'])->assertOk(); // tests ignore the switches
+        $this->assertCount($before + 1, $sent());
+        $this->putJson('/api/admin/email-templates/welcome', ['reset' => true])->assertOk()->assertJsonPath('customized', false);
+
+        // SMS: every Bangladesh provider formats the request as its docs describe
+        \Illuminate\Support\Facades\Http::fake(['*' => \Illuminate\Support\Facades\Http::response(['status' => 'SUCCESS', 'response_code' => 202, 'error' => 0, 'statusCode' => '200', 'api_response_code' => 200], 200)]);
+        $this->putJson('/api/admin/settings-group/sms', ['provider' => 'bulksmsbd', 'bulksmsbd_api_key' => 'k', 'bulksmsbd_sender_id' => 'Shop'])->assertOk();
+        $this->postJson('/api/admin/test-sms', ['to' => '01712345678'])->assertOk();
+        \Illuminate\Support\Facades\Http::assertSent(fn ($r) => str_contains($r->url(), 'bulksmsbd.net') && $r['number'] === '8801712345678' && $r['senderid'] === 'Shop');
+        $this->putJson('/api/admin/settings-group/sms', ['provider' => 'ssl_wireless', 'ssl_api_token' => 't', 'ssl_sid' => 'S'])->assertOk();
+        $this->postJson('/api/admin/test-sms', ['to' => '01712345678'])->assertOk();
+        $this->putJson('/api/admin/settings-group/sms', ['provider' => 'greenweb'])->assertOk();
+        $this->postJson('/api/admin/test-sms', ['to' => '01712345678'])->assertStatus(422)->assertJsonPath('message', 'Missing setting: greenweb_token.');
+    }
+
+    public function test_recaptcha_guards_public_forms_only_when_switched_on(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        $form = ['name' => 'A', 'email' => 'a@x.test', 'subject' => 'Hi', 'message' => 'Hello there'];
+        $this->postJson("/api/contact", $form)->assertSuccessful();                       // off by default
+        $this->assertNull($this->getJson('/api/master')->json('data.recaptcha_site_key'));
+
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->whereNull('staff_role_id')->first());
+        $this->putJson('/api/admin/settings-group/recaptcha', ['is_active' => true, 'site_key' => 'SITE', 'secret_key' => 'SECRET'])->assertOk();
+        app('auth')->forgetGuards();
+        $this->assertSame('SITE', $this->getJson('/api/master')->json('data.recaptcha_site_key'));
+
+        \Illuminate\Support\Facades\Http::fake(['www.google.com/*' => fn ($r) => \Illuminate\Support\Facades\Http::response(['success' => ($r['response'] ?? '') === 'tok'])]);
+        $this->postJson('/api/contact', $form)->assertStatus(422)->assertJsonValidationErrors('recaptcha');
+        $this->postJson('/api/account/login', ['email' => 'test@example.com', 'password' => 'secret'])->assertStatus(422)->assertJsonValidationErrors('recaptcha');
+
+        $this->postJson('/api/contact', $form + ["recaptcha_token" => "tok"])->assertSuccessful();
+        $this->postJson('/api/account/login', ['email' => 'test@example.com', 'password' => 'secret', 'recaptcha_token' => 'tok'])->assertOk();
+    }
 }

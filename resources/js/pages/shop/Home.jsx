@@ -41,6 +41,19 @@ function BannerSlider({ banners }) {
     );
 }
 
+function GridAds({ items }) {
+    if (!items?.length) return null;
+    return (
+        <section className={`grid gap-4 ${items.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${items.length >= 3 ? 'md:grid-cols-3' : ''} ${items.length >= 4 ? 'lg:grid-cols-4' : ''}`}>
+            {items.map((a) => {
+                const img = <Img src={a.image} alt={a.title} className={`w-full object-cover ${items.length === 1 ? 'aspect-[16/5]' : items.length === 2 ? 'aspect-[2/1]' : 'aspect-[3/2]'}`} />;
+                const cls = 'card block overflow-hidden transition hover:shadow-md';
+                return /^https?:\/\//.test(a.url) ? <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className={cls}>{img}</a> : <Link key={a.id} to={a.url || '/'} className={cls}>{img}</Link>;
+            })}
+        </section>
+    );
+}
+
 export default function Home() {
     const { data, isLoading, isError, refetch } = useGetHomeQuery();
     const { data: collections = [] } = useGetHomeCollectionsQuery();
@@ -75,6 +88,8 @@ export default function Home() {
                     </div>
                 </div>
             </section>
+
+            <GridAds items={data?.grid_ads?.home_top} />
 
             <section className="card grid grid-cols-2 gap-4 p-5 md:grid-cols-5">
                 {(data?.support?.length ? data.support : perks.map(([title, description]) => ({ title, description, image: null }))).map((p) => (
@@ -121,6 +136,8 @@ export default function Home() {
                 </div>
             </section>
 
+            <GridAds items={data?.grid_ads?.home_middle} />
+
             {collections.map((c) => <section key={c.id}>
                 <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">{c.title}</h2><Link to={`/collections/${c.slug}`} className="text-sm text-primary">{t('View all')}</Link></div>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">{c.products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
@@ -150,6 +167,8 @@ export default function Home() {
                     ))}
                 </div>
             </section>}
+
+            <GridAds items={data?.grid_ads?.home_bottom} />
         </div>
     );
 }

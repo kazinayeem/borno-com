@@ -1,10 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { api, useGetBellQuery, useGetDashboardQuery, useGetGroupQuery, useGetMasterQuery, useLogoutMutation, useReadAllNotificationsMutation } from '../../app/api';
+import { api, usePermissionsCatalogQuery, useGetBellQuery, useGetDashboardQuery, useGetGroupQuery, useGetMasterQuery, useLogoutMutation, useReadAllNotificationsMutation } from '../../app/api';
 import { loggedOut, setLang } from '../../app/slices';
 import { fdate, SaIcon } from '../../components/sa';
 import { menu, shopMenu, toRoute } from './spec/engine';
+
+// Staff roles: hide sidebar pages whose section the role cannot view (the API enforces it as well).
+const canSeePath = (perms, cat, path) => {
+    if (!perms || !cat) return true;
+    const p = toRoute(String(path).split('?')[0]);
+    for (const m of cat.modules) for (const prefix of m.ui) if (p === prefix || p.startsWith(prefix)) return (perms[m.key] ?? []).includes('view');
+    return (perms.settings ?? []).includes('view'); // unmapped pages behave like the API: administrative settings
+};
 import { LANGS, t } from '../../i18n';
 
 // Sellers live under /shop. A few hand-built screens still sit on /admin (order detail, product edit, POS).
@@ -63,6 +71,8 @@ export default function AdminLayout() {
     const { data: dash } = useGetDashboardQuery(undefined, { skip: isAdmin || !token });
     const { data: business, isError: businessError } = useGetGroupQuery('business', { skip: !isAdmin || !token });
     const { data: master } = useGetMasterQuery();
+    const perms = isAdmin ? user?.permissions : null;     // null/undefined = super admin
+    const { data: cat } = usePermissionsCatalogQuery(undefined, { skip: !perms || !token });
     const brand = master?.data;
     const logo = theme === 'dark' ? (brand?.web_dark_logo || brand?.web_logo) : brand?.web_logo;
     useEffect(() => { try { localStorage.setItem('theme', theme); } catch { /* storage unavailable */ } }, [theme]);
@@ -74,7 +84,14 @@ export default function AdminLayout() {
         const hideAddShop = (list) => (restrictShops
             ? list.map((m) => (m.label === 'Shop' ? { ...m, children: m.children.filter(([label]) => label !== 'Add Shop') } : m))
             : list);
-        if (isAdmin) return hideAddShop(menu);
+        if (isAdmin) {
+            const base = hideAddShop(menu);
+            if (!perms || !cat) return base;
+            const kept = base.map((m) => (m.children ? { ...m, children: m.children.filter(([, path]) => canSeePath(perms, cat, path)) } : m))
+                .filter((m) => (m.children ? m.children.length > 0 : m.section || (m.path === '/admin' || canSeePath(perms, cat, m.path))));
+            // drop section headings that no longer have anything under them
+            return kept.filter((m, i) => !m.section || (kept[i + 1] && !kept[i + 1].section));
+        }
         const counts = dash?.orders_by_status;
         if (!counts) return shopMenu;
         return shopMenu.map((m) => (m.label !== 'All Orders' ? m : {
@@ -84,9 +101,10 @@ export default function AdminLayout() {
                 return [n == null ? label : `${label} ${n}`, path];
             }),
         }));
-    }, [isAdmin, dash, business, businessError]);
+    }, [isAdmin, dash, business, businessError, perms, cat]);
 
     if (!token) return <Navigate to="/admin/login" replace />;
+    if (perms && cat && !canSeePath(perms, cat, loc.pathname)) return <Navigate to="/admin" replace />;
     if (user?.role === 'shop' && (loc.pathname === '/admin' || !shopOk(loc.pathname))) return <Navigate to="/shop" replace />;
     const out = async () => { await logout(); dispatch(loggedOut()); dispatch(api.util.resetApiState()); navigate('/admin/login'); };
     const name = user?.name ?? '';

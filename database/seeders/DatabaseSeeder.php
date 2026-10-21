@@ -214,6 +214,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->fashionVariants();
+        $this->staffRoles();
     }
 
     /** Clothing gets sizes and colors where each choice has its own price, so the variant UI has real data. */
@@ -243,6 +244,22 @@ class DatabaseSeeder extends Seeder
                 'variants' => $variants, 'color_ids' => array_map(fn ($n) => $colors[$n], $cn), 'size_ids' => array_values(array_map(fn ($n) => $sizes[$n], array_keys($steps))),
                 'stock' => array_sum(array_column($variants, 'stock')), 'price' => min(array_column($variants, 'price')),
             ]);
+        }
+    }
+
+    /** Demo staff roles and one account per role (password "secret", like the other demo logins). */
+    public function staffRoles(): void
+    {
+        $all = ['view', 'add', 'edit', 'delete'];
+        $roles = [
+            'Manager' => ['orders' => $all, 'pos' => $all, 'catalog' => $all, 'shops' => ['view', 'edit'], 'customers' => ['view', 'edit'], 'promotion' => $all, 'content' => $all, 'messages' => ['view', 'add'], 'reports' => ['view']],
+            'Order Handler' => ['orders' => ['view', 'edit'], 'pos' => ['view', 'add'], 'customers' => ['view'], 'messages' => ['view', 'add']],
+            'Content Editor' => ['content' => $all, 'promotion' => $all, 'catalog' => ['view']],
+        ];
+        foreach ($roles as $name => $perms) {
+            $role = \App\Models\StaffRole::firstOrCreate(['name' => $name], ['permissions' => $perms]);
+            $slug = strtolower(str_replace(' ', '.', $name));
+            User::firstOrCreate(['email' => "{$slug}@readyecommerce.com"], ['name' => $name, 'role' => 'admin', 'password' => 'secret', 'staff_role_id' => $role->id]);
         }
     }
 }

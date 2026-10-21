@@ -28,7 +28,7 @@ const baseQueryWithAuth = async (args, api, extra) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithAuth,
-    tagTypes: ['Collections', 'Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts', 'Master', 'Home'],
+    tagTypes: ['Staff', 'Logs', 'EmailTpl', 'Collections', 'Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts', 'Master', 'Home'],
     endpoints: (b) => ({
         // storefront
         getHome: b.query({ query: () => '/home', providesTags: ['Home'] }),
@@ -134,6 +134,23 @@ export const api = createApi({
         collectionProductSearch: b.query({ query: (q) => ({ url: '/admin/collections/product-search', params: { q } }) }),
         saveCollection: b.mutation({ query: ({ id, ...body }) => ({ url: `/admin/collections${id ? `/${id}` : ''}`, method: id ? 'PUT' : 'POST', body }), invalidatesTags: ['Collections', 'Home'] }),
         deleteCollection: b.mutation({ query: (id) => ({ url: `/admin/collections/${id}`, method: 'DELETE' }), invalidatesTags: ['Collections', 'Home'] }),
+        permissionsCatalog: b.query({ query: () => '/admin/permissions-catalog' }),
+        staffRoles: b.query({ query: () => '/admin/roles', providesTags: ['Staff'] }),
+        saveStaffRole: b.mutation({ query: ({ id, ...body }) => ({ url: `/admin/roles${id ? `/${id}` : ''}`, method: id ? 'PUT' : 'POST', body }), invalidatesTags: ['Staff'] }),
+        deleteStaffRole: b.mutation({ query: (id) => ({ url: `/admin/roles/${id}`, method: 'DELETE' }), invalidatesTags: ['Staff'] }),
+        staffList: b.query({ query: () => '/admin/staff', providesTags: ['Staff'] }),
+        saveStaff: b.mutation({ query: ({ id, ...body }) => ({ url: `/admin/staff${id ? `/${id}` : ''}`, method: id ? 'PUT' : 'POST', body }), invalidatesTags: ['Staff'] }),
+        deleteStaff: b.mutation({ query: (id) => ({ url: `/admin/staff/${id}`, method: 'DELETE' }), invalidatesTags: ['Staff'] }),
+        activityLogs: b.query({ query: (params) => ({ url: '/admin/activity-logs', params }), providesTags: ['Logs'] }),
+        emailTemplates: b.query({ query: () => '/admin/email-templates', providesTags: ['EmailTpl'] }),
+        saveEmailTemplate: b.mutation({ query: ({ key, ...body }) => ({ url: `/admin/email-templates/${key}`, method: 'PUT', body }), invalidatesTags: ['EmailTpl'] }),
+        sendTestMail: b.mutation({ query: (body) => ({ url: '/admin/send-test-mail', method: 'POST', body }) }),
+        sendTestSms: b.mutation({ query: (body) => ({ url: '/admin/test-sms', method: 'POST', body }) }),
+        reportOverview: b.query({ query: (params) => ({ url: '/admin/reports/overview', params }) }),
+        reportSales: b.query({ query: (params) => ({ url: '/admin/reports/sales', params }) }),
+        reportCommissions: b.query({ query: (params) => ({ url: '/admin/reports/commissions', params }) }),
+        reportPayouts: b.query({ query: (params) => ({ url: '/admin/reports/payouts', params }) }),
+        customerProfile: b.query({ query: ({ id, page }) => ({ url: `/admin/customers/${id}/profile`, params: { page } }) }),
         getBell: b.query({ query: () => '/admin/bell', providesTags: ['Bell'] }),
         readAllNotifications: b.mutation({ query: () => ({ url: '/admin/notifications/read-all', method: 'POST' }), invalidatesTags: ['Bell'] }),
         getOptions: b.query({ query: () => '/admin/options' }),
@@ -144,6 +161,10 @@ export const api = createApi({
 });
 
 export const {
+    useCustomerProfileQuery,
+    useReportOverviewQuery, useReportSalesQuery, useReportCommissionsQuery, useReportPayoutsQuery,
+    usePermissionsCatalogQuery, useStaffRolesQuery, useSaveStaffRoleMutation, useDeleteStaffRoleMutation, useStaffListQuery, useSaveStaffMutation, useDeleteStaffMutation, useActivityLogsQuery,
+    useEmailTemplatesQuery, useSaveEmailTemplateMutation, useSendTestMailMutation, useSendTestSmsMutation,
     useGetHomeCollectionsQuery, useGetCollectionQuery, useAdminCollectionsQuery, useAdminCollectionQuery, useCollectionProductSearchQuery, useSaveCollectionMutation, useDeleteCollectionMutation,
     useGetHomeQuery, useGetPageQuery, useGetCategoriesQuery, useGetProductsQuery, useGetProductQuery, useGetShopsQuery, useGetBrandsQuery, useGetBlogsQuery, useGetBlogQuery,
     useSendContactMutation, useLoginMutation, useLogoutMutation, useGetDashboardQuery, useShopCatalogQuery, useAdminListQuery,

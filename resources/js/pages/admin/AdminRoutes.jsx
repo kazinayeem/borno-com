@@ -14,6 +14,9 @@ import GenericPage from './GenericPages';
 import ShopCatalog from './ShopCatalog';
 import Messages from './Messages';
 import Collections from './Collections';
+import CustomerDetail from './CustomerDetail';
+import EmailTemplates from './EmailTemplates';
+import { ActivityLogs, Roles, Staff } from './Access';
 
 const AdminResource = () => {
     const { res } = useParams();
@@ -31,8 +34,15 @@ export function AdminRoutes() {
                     <Route path="orders/:id/invoice" element={<OrderDocument kind="invoice" />} />
                     <Route path="orders/:id/slip" element={<OrderDocument kind="slip" />} />
                     <Route path="customers" element={<Customers />} />
+                    <Route path="customers/:id" element={<CustomerDetail />} />
                     <Route path="messages" element={<Messages />} />
                     <Route path="collections" element={<Collections />} />
+                    <Route path="roles" element={<Roles />} />
+                    <Route path="staff" element={<Staff />} />
+                    <Route path="employees" element={<Staff />} />
+                    <Route path="employee/create" element={<Staff />} />
+                    <Route path="activity-logs" element={<ActivityLogs />} />
+                    <Route path="email-templates" element={<EmailTemplates />} />
                     <Route path="category/create" element={<CategoryForm />} />
                     <Route path="categories/:id/edit" element={<CategoryForm />} />
                     <Route path="shops/create" element={<ShopForm />} />

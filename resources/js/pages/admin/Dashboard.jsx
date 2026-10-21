@@ -69,7 +69,7 @@ function Statistics({ users }) {
                 <input type="date" className="input" style={{ width: 'auto' }} aria-label={t('Date')} value={date} onChange={(e) => setDate(e.target.value)} />
                 <button className="btn sm" onClick={() => setDate('')}>{t('Reset')}</button>
             </CardH>
-            <CardB className="sa-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+            <CardB className="sa-stats">
                 <div style={{ opacity: isFetching ? 0.5 : 1 }}>
                     <b style={{ fontSize: 26 }}>{data?.total ?? '–'}</b><div className="muted">{t('Total Orders')}</div>
                     {data ? <BarChart labels={data.labels} values={data.values} /> : <div className="empty">{t('Loading…')}</div>}

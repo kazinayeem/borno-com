@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import ReCaptcha from '../../components/ReCaptcha';
 import { errorMessage, useCustGoogleMutation, useCustLoginMutation, useCustRegisterMutation, useGetMasterQuery } from '../../app/api';
 import { customerLoggedIn, pushToast } from '../../app/slices';
 import { Field, TextInput } from '../../components/FormKit';
@@ -38,6 +39,8 @@ export default function Login() {
     const next = safeNext(sp.get('next'));
     const [mode, setMode] = useState(sp.get('mode') === 'register' ? 'register' : 'login');
     const [f, setF] = useState({ name: '', email: '', phone: '', password: '', password_confirmation: '' });
+    const [captcha, setCaptcha] = useState('');
+    const [tries, setTries] = useState(0);
     const [login, { isLoading: l1, error: e1 }] = useCustLoginMutation();
     const [register, { isLoading: l2, error: e2 }] = useCustRegisterMutation();
     const [google] = useCustGoogleMutation();
@@ -51,8 +54,10 @@ export default function Login() {
     const done = (r) => { dispatch(customerLoggedIn(r.data)); dispatch(pushToast(t('Signed in'))); navigate(next, { replace: true }); };
     const submit = async (e) => {
         e.preventDefault();
-        const r = mode === 'login' ? await login({ email: f.email, password: f.password }) : await register(f);
-        if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
+        const siteKey = master?.data?.recaptcha_site_key;
+        if (siteKey && !captcha) return dispatch(pushToast(t('Please confirm you are not a robot.'), 'error'));
+        const r = mode === 'login' ? await login({ email: f.email, password: f.password, recaptcha_token: captcha }) : await register({ ...f, recaptcha_token: captcha });
+        if (r.error) { setTries((n) => n + 1); return dispatch(pushToast(errorMessage(r.error), 'error')); }
         done(r);
     };
     const onGoogle = async (credential) => {
@@ -74,6 +79,7 @@ export default function Login() {
                     {mode === 'register' && <Field label={t('Phone (optional)')} error={errs.phone?.[0]}><TextInput value={f.phone} onChange={set('phone')} autoComplete="tel" /></Field>}
                     <Field label={t('Password')} required error={errs.password?.[0]} hint={mode === 'register' ? t('At least 8 characters.') : undefined}><TextInput type="password" value={f.password} onChange={set('password')} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></Field>
                     {mode === 'register' && <Field label={t('Confirm password')} required><TextInput type="password" value={f.password_confirmation} onChange={set('password_confirmation')} autoComplete="new-password" /></Field>}
+                    <ReCaptcha siteKey={master?.data?.recaptcha_site_key} onToken={setCaptcha} resetKey={`${mode}${tries}`} />
                     <button disabled={l1 || l2} className="btn-primary w-full !py-3">{l1 || l2 ? t('Please wait…') : mode === 'login' ? t('Sign in') : t('Create account')}</button>
                 </form>
                 <div className="my-5 flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" />{t('or')}<span className="h-px flex-1 bg-line" /></div>

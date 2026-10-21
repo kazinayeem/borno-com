@@ -25,17 +25,20 @@ class CustomerAuthController extends Controller
 
     public function register(Request $request)
     {
+        \App\Support\Recaptcha::verify($request);
         $data = $request->validate([
             'name' => 'required|string|max:120', 'email' => 'required|email:rfc|max:160|unique:users,email',
             'phone' => 'nullable|string|max:30', 'password' => ['required', 'confirmed', Password::min(8)],
         ]);
         $user = User::create($data + ['role' => 'customer']);
+        \App\Services\Mailer::send('welcome', $user->email, ['customer_name' => $user->name]);
 
         return response()->json($this->session($user), 201);
     }
 
     public function login(Request $request)
     {
+        \App\Support\Recaptcha::verify($request);
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
         $user = User::where('email', $data['email'])->first();
         // One message for "no such user" and "wrong password" so accounts cannot be enumerated.
