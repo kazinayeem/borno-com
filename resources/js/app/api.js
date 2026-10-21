@@ -28,6 +28,8 @@ const baseQueryWithAuth = async (args, api, extra) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithAuth,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
     tagTypes: ['Staff', 'Logs', 'EmailTpl', 'Collections', 'Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts', 'Master', 'Home'],
     endpoints: (b) => ({
         // storefront
@@ -53,11 +55,11 @@ export const api = createApi({
         }),
         adminSave: b.mutation({
             query: ({ res, id, ...body }) => ({ url: `/admin/${res}${id ? `/${id}` : ''}`, method: id ? 'PUT' : 'POST', body }),
-            invalidatesTags: (_r, _e, { res, id }) => [{ type: 'Admin', id: res }, { type: 'Admin', id: `${res}-${id}` }, 'Admin', ...((res === 'flash-sales' || res === 'products') ? ['Home'] : [])],
+            invalidatesTags: (_r, _e, { res, id }) => [{ type: 'Admin', id: res }, { type: 'Admin', id: `${res}-${id}` }, 'Admin', ...((res === 'flash-sales' || res === 'products') ? ['Home'] : []), ...(res === 'currencies' ? ['Master'] : [])],
         }),
         adminDelete: b.mutation({
             query: ({ res, id }) => ({ url: `/admin/${res}/${id}`, method: 'DELETE' }),
-            invalidatesTags: (_r, _e, { res }) => [{ type: 'Admin', id: res }, 'Admin'],
+            invalidatesTags: (_r, _e, { res }) => [{ type: 'Admin', id: res }, 'Admin', ...(res === 'currencies' ? ['Master'] : [])],
         }),
         getOrders: b.query({ query: (params) => ({ url: '/admin/orders', params }), providesTags: ['Orders'] }),
         getOrder: b.query({ query: (id) => `/admin/orders/${id}`, providesTags: ['Orders'] }),

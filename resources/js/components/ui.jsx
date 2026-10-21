@@ -54,8 +54,8 @@ let moneyFmt = { symbol: '$', position: 'prefix', rate: 1 };
 export const applyCurrency = (currency, position = 'prefix') => {
     moneyFmt = { symbol: currency?.symbol || '$', position: position === 'suffix' ? 'suffix' : 'prefix', rate: Number(currency?.rate) || 1 };
 };
-export const money = (n) => {
-    const text = (Number(n ?? 0) * moneyFmt.rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const money = (n, minFrac = 2) => {
+    const text = (Number(n ?? 0) * moneyFmt.rate).toLocaleString('en-US', { minimumFractionDigits: minFrac, maximumFractionDigits: 2 });
     return moneyFmt.position === 'suffix' ? `${text}${moneyFmt.symbol}` : `${moneyFmt.symbol}${text}`;
 };
 

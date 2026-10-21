@@ -479,6 +479,7 @@
  "Free": "বিনামূল্যে",
  "Free Delivery": "ফ্রি ডেলিভারি",
  "Free Delivery on orders over $999.00": "$৯৯৯.০০-এর বেশি অর্ডারে ফ্রি ডেলিভারি",
+ "Free Delivery on orders over {amount}": "{amount}-এর বেশি অর্ডারে ফ্রি ডেলিভারি",
  "Free delivery on each shop's order over $999. Payment on delivery.": "প্রতিটি দোকানের $৯৯৯-এর বেশি অর্ডারে ফ্রি ডেলিভারি। ডেলিভারির সময় পেমেন্ট।",
  "From": "থেকে",
  "From Address": "প্রেরকের ঠিকানা",

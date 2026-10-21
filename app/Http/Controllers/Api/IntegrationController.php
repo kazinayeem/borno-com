@@ -48,7 +48,7 @@ class IntegrationController extends Controller
         $v = $request->validate(['to' => 'required|email|max:160', 'template' => 'nullable|string']);
         $tpl = $v['template'] ?? 'test';
         abort_unless(isset(EmailTemplates::defaults()[$tpl]), 422, 'Unknown template.');
-        [$ok, $msg] = Mailer::send($tpl, $v['to'], ['customer_name' => 'Sample Customer', 'order_number' => 'RC000123', 'order_total' => '$129.00', 'order_status' => 'Confirmed', 'order_link' => url('/account/orders'), 'product_name' => 'Sample product', 'stock_left' => 2], true);
+        [$ok, $msg] = Mailer::send($tpl, $v['to'], ['customer_name' => 'Sample Customer', 'order_number' => 'RC000123', 'order_total' => \App\Support\Money::format(129), 'order_status' => 'Confirmed', 'order_link' => url('/account/orders'), 'product_name' => 'Sample product', 'stock_left' => 2], true);
 
         return response()->json(['ok' => $ok, 'message' => $ok ? 'Test email sent to '.$v['to'].'.' : $msg], $ok ? 200 : 422);
     }

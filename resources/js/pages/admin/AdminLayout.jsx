@@ -6,6 +6,7 @@ import { loggedOut, setLang, toggleTheme } from '../../app/slices';
 import { fdate, SaIcon } from '../../components/sa';
 import { menu, shopMenu, toRoute } from './spec/engine';
 import { PageTransition } from '../../components/Motion';
+import { applyCurrency } from '../../components/ui';
 
 // Staff roles: hide sidebar pages whose section the role cannot view (the API enforces it as well).
 const needsAdd = (label, path) => /^add\b/i.test(String(label ?? '')) || /\/(create|add)(\b|-|\/|$)/i.test(String(path));
@@ -77,6 +78,10 @@ export default function AdminLayout() {
     const perms = isAdmin ? user?.permissions : null;     // null/undefined = super admin
     const { data: cat } = usePermissionsCatalogQuery(undefined, { skip: !perms || !token });
     const brand = master?.data;
+    // Admin amounts follow the store's default currency (Admin → Currency / General Settings); pages remount when it changes.
+    const cur = master?.data?.currency;
+    if (cur) applyCurrency(cur, cur.position);
+    const curKey = cur ? `${cur.name}-${cur.symbol}-${cur.position}-${cur.rate}` : 'x';
     const logo = theme === 'dark' ? (brand?.web_dark_logo || brand?.web_logo) : brand?.web_logo;
     useEffect(() => { setDd(null); setMobileOpen(false); }, [loc.pathname]);
     useEffect(() => { const h = (e) => { if (!e.target.closest('.dropdown, [data-dd]')) setDd(null); }; document.addEventListener('click', h); return () => document.removeEventListener('click', h); }, []);
@@ -158,7 +163,7 @@ export default function AdminLayout() {
                                 </div>)}
                         </div>
                     </header>
-                    <main className="content"><PageTransition><Outlet /></PageTransition></main>
+                    <main className="content"><PageTransition><Outlet key={curKey} /></PageTransition></main>
                 </div>
             </div>
         </div>

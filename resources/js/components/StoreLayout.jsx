@@ -40,13 +40,13 @@ function TopBar() {
     const code = useSelector((s) => s.shop.currency);
     const { data: master } = useGetMasterQuery();
     const currencies = master?.data?.currencies ?? [];
-    const currentCur = currencies.find((c) => c.name === code) ?? currencies[0];
+    const currentCur = currencies.find((c) => c.name === (code || master?.data?.currency?.name)) ?? currencies[0];
     const current = LANGS.find((l) => l.code === lang) ?? LANGS[0];
     const dark = theme === 'dark';
     return (
         <div className="border-b border-line text-[13px] text-ink print:hidden">
             <div className="mx-auto flex max-w-[1320px] items-center justify-between px-4 py-1.5">
-                <span className="flex items-center gap-2"><Icon name="truck" size={14} className="text-primary" /> {t('Free Delivery on orders over $999.00')}</span>
+                <span className="flex items-center gap-2"><Icon name="truck" size={14} className="text-primary" /> {t('Free Delivery on orders over {amount}', { amount: money(999) })}</span>
                 <div className="hidden items-center gap-6 md:flex">
                     <Link className="hover:text-primary" to="/best-deal">{t('Daily Deals')}</Link><Link className="hover:text-primary" to="/pages/refund-policy">{t('Easy Returns')}</Link><Link className="hover:text-primary" to="/contact-us">{t('Help Center')}</Link>
                 </div>
@@ -194,7 +194,8 @@ function MiniCart() {
 export default function StoreLayout() {
     const code = useSelector((s) => s.shop.currency);
     const { data: master } = useGetMasterQuery();
-    const current = (master?.data?.currencies ?? []).find((c) => c.name === code) ?? master?.data?.currencies?.[0];
+    const defName = master?.data?.currency?.name;
+    const current = (master?.data?.currencies ?? []).find((c) => c.name === (code || defName)) ?? master?.data?.currencies?.[0];
     if (current) applyCurrency(current, master?.data?.currency?.position);
     return (
         <>

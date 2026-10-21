@@ -37,7 +37,7 @@ export const cartKey = (item) => item.key || `${item.id}-${item.color_id || 0}-$
 
 export const shopSlice = createSlice({
     name: 'shop',
-    initialState: { cart: load('cart', []), wishlist: load('wishlist', []), currency: readPref('currency') || 'USD' },
+    initialState: { cart: load('cart', []), wishlist: load('wishlist', []), currency: readPref('currency_chosen') === '1' ? (readPref('currency') || '') : '' },   // '' = follow the store's default currency from the admin
     reducers: {
         // payload: product row (+ optional qty, color, size). The same product in two colors is two lines.
         addToCart: (s, { payload }) => {

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { money as sharedMoney } from '../ui';
 import ExportMenu from '../ExportMenu';
 import React from 'react';
 import { statusLabel } from '../OrderBadge';
@@ -16,7 +17,7 @@ export function SaIcon({ name, className = '' }) {
 }
 
 // Same formats as the original: "$1,899" (no forced decimals), "05 Oct 2026", "05 Oct 2026, 01:11 PM".
-export const money = (v) => (v == null || v === '' ? '--' : `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+export const money = (v) => (v == null || v === '' ? '--' : sharedMoney(v, 0));
 export const fdate = (v) => (v ? new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '--');
 export const fdt = (v) => (v ? new Date(v).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '--');
 export const slug = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-');

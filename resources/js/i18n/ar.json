@@ -479,6 +479,7 @@
  "Free": "مجاني",
  "Free Delivery": "توصيل مجاني",
  "Free Delivery on orders over $999.00": "توصيل مجاني للطلبات التي تتجاوز 999.00$",
+ "Free Delivery on orders over {amount}": "توصيل مجاني للطلبات التي تزيد عن {amount}",
  "Free delivery on each shop's order over $999. Payment on delivery.": "توصيل مجاني لكل طلب من متجر يتجاوز 999$. الدفع عند الاستلام.",
  "From": "من",
  "From Address": "عنوان المرسل",

@@ -145,7 +145,7 @@ class CheckoutController extends Controller
             }
         }
         foreach ($orders as $o) {
-            Mailer::send('order_placed', $email, ['customer_name' => $name, 'order_number' => $o->number, 'order_total' => '$'.number_format($o->total, 2), 'order_link' => $guest ? url('/') : url('/account/orders/'.$o->id)]);
+            Mailer::send('order_placed', $email, ['customer_name' => $name, 'order_number' => $o->number, 'order_total' => \App\Support\Money::format($o->total), 'order_link' => $guest ? url('/') : url('/account/orders/'.$o->id)]);
         }
 
         return response()->json(['orders' => $orders, 'total' => round(collect($orders)->sum('total'), 2), 'redirect_url' => $redirect, 'tran_id' => $tran], 201);
