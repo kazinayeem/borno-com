@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { api, errorMessage, useAccountOrderQuery, useAccountOrdersQuery, useAccountSummaryQuery, useCancelMyOrderMutation, useChangeAccountPasswordMutation, useCustLogoutMutation, useDeleteAddressMutation, useGetAccountQuery, useGetAddressesQuery, useGetProductsQuery, useSaveAccountMutation, useSaveAddressMutation } from '../../../app/api';
+import { api, errorMessage, useAccountOrderQuery, useAccountOrdersQuery, useAccountSummaryQuery, useCancelMyOrderMutation, useChangeAccountPasswordMutation, useCustLogoutMutation, useDeleteAddressMutation, useGetAccountQuery, useGetAddressesQuery, useGetMasterQuery, useGetProductsQuery, useSaveAccountMutation, useSaveAddressMutation } from '../../../app/api';
 import { customerLoggedOut, customerUpdated, pushToast } from '../../../app/slices';
 import { Field, TextInput } from '../../../components/FormKit';
 import { OrderBadge, ORDER_STATUSES, statusLabel } from '../../../components/OrderBadge';
@@ -70,12 +70,17 @@ const FLOW = ['pending', 'confirm', 'processing', 'pickup', 'on_the_way', 'deliv
 export function AccountOrderDetail() {
     const { id } = useParams();
     const { data: o, isLoading, isError } = useAccountOrderQuery(id);
+    const { data: master } = useGetMasterQuery();
     const [cancel, { isLoading: cancelling }] = useCancelMyOrderMutation();
     const dispatch = useDispatch();
     const notify = notifier(dispatch);
     if (isError) return <Empty title={t('Order not found')} hint={t('It may belong to a different account.')} />;
     if (isLoading || !o) return <div className="skeleton h-72" />;
     const step = FLOW.indexOf(o.status);
+    const days = Number(master?.data?.return_order_within_days ?? 0);
+    const delivered = o.delivered_at ? new Date(o.delivered_at) : null;
+    const returnUntil = delivered ? new Date(delivered.getTime() + days * 86400000) : null;
+    const returnOpen = returnUntil ? returnUntil.getTime() > Date.now() : o.status !== 'cancelled';
     return (
         <div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden"><Link to="/account/orders" className="text-sm text-muted hover:text-primary">{t('← All orders')}</Link>
@@ -88,7 +93,7 @@ export function AccountOrderDetail() {
                 <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[420px] text-left text-sm"><thead className="bg-surface text-xs uppercase text-muted"><tr>{['Item', 'Qty', 'Price', 'Total'].map((h) => <th key={h} className="px-3 py-2">{t(h)}</th>)}</tr></thead>
                     <tbody>{o.items.map((i) => <tr key={i.id} className="border-t border-line"><td className="px-3 py-2"><span className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded bg-surface text-gray-300"><Img src={i.product?.image_url} alt="" className="h-full w-full object-cover" fallback={<Icon name="box" size={14} />} /></span>{i.name}</span></td><td className="px-3">{i.qty}</td><td className="px-3">{money(i.price)}</td><td className="px-3">{money(i.price * i.qty)}</td></tr>)}</tbody></table></div>
                 <div className="mt-4 grid gap-6 md:grid-cols-2">
-                    <div className="text-sm"><h2 className="mb-1 font-semibold">{t('Delivery address')}</h2><p>{o.address_name}</p><p className="text-muted">{o.shipping_address}{o.area ? `, ${o.area}` : ''}</p><p className="text-muted">{o.address_phone}</p><h2 className="mb-1 mt-3 font-semibold">{t('Payment')}</h2><p className="text-muted">{o.payment_method} · {o.payment_status === 'paid' ? t('Paid') : t('Pay on delivery')}</p>{o.notes && <><h2 className="mb-1 mt-3 font-semibold">{t('Notes')}</h2><p className="text-muted">{o.notes}</p></>}</div>
+                    <div className="text-sm"><h2 className="mb-1 font-semibold">{t('Delivery address')}</h2><p>{o.address_name}</p><p className="text-muted">{o.shipping_address}{o.area ? `, ${o.area}` : ''}</p><p className="text-muted">{o.address_phone}</p><h2 className="mb-1 mt-3 font-semibold">{t('Payment')}</h2><p className="text-muted">{o.payment_method} · {o.payment_status === 'paid' ? t('Paid') : t('Pay on delivery')}</p>{o.notes && <><h2 className="mb-1 mt-3 font-semibold">{t('Notes')}</h2><p className="text-muted">{o.notes}</p></>}{days > 0 && <p className="mt-3 text-muted">{returnUntil ? (returnOpen ? t('You can request a return until {date}.', { date: date(returnUntil) }) : t('The {n}-day return window has closed.', { n: days })) : t('Returns are accepted within {n} days of delivery.', { n: days })}</p>}</div>
                     <dl className="ml-auto w-full max-w-[300px] space-y-1.5 text-sm"><div className="flex justify-between"><dt>{t('Subtotal')}</dt><dd>{money(o.subtotal)}</dd></div><div className="flex justify-between"><dt>{t('Discount')}</dt><dd>- {money(o.coupon_discount)}</dd></div><div className="flex justify-between"><dt>{t('Delivery')}</dt><dd>{o.shipping ? money(o.shipping) : t('Free')}</dd></div><div className="flex justify-between border-t border-line pt-2 text-base font-bold"><dt>{t('Total')}</dt><dd>{money(o.total)}</dd></div></dl></div>
             </div>
         </div>
@@ -96,6 +101,8 @@ export function AccountOrderDetail() {
 }
 
 function AddressModal({ initial, onClose }) {
+    const { data: master } = useGetMasterQuery();
+    const phoneCode = master?.data?.default_phone_code ? `+${String(master.data.default_phone_code).replace(/\D/g, '')}` : '';
     const [f, setF] = useState(initial ?? { name: '', phone: '', address_line: '', area: '', type: 'home', is_default: false });
     const [save, { isLoading, error }] = useSaveAddressMutation();
     const dispatch = useDispatch();
@@ -104,8 +111,9 @@ function AddressModal({ initial, onClose }) {
     return (
         <Modal title={initial?.id ? t('Edit address') : t('Add address')} onClose={onClose}>
             <form onSubmit={async (e) => { e.preventDefault(); if (notifier(dispatch)(await save(f), t('Address saved'))) onClose(); }}>
-                <div className="grid gap-x-4 sm:grid-cols-2"><Field label={t('Full name')} required error={errs.name?.[0]}><TextInput value={f.name} onChange={set('name')} /></Field><Field label={t('Phone')} required error={errs.phone?.[0]}><TextInput value={f.phone} onChange={set('phone')} /></Field></div>
+                <div className="grid gap-x-4 sm:grid-cols-2"><Field label={t('Full name')} required error={errs.name?.[0]}><TextInput value={f.name} onChange={set('name')} /></Field><Field label={t('Phone')} required error={errs.phone?.[0]}><div className="flex overflow-hidden rounded-[10px] border border-line focus-within:border-primary">{phoneCode && <span className="grid place-items-center bg-surface px-3 text-sm text-muted">{phoneCode}</span>}<input className="min-w-0 flex-1 bg-transparent px-3 py-[9px] text-sm outline-none" value={f.phone} onChange={(e) => set('phone')(e.target.value)} autoComplete="tel" /></div></Field></div>
                 <Field label={t('Address')} required error={errs.address_line?.[0]}><TextInput value={f.address_line} onChange={set('address_line')} /></Field>
+                {master?.data?.show_address_map && (f.address_line || f.area) && <iframe title={t('Address map')} className="mb-4 h-48 w-full rounded-lg border border-line" src={`https://maps.google.com/maps?q=${encodeURIComponent([f.address_line, f.area].filter(Boolean).join(', '))}&z=14&output=embed`} />}
                 <div className="grid gap-x-4 sm:grid-cols-2"><Field label={t('Area / city')}><TextInput value={f.area} onChange={set('area')} /></Field><Field label={t('Type')}><select className="field" value={f.type} onChange={(e) => set('type')(e.target.value)}><option value="home">{t('Home')}</option><option value="office">{t('Office')}</option><option value="other">{t('Other')}</option></select></Field></div>
                 <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={!!f.is_default} onChange={(e) => set('is_default')(e.target.checked)} />{t('Make this my default address')}</label>
                 <div className="flex justify-end gap-2"><button type="button" className="btn-outline" onClick={onClose}>{t('Cancel')}</button><button disabled={isLoading} className="btn-primary">{isLoading ? t('Saving…') : t('Save')}</button></div>

@@ -8,6 +8,7 @@ use App\Models\Currency;
 use App\Models\Order;
 use App\Models\Rider;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -280,5 +281,40 @@ class ShopApiTest extends TestCase
             'first_name' => 'B', 'phone' => '2', 'email' => 'other@x.test', 'password' => 'secret', 'password_confirmation' => 'secret', 'name' => 'Nope',
         ])->assertForbidden();
         $this->getJson('/api/admin/settings-group/business')->assertForbidden();
+    }
+
+    public function test_saved_logo_and_business_settings_reach_the_storefront(): void
+    {
+        Currency::create(['name' => 'USD', 'symbol' => '$', 'is_default' => true]);
+        $this->admin();
+        $this->putJson('/api/admin/settings', [
+            'name' => 'My Store', 'title' => 'My Title', 'currency' => 'USD', 'currency_position' => 'prefix',
+            'logo' => 'uploads/logo.jpg', 'favicon' => 'uploads/fav.jpg', 'footer_text' => 'Hello footer',
+        ])->assertOk();
+        $this->putJson('/api/admin/settings-group/business', [
+            'name' => 'Borno', 'shop_type' => 'multi', 'show_address_map' => true,
+            'default_phone_code' => '880', 'low_stock_alert' => true, 'low_stock_alert_quantity' => 5,
+            'show_product_stock' => true, 'return_order_within_days' => 7, 'cash_on_delivery' => true, 'online_payment' => true,
+        ])->assertOk();
+
+        $this->getJson('/api/master')->assertOk()
+            ->assertJsonPath('data.web_logo', '/storage/uploads/logo.jpg')
+            ->assertJsonPath('data.favicon', '/storage/uploads/fav.jpg')
+            ->assertJsonPath('data.web_footer_text', 'Hello footer')
+            ->assertJsonPath('data.app_name', 'My Store')
+            ->assertJsonPath('data.company_name', 'Borno')
+            ->assertJsonPath('data.default_phone_code', '880')
+            ->assertJsonPath('data.show_address_map', true)
+            ->assertJsonPath('data.show_product_stock', true)
+            ->assertJsonPath('data.low_stock_alert_quantity', 5)
+            ->assertJsonPath('data.return_order_within_days', 7);
+
+        $product = $this->product(Shop::create(['name' => 'S']), ['stock' => 6, 'name' => 'Lamp']);
+        Setting::alertLowStock($product, 6);
+        $product->update(['stock' => 5]);
+        Setting::alertLowStock($product->fresh(), 6);
+        $this->getJson('/api/admin/bell')->assertJsonPath('count', 1);
+        Setting::alertLowStock($product->fresh(), 5);
+        $this->getJson('/api/admin/bell')->assertJsonPath('count', 1);
     }
 }

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Coupon;
+use App\Models\FlashSale;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Record;
@@ -279,5 +280,29 @@ class CustomerShopTest extends TestCase
         $names = collect($this->getJson('/api/products?flash=1')->assertOk()->json('data'))->pluck('name');
         $this->assertTrue($names->contains('Flash'));
         $this->assertFalse($names->contains('Plain'));
+    }
+
+    public function test_home_countdown_uses_the_running_flash_sale(): void
+    {
+        FlashSale::create(['name' => 'OLD', 'discount' => 10, 'starts_at' => now()->subDays(10), 'ends_at' => now()->subDay(), 'active' => true]);
+        $live = FlashSale::create(['name' => 'LIVE', 'discount' => 40, 'description' => 'Hurry', 'starts_at' => now()->subHour(), 'ends_at' => now()->addHours(3), 'active' => true]);
+        FlashSale::create(['name' => 'OFF', 'discount' => 5, 'starts_at' => now(), 'ends_at' => now()->addDay(), 'active' => false]);
+
+        $this->getJson('/api/home')->assertOk()
+            ->assertJsonPath('flash_deal.name', 'LIVE')
+            ->assertJsonPath('flash_deal.discount', 40)
+            ->assertJsonPath('flash_deal.id', $live->id);
+    }
+
+    public function test_public_catalog_never_exposes_cost_price_or_owner_ids(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+
+        $list = $this->getJson('/api/products?per_page=2')->assertOk()->json('data.0');
+        $this->assertArrayNotHasKey('buy_price', $list);
+        $this->assertArrayNotHasKey('approval', $list);
+        $home = $this->getJson('/api/home')->assertOk()->json();
+        $this->assertArrayNotHasKey('buy_price', $home['popular'][0]);
+        $this->assertArrayNotHasKey('user_id', $this->getJson('/api/shops')->json('data.0'));
     }
 }

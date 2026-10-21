@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { api, useGetBellQuery, useGetDashboardQuery, useGetGroupQuery, useLogoutMutation, useReadAllNotificationsMutation } from '../../app/api';
+import { api, useGetBellQuery, useGetDashboardQuery, useGetGroupQuery, useGetMasterQuery, useLogoutMutation, useReadAllNotificationsMutation } from '../../app/api';
 import { loggedOut, setLang } from '../../app/slices';
 import { fdate, SaIcon } from '../../components/sa';
 import { menu, shopMenu, toRoute } from './spec/engine';
@@ -62,6 +62,9 @@ export default function AdminLayout() {
     const [readAll] = useReadAllNotificationsMutation();
     const { data: dash } = useGetDashboardQuery(undefined, { skip: isAdmin || !token });
     const { data: business, isError: businessError } = useGetGroupQuery('business', { skip: !isAdmin || !token });
+    const { data: master } = useGetMasterQuery();
+    const brand = master?.data;
+    const logo = theme === 'dark' ? (brand?.web_dark_logo || brand?.web_logo) : brand?.web_logo;
     useEffect(() => { try { localStorage.setItem('theme', theme); } catch { /* storage unavailable */ } }, [theme]);
     useEffect(() => { setDd(null); setMobileOpen(false); }, [loc.pathname]);
     useEffect(() => { const h = (e) => { if (!e.target.closest('.dropdown, [data-dd]')) setDd(null); }; document.addEventListener('click', h); return () => document.removeEventListener('click', h); }, []);
@@ -93,7 +96,7 @@ export default function AdminLayout() {
         <div className="sa" data-theme={theme}>
             <div className={`layout ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <aside className="sidebar print:hidden">
-                    <div className="brand"><img src="/assets/logo.png" alt={t('ReadyEcommerce')} style={{ height: 42, width: 'auto' }} /></div>
+                    <div className="brand"><img src={logo || '/assets/logo.png'} alt={brand?.app_name || t('ReadyEcommerce')} style={{ height: 42, width: 'auto', maxWidth: 160, objectFit: 'contain' }} /></div>
                     <div className="menu-search"><SaIcon name="search" /><input aria-label={t('Search menu')} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search menu...')} /></div>
                     <Menu items={items} loc={loc} filter={q.trim().toLowerCase()} onNavigate={() => setMobileOpen(false)} literal={!isAdmin} />
                     <div className="sidebar-foot"><a href="https://readyecommerce.app/" target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>{t('v4.6.1')}</a></div>

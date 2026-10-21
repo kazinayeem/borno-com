@@ -47,12 +47,12 @@ function CategoryMenu() {
     const [open, setOpen] = useState(false);
     return (
         <div className="relative" onMouseLeave={() => setOpen(false)}>
-            <button onClick={() => setOpen(!open)} onMouseEnter={() => setOpen(true)} className="btn-primary !px-4 !py-2.5">
-                <Icon name="menu" size={16} /> {t('All Categories')} <Icon name="chevron" size={14} />
+            <button onClick={() => setOpen(!open)} onMouseEnter={() => setOpen(true)} className="btn-primary h-11 w-[228px] justify-between !rounded-md !px-4">
+                <span className="flex items-center gap-2"><Icon name="menu" size={16} /> {t('All Categories')}</span> <Icon name="chevron" size={14} />
             </button>
             {open && (
                 <ul className="card absolute left-0 top-full z-30 w-64 p-2 shadow-lg">
-                    {data.map((c) => (
+                    {data.filter((c) => c.image_url).map((c) => (
                         <li key={c.id}><Link onClick={() => setOpen(false)} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-primary-soft"><span className="flex items-center gap-2"><Img src={c.image_url} alt="" className="h-5 w-5 rounded object-cover" />{(lang === 'ar' && c.name_ar) || c.name}</span><Icon name="right" size={14} /></Link></li>
                     ))}
                 </ul>
@@ -61,9 +61,16 @@ function CategoryMenu() {
     );
 }
 
+function BrandImg({ src, name, className }) {
+    return <img src={src || '/assets/logo.png'} alt={name || t('ReadyEcommerce')} className={className} />;
+}
+
 function Header() {
     const { data: master } = useGetMasterQuery();
-    const links = nav.filter(([to]) => to !== '/shops' || master?.data?.multi_vendor);
+    const theme = useSelector((s) => s.ui.theme);
+    const brand = master?.data;
+    const logo = theme === 'dark' ? (brand?.web_dark_logo || brand?.web_logo) : brand?.web_logo;
+    const links = nav.filter(([to]) => to !== '/shops' || brand?.multi_vendor);
     const [q, setQ] = useState('');
     const navigate = useNavigate();
     const { cart, wishlist } = useSelector((s) => s.shop);
@@ -73,7 +80,7 @@ function Header() {
     return (
         <header className="mx-auto max-w-[1320px] px-4 print:hidden">
             <div className="flex items-center gap-4 py-4">
-                <Link to="/"><img src="/assets/logo.png" alt={t('ReadyEcommerce')} className="h-12 w-auto" /></Link>
+                <Link to="/" aria-label={brand?.app_name || t('ReadyEcommerce')}><BrandImg src={logo} name={brand?.app_name} className="h-12 w-auto max-w-[200px] object-contain" /></Link>
                 <form onSubmit={submit} className="mx-auto flex w-full max-w-xl overflow-hidden rounded-md border border-line shadow-sm">
                     <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search for products, brands and more...')} className="min-w-0 flex-1 px-4 py-2.5 text-sm outline-none" />
                     <button className="bg-primary px-5 text-white" aria-label={t('Search')}><Icon name="search" /></button>
@@ -113,14 +120,20 @@ function Footer() {
         ['Customer Service', ['Help Center', 'Easy Returns', 'Shipping Policy', 'Payment Methods', 'FAQ', 'Contact Us']],
         ['Company', company],
     ];
-    const phone = master?.data?.mobile || '+880123456789';
-    const email = master?.data?.email || 'admin@example.com';
+    const d = master?.data;
+    if (d && d.web_show_footer === false) return null;
+    const phone = d?.mobile || '+880123456789';
+    const email = d?.email || 'admin@example.com';
+    const year = new Date().getFullYear();
     return (
         <footer className="mt-16 bg-surface print:hidden">
             <div className="mx-auto grid max-w-[1320px] gap-8 px-4 py-12 md:grid-cols-4">
-                <div><img src="/assets/logo.png" alt="" className="h-12" />
-                    <p className="mt-3 text-sm text-muted">{t('The ultimate all-in-one solution for your eCommerce business worldwide.')}</p>
+                <div><BrandImg src={d?.web_footer_logo || d?.web_logo} name={d?.app_name} className="h-12 w-auto max-w-[200px] object-contain" />
+                    <p className="mt-3 text-sm font-semibold">{d?.company_name || d?.app_name || t('ReadyEcommerce')}</p>
+                    {d?.app_name && d?.company_name && d.app_name !== d.company_name && <p className="text-sm text-muted">{d.app_name}</p>}
+                    <p className="mt-3 text-sm text-muted">{d?.web_footer_text || t('The ultimate all-in-one solution for your eCommerce business worldwide.')}</p>
                     <p className="mt-3 text-sm">{phone}<br />{email}</p>
+                    {(d?.address) && <p className="mt-1 text-sm text-muted">{d.address}</p>}
                     {(home?.social ?? []).length > 0 && <div className="mt-3 flex gap-3 text-sm">{home.social.map((s) => <a key={s.id} href={s.url} target="_blank" rel="noreferrer" className="text-primary">{s.title}</a>)}</div>}
                 </div>
                 {cols.map(([h, items]) => (
@@ -131,9 +144,12 @@ function Footer() {
             {master?.data?.show_download_app && <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-4 px-4 pb-8">
                 <div><h4 className="mb-2 font-semibold">{t('Download Our App')}</h4>
                     <div className="flex gap-2"><a href={master.data.app_store_link || '#'}><img src="/assets/icons/app-store.png" alt={t('App Store')} className="h-10" /></a><a href={master.data.google_playstore_link || '#'}><img src="/assets/icons/play-store.png" alt={t('Google Play')} className="h-10" /></a></div></div>
-                <div><h4 className="mb-2 font-semibold">{t('Accepted Payment Methods')}</h4><p className="text-sm text-muted">{t('Cash on delivery, cards, and mobile wallets')}</p></div>
+                <div><h4 className="mb-2 font-semibold">{t('Accepted Payment Methods')}</h4>
+                    {d?.footer_payment_img ? <img src={d.footer_payment_img} alt={t('Accepted Payment Methods')} className="h-10 max-w-[220px] object-contain" /> : <p className="text-sm text-muted">{t('Cash on delivery, cards, and mobile wallets')}</p>}
+                    {d?.footer_qrcode && <img src={d.footer_qrcode} alt={t('Scan the QR')} className="mt-3 h-20 w-20 object-contain" />}
+                </div>
             </div>}
-            <div className="border-t border-line py-4 text-center text-sm text-muted">{t('© 2026 All right reserved by company')}</div>
+            <div className="border-t border-line py-4 text-center text-sm text-muted">{t('© {year} {name}', { year, name: d?.company_name || d?.app_name || t('ReadyEcommerce') })}</div>
         </footer>
     );
 }

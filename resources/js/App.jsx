@@ -18,26 +18,10 @@ import Brands from './pages/shop/Brands';
 import Blogs from './pages/shop/Blogs';
 import Contact from './pages/shop/Contact';
 import CmsPage from './pages/shop/Page';
-import Login from './pages/admin/Login';
-import AdminLayout from './pages/admin/AdminLayout';
-import Dashboard from './pages/admin/Dashboard';
-import Resource, { resources } from './pages/admin/Resource';
-import Orders from './pages/admin/Orders';
-import Customers from './pages/admin/Customers';
-import { CategoryForm, ProductForm, ShopForm } from './pages/admin/forms';
-import Settings from './pages/admin/Settings';
-import { Pos, PosDrafts, PosSales } from './pages/admin/Pos';
-import { OrderDetail, OrderDocument } from './pages/admin/OrderDetail';
-import GenericPage from './pages/admin/GenericPages';
-import ShopCatalog from './pages/admin/ShopCatalog';
-import Messages from './pages/admin/Messages';
+const AdminRoutes = React.lazy(() => import('./pages/admin/AdminRoutes').then((m) => ({ default: m.AdminRoutes })));
+const ShopRoutes = React.lazy(() => import('./pages/admin/AdminRoutes').then((m) => ({ default: m.ShopRoutes })));
 import { useGetMasterQuery } from './app/api';
 import { t } from './i18n';
-
-const AdminResource = () => {
-    const { res } = useParams();
-    return resources[res] ? <Resource res={res} /> : <GenericPage />;
-};
 
 export default function App() {
     const lang = useSelector((s) => s.ui.lang);
@@ -54,6 +38,10 @@ export default function App() {
         const secondary = master?.data?.theme_colors?.secondary;
         if (primary) { root.style.setProperty('--theme-primary', primary); root.style.setProperty('--color-primary', primary); }
         if (secondary) root.style.setProperty('--theme-secondary', secondary);
+        const brand = master?.data;
+        if (brand?.app_title || brand?.app_name) document.title = brand.app_title || brand.app_name;
+        const icon = document.querySelector('link[rel="icon"]');
+        if (icon && brand?.favicon) icon.href = brand.favicon;
     }, [lang, theme, master]);
     return (
         // key={lang}: switching language remounts the tree so every string re-renders (data stays in the RTK cache).
@@ -85,49 +73,8 @@ export default function App() {
                     </Route>
                     <Route path="*" element={<p className="py-20 text-center">{t('Page not found')}</p>} />
                 </Route>
-                <Route path="admin/login" element={<Login />} />
-                <Route path="admin" element={<AdminLayout />}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="orders" element={<Orders />} />
-                    <Route path="orders/:id/show" element={<OrderDetail />} />
-                    <Route path="orders/:id/invoice" element={<OrderDocument kind="invoice" />} />
-                    <Route path="orders/:id/slip" element={<OrderDocument kind="slip" />} />
-                    <Route path="customers" element={<Customers />} />
-                    <Route path="messages" element={<Messages />} />
-                    <Route path="category/create" element={<CategoryForm />} />
-                    <Route path="categories/:id/edit" element={<CategoryForm />} />
-                    <Route path="shops/create" element={<ShopForm />} />
-                    <Route path="shops/:id/edit" element={<ShopForm />} />
-                    <Route path="product/create" element={<ProductForm />} />
-                    <Route path="products/:id/edit" element={<ProductForm />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="pos" element={<Pos />} />
-                    <Route path="pos/sales" element={<PosSales />} />
-                    <Route path="pos/draft" element={<PosDrafts />} />
-                    <Route path=":res" element={<AdminResource />} />
-                    <Route path="*" element={<GenericPage />} />
-                </Route>
-                <Route path="shop" element={<AdminLayout />}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="orders" element={<Orders />} />
-                    <Route path="orders/:status" element={<Orders />} />
-                    <Route path="pos" element={<Pos />} />
-                    <Route path="pos/sales" element={<PosSales />} />
-                    <Route path="pos/draft" element={<PosDrafts />} />
-                    <Route path="products" element={<Resource res="products" />} />
-                    <Route path="product/create" element={<ProductForm />} />
-                    <Route path="digital-product/create" element={<ProductForm />} />
-                    <Route path="categories" element={<ShopCatalog res="categories" />} />
-                    <Route path="subcategories" element={<ShopCatalog res="subcategories" />} />
-                    <Route path="brands" element={<ShopCatalog res="brands" />} />
-                    <Route path="colors" element={<ShopCatalog res="colors" />} />
-                    <Route path="sizes" element={<ShopCatalog res="sizes" />} />
-                    <Route path="units" element={<ShopCatalog res="units" />} />
-                    <Route path="flash-sale" element={<ShopCatalog res="flash-sales" />} />
-                    <Route path="banners" element={<ShopCatalog res="banners" />} />
-                    <Route path="vouchers" element={<ShopCatalog res="coupons" />} />
-                    <Route path="*" element={<GenericPage />} />
-                </Route>
+                <Route path="admin/*" element={<React.Suspense fallback={null}><AdminRoutes /></React.Suspense>} />
+                <Route path="shop/*" element={<React.Suspense fallback={null}><ShopRoutes /></React.Suspense>} />
             </Routes>
             <Toasts />
         </React.Fragment>

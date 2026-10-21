@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useGetProductQuery, useGetProductsQuery } from '../../app/api';
+import { useGetMasterQuery, useGetProductQuery, useGetProductsQuery } from '../../app/api';
 import { addToCart, pushToast, toggleWish } from '../../app/slices';
 import ProductCard from '../../components/ProductCard';
 import { Empty, Icon, Img, money } from '../../components/ui';
@@ -13,6 +13,7 @@ const sizes = ['M', 'L', 'XXL', 'XXXL'];
 export default function ProductDetail() {
     const { id } = useParams();
     const { data: p, isLoading, isError } = useGetProductQuery(id);
+    const { data: master } = useGetMasterQuery();
     const { data: related } = useGetProductsQuery({ category_slug: p?.category?.slug, per_page: 4 }, { skip: !p?.category });
     const [qty, setQty] = useState(1);
     const [shot, setShot] = useState(0);
@@ -40,7 +41,7 @@ export default function ProductDetail() {
                         <p className="text-sm text-primary">{p.brand?.name}</p><h1 className="mt-1 text-2xl font-bold">{p.name}</h1></div>
                         <button onClick={() => dispatch(toggleWish(p.id))} aria-label={t('Wishlist')} className={`grid h-10 w-10 place-items-center rounded-full border border-line ${wished ? 'text-primary' : ''}`}><Icon name="heart" fill={wished} /></button></div>
                     <p className="mt-3 text-sm text-muted">{p.description}</p>
-                    <p className="mt-3 flex items-center gap-2 text-sm"><Icon name="star" size={15} fill className="text-amber-400" /><b>{p.rating}</b>({p.reviews_count})<span className="text-line">|</span><span className="text-muted">{t('{n}+ in stock', { n: p.stock })}</span></p>
+                    <p className="mt-3 flex items-center gap-2 text-sm"><Icon name="star" size={15} fill className="text-amber-400" /><b>{p.rating}</b>({p.reviews_count}){master?.data?.show_product_stock && <><span className="text-line">|</span><span className="text-muted">{p.stock < 1 ? t('Out of stock') : t('{n} in stock', { n: p.stock })}</span></>}</p>
                     <hr className="my-5 border-line" />
                     <p className="flex items-baseline gap-3 text-3xl font-bold">{money(p.price)}{p.old_price > p.price && <span className="text-lg font-medium text-gray-400 line-through">{money(p.old_price)}</span>}</p>
                     <div className="mt-5 flex items-center gap-3"><span className="w-16 text-sm text-muted">{t('Color:')}</span>

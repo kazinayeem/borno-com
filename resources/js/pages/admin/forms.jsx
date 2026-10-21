@@ -85,7 +85,7 @@ export function ShopForm() {
 }
 
 export function ProductForm() {
-    const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], image: '', active: true };
+    const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], image: '', is_flash_sale: false, active: true };
     const { id, form, set, err, submit, saving, isLoading, reset } = useAdminForm('products', empty, '/admin/products');
     const isAdmin = useSelector((s) => s.auth.user?.role === 'admin');
     const { data: business } = useGetGroupQuery('business', { skip: !isAdmin });
@@ -123,6 +123,7 @@ export function ProductForm() {
                 <Field label={t('Discount Type')}><Select value={form.discount_type} onChange={set('discount_type')} options={[{ id: 'fixed', name: 'Fixed' }, { id: 'percent', name: 'Percent' }]} /></Field>
                 {num('discount_price', 'Discount')}
                 {num('stock', 'Current Stock Quantity')}
+                <Field label={t('Flash Sale')}><label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={!!form.is_flash_sale} onChange={(e) => set('is_flash_sale')(e.target.checked)} />{t('Show this product on the homepage flash sale')}</label></Field>
             </div></Section>
             <Section title={t('Upload or Add Product Video')}>
                 <Field label={t('Select Video Type')}><Select value={form.video_type} onChange={set('video_type')} options={[{ id: 'file', name: 'Upload Video File' }, { id: 'youtube', name: 'YouTube Link' }, { id: 'vimeo', name: 'Vimeo Link' }, { id: 'dailymotion', name: 'Dailymotion Link' }]} /></Field>

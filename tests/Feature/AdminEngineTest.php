@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ChatMessage;
+use App\Models\FlashSale;
 use App\Models\Order;
 use App\Models\Record;
 use App\Models\Shop;
@@ -295,5 +296,52 @@ class AdminEngineTest extends TestCase
         $this->postJson('/api/admin/r/rider_cash_submissions/2/explode')->assertNotFound();
         Sanctum::actingAs(User::create(['name' => 'Sel', 'email' => 'sel@x.test', 'role' => 'shop', 'password' => 'secret']));
         $this->postJson('/api/admin/r/rider_cash_submissions/1/approve')->assertForbidden();
+    }
+
+    public function test_admin_can_change_flash_sale_end_time(): void
+    {
+        $this->admin();
+        $id = $this->postJson('/api/admin/flash-sales', [
+            'name' => 'Weekend',
+            'discount' => 25,
+            'description' => 'Hurry',
+            'starts_at' => '2026-10-21 10:00:00',
+            'ends_at' => '2026-10-28 18:30:00',
+            'active' => true,
+        ])->assertCreated()->json('id');
+
+        $this->putJson("/api/admin/flash-sales/{$id}", [
+            'discount' => 150,
+            'starts_at' => '2026-10-21 10:00:00',
+            'ends_at' => '2026-10-01 00:00:00',
+        ])->assertUnprocessable();
+
+        $this->putJson("/api/admin/flash-sales/{$id}", [
+            'name' => 'Weekend',
+            'discount' => 30,
+            'starts_at' => '2026-10-21 10:00:00',
+            'ends_at' => '2026-11-01 21:00:00',
+            'active' => true,
+        ])->assertOk();
+
+        $row = FlashSale::find($id);
+        $this->assertSame(30, $row->discount);
+        $this->assertSame('2026-11-01 21:00:00', $row->ends_at->timezone('UTC')->format('Y-m-d H:i:s'));
+    }
+
+    public function test_seller_cannot_move_a_product_into_another_shop_or_touch_other_shops_products(): void
+    {
+        $other = Shop::create(['name' => 'Other']);
+        $cat = \App\Models\Category::create(['name' => 'C', 'slug' => 'c']);
+        $theirs = \App\Models\Product::create(['shop_id' => $other->id, 'category_id' => $cat->id, 'name' => 'Theirs', 'price' => 5]);
+        [, $mine] = $this->seller();
+        $own = \App\Models\Product::create(['shop_id' => $mine->id, 'category_id' => $cat->id, 'name' => 'Mine', 'price' => 5]);
+
+        $this->putJson("/api/admin/products/{$own->id}", ['name' => 'Renamed', 'shop_id' => $other->id])->assertOk()->assertJsonPath('name', 'Renamed')->assertJsonPath('shop_id', $mine->id);
+        $this->assertSame($mine->id, $own->fresh()->shop_id);
+        $this->putJson("/api/admin/products/{$theirs->id}", ['name' => 'HACKED'])->assertForbidden();
+        $this->deleteJson("/api/admin/products/{$theirs->id}")->assertForbidden();
+        $this->getJson("/api/admin/products/{$theirs->id}")->assertForbidden();
+        $this->assertSame('Theirs', $theirs->fresh()->name);
     }
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { errorMessage, useGetOrderQuery, useGetRidersQuery, useUpdateOrderMutation } from '../../app/api';
+import { errorMessage, useGetMasterQuery, useGetOrderQuery, useGetRidersQuery, useUpdateOrderMutation } from '../../app/api';
 import { pushToast } from '../../app/slices';
 import { Card, CardB, CardH, fdate, fdt, Modal, money, PageHead, Pill, SaIcon, Switch, Thumb } from '../../components/sa';
 import { STATUSES, label } from './Orders';
@@ -93,6 +93,8 @@ export function OrderDetail() {
 export function OrderDocument({ kind }) {
     const { id } = useParams();
     const { data: o, isLoading, isError } = useGetOrderQuery(id);
+    const { data: master } = useGetMasterQuery();
+    const brand = master?.data;
     if (isError) return <Card><div className="empty">{t('Order not found.')}</div></Card>;
     if (isLoading || !o) return <Card><div className="empty">{t('Loading…')}</div></Card>;
     const slip = kind === 'slip';
@@ -100,7 +102,7 @@ export function OrderDocument({ kind }) {
         <div className="mx-auto max-w-[820px]">
             <div className="mb-4 flex justify-between print:hidden"><Link to={`/admin/orders/${o.id}/show`} className="btn">{t('← Back')}</Link><button onClick={() => window.print()} className="btn primary"><SaIcon name="download" />{slip ? t('Print / Save Slip') : t('Print / Save PDF')}</button></div>
             <article className="card" style={{ padding: 32, background: '#fff', color: '#1f2330' }}>
-                <header className="flex items-start justify-between border-b border-line pb-5"><img src="/assets/logo.png" alt={t('ReadyEcommerce')} className="h-12" /><div className="text-right text-sm"><h1 className="text-2xl font-bold uppercase tracking-wide">{slip ? t('Payment Slip') : t('Invoice')}</h1><p>#{o.number}</p><p className="text-muted">{fdate(o.created_at)}</p></div></header>
+                <header className="flex items-start justify-between border-b border-line pb-5"><img src={brand?.web_logo || '/assets/logo.png'} alt={brand?.company_name || brand?.app_name || t('ReadyEcommerce')} className="h-12 max-w-[180px] object-contain" /><div className="text-right text-sm"><h1 className="text-2xl font-bold uppercase tracking-wide">{slip ? t('Payment Slip') : t('Invoice')}</h1><p>{brand?.company_name || brand?.app_name}</p><p>#{o.number}</p><p className="text-muted">{fdate(o.created_at)}</p></div></header>
                 <section className="grid gap-6 py-5 text-sm sm:grid-cols-2">
                     <div><h2 className="mb-1 font-semibold">{t('Billed to')}</h2><p>{o.user?.name}</p><p className="text-muted">{o.user?.phone}</p><p className="text-muted">{o.user?.email}</p></div>
                     <div><h2 className="mb-1 font-semibold">{t('Ship to')}</h2><p>{o.address_name}</p><p className="text-muted">{o.shipping_address}{o.area ? `, ${o.area}` : ''}</p><p className="text-muted">{o.address_phone}</p></div>
@@ -112,7 +114,7 @@ export function OrderDocument({ kind }) {
                     <div className="flex justify-between"><dt>{t('Sub Total')}</dt><dd>{money(o.subtotal)}</dd></div><div className="flex justify-between"><dt>{t('Coupon Discount')}</dt><dd>- {money(o.coupon_discount)}</dd></div>
                     <div className="flex justify-between"><dt>{t('Delivery Charge')}</dt><dd>{money(o.shipping)}</dd></div><div className="flex justify-between"><dt>{t('VAT & Tax')}</dt><dd>{money(o.vat_tax)}</dd></div>
                     <div className="flex justify-between border-t border-line pt-2 text-base font-bold"><dt>{slip ? t('Amount') : t('Grand Total')}</dt><dd>{money(o.total)}</dd></div></dl>
-                <footer className="mt-8 border-t border-line pt-4 text-center text-xs text-muted">{t('Thank you for shopping with ReadyEcommerce.')}</footer>
+                <footer className="mt-8 border-t border-line pt-4 text-center text-xs text-muted">{t('Thank you for shopping with {name}.', { name: brand?.company_name || brand?.app_name || t('ReadyEcommerce') })}</footer>
             </article>
         </div>
     );

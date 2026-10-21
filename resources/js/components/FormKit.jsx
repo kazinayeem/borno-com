@@ -47,12 +47,13 @@ export function MultiSelect({ value = [], onChange, options }) {
 }
 
 export function TagInput({ value = [], onChange, placeholder }) {
-    const [t, setT] = useState('');
-    const add = () => { const v = t.trim(); if (v && !value.includes(v)) onChange([...value, v]); setT(''); };
+    const tags = Array.isArray(value) ? value : [];
+    const [draft, setDraft] = useState('');
+    const add = () => { const v = draft.trim(); if (v && !tags.includes(v)) onChange([...tags, v]); setDraft(''); };
     return (
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-line p-2">
-            {value.map((k) => <span key={k} className="flex items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-xs text-primary">{k}<button type="button" onClick={() => onChange(value.filter((x) => x !== k))} aria-label={t('Remove {name}', { name: k })}><Icon name="close" size={11} /></button></span>)}
-            <input className="min-w-40 flex-1 text-[13px] outline-none" value={t} placeholder={placeholder} onChange={(e) => setT(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} onBlur={add} />
+            {tags.map((k) => <span key={k} className="flex items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-xs text-primary">{k}<button type="button" onClick={() => onChange(tags.filter((x) => x !== k))} aria-label={t('Remove {name}', { name: k })}><Icon name="close" size={11} /></button></span>)}
+            <input className="min-w-40 flex-1 text-[13px] outline-none" value={draft} placeholder={placeholder} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} onBlur={add} />
         </div>
     );
 }

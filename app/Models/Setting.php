@@ -66,4 +66,36 @@ class Setting extends Model
 
         return array_key_exists($name, $saved) ? (bool) $saved[$name] : $default;
     }
+
+    /** One admin notice when stock crosses the low-stock line. A second dip does not send another. */
+    public static function alertLowStock(Product $product, int $previous): void
+    {
+        $biz = static::group('business');
+        if (empty($biz['low_stock_alert'])) {
+            return;
+        }
+        $limit = (int) ($biz['low_stock_alert_quantity'] ?? 0);
+        if ($previous <= $limit || $product->stock > $limit) {
+            return;
+        }
+        $title = $product->name.' is low on stock';
+        $content = $product->name.' has '.$product->stock.' left. The alert level is '.$limit.'.';
+        Record::create([
+            'resource' => 'notifications',
+            'rid' => (int) Record::where('resource', 'notifications')->max('rid') + 1,
+            'data' => ['title' => $title, 'content' => $content, 'is_read' => false, 'url' => '/admin/products/'.$product->id.'/edit'],
+        ]);
+        if (empty($biz['low_stock_mail_notification'])) {
+            return;
+        }
+        $to = trim((string) ($biz['email'] ?: (static::all_()['email'] ?? '')));
+        if ($to === '') {
+            return;
+        }
+        try {
+            \Illuminate\Support\Facades\Mail::raw($content, fn ($message) => $message->to($to)->subject($title));
+        } catch (\Throwable) {
+            // A mail problem must not undo the sale that lowered the stock.
+        }
+    }
 }

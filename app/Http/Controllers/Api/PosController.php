@@ -80,7 +80,9 @@ class PosController extends Controller
                 if ($p->stock < $l['qty']) {
                     throw ValidationException::withMessages(['items' => ["Not enough stock for {$p->name} (only {$p->stock} left)."]]);
                 }
+                $before = (int) $p->stock;
                 $p->decrement('stock', $l['qty']);
+                \App\Models\Setting::alertLowStock($p->fresh(), $before);
                 $order->items()->create(['product_id' => $p->id, 'name' => $p->name, 'price' => $l['price'], 'qty' => $l['qty']]);
             }
             if ($request->filled('draft_id')) {

@@ -33,6 +33,8 @@ export default function Checkout() {
     const blocked = Object.keys(issues).length > 0;
     const cashOnDelivery = master?.data?.cash_on_delivery !== false;
     const onlinePayment = !!master?.data?.online_payment;
+    const phoneCode = master?.data?.default_phone_code ? `+${String(master.data.default_phone_code).replace(/\D/g, '')}` : '';
+    const mapQuery = [form.address_line, form.area].filter(Boolean).join(', ');
     const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
     const submit = async (e) => {
         e.preventDefault();
@@ -62,12 +64,13 @@ export default function Checkout() {
                         {!useSaved && (
                             <div className="grid gap-x-4 sm:grid-cols-2">
                                 <Field label={t('Full name')} required error={fe('name')}><TextInput value={form.name} onChange={set('name')} autoComplete="name" /></Field>
-                                <Field label={t('Phone')} required error={fe('phone')}><TextInput value={form.phone} onChange={set('phone')} autoComplete="tel" /></Field>
+                                <Field label={t('Phone')} required error={fe('phone')}><div className="flex overflow-hidden rounded-[10px] border border-line focus-within:border-primary">{phoneCode && <span className="grid place-items-center bg-surface px-3 text-sm text-muted">{phoneCode}</span>}<input className="min-w-0 flex-1 bg-transparent px-3 py-[9px] text-sm outline-none" value={form.phone} onChange={(e) => set('phone')(e.target.value)} autoComplete="tel" /></div></Field>
                                 <div className="sm:col-span-2"><Field label={t('Address')} required error={fe('address_line')}><TextInput value={form.address_line} onChange={set('address_line')} autoComplete="street-address" /></Field></div>
                                 <Field label={t('Area / city')}><TextInput value={form.area} onChange={set('area')} /></Field>
                                 <Field label={t('Address type')}><select className="field" value={form.type} onChange={(e) => set('type')(e.target.value)}><option value="home">{t('Home')}</option><option value="office">{t('Office')}</option><option value="other">{t('Other')}</option></select></Field>
                                 <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" className="accent-primary" checked={save} onChange={(e) => setSave(e.target.checked)} />{t('Save this address for next time')}</label>
                                 {addresses?.length > 0 && <button type="button" className="text-left text-sm text-primary underline sm:col-span-2" onClick={() => setAddrId(null)}>{t('Use a saved address instead')}</button>}
+                                {master?.data?.show_address_map && mapQuery && <iframe title={t('Address map')} className="h-48 w-full rounded-lg border border-line sm:col-span-2" src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=14&output=embed`} />}
                             </div>)}
                     </section>
                     <section className="card p-5">

@@ -28,10 +28,10 @@ const baseQueryWithAuth = async (args, api, extra) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithAuth,
-    tagTypes: ['Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts', 'Master'],
+    tagTypes: ['Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts', 'Master', 'Home'],
     endpoints: (b) => ({
         // storefront
-        getHome: b.query({ query: () => '/home' }),
+        getHome: b.query({ query: () => '/home', providesTags: ['Home'] }),
         getPage: b.query({ query: (slug) => `/pages/${slug}` }),
         getCategories: b.query({ query: () => '/categories' }),
         getProducts: b.query({ query: (params) => ({ url: '/products', params }) }),
@@ -52,7 +52,7 @@ export const api = createApi({
         }),
         adminSave: b.mutation({
             query: ({ res, id, ...body }) => ({ url: `/admin/${res}${id ? `/${id}` : ''}`, method: id ? 'PUT' : 'POST', body }),
-            invalidatesTags: (_r, _e, { res, id }) => [{ type: 'Admin', id: res }, { type: 'Admin', id: `${res}-${id}` }, 'Admin'],
+            invalidatesTags: (_r, _e, { res, id }) => [{ type: 'Admin', id: res }, { type: 'Admin', id: `${res}-${id}` }, 'Admin', ...((res === 'flash-sales' || res === 'products') ? ['Home'] : [])],
         }),
         adminDelete: b.mutation({
             query: ({ res, id }) => ({ url: `/admin/${res}/${id}`, method: 'DELETE' }),

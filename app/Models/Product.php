@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 #[Guarded([])]
 class Product extends Model
 {
-    protected $appends = ['image_url'];
-
     public function getImageUrlAttribute(): ?string
     {
         if (! $this->image) {
@@ -21,9 +19,11 @@ class Product extends Model
     }
 
     protected $casts = [
-        'price' => 'float', 'old_price' => 'float', 'discount_price' => 'float', 'buy_price' => 'float', 'weight' => 'float', 'color_ids' => 'array', 'size_ids' => 'array', 'meta_keywords' => 'array', 'gallery' => 'array', 'rating' => 'float',
+        'price' => 'float', 'old_price' => 'float', 'discount_price' => 'float', 'buy_price' => 'float', 'weight' => 'float', 'color_ids' => 'array', 'size_ids' => 'array', 'variants' => 'array', 'meta_keywords' => 'array', 'gallery' => 'array', 'rating' => 'float',
         'is_digital' => 'boolean', 'is_preorder' => 'boolean', 'is_flash_sale' => 'boolean', 'active' => 'boolean',
     ];
+
+    protected $appends = ['image_url', 'colors', 'sizes'];
 
     public function orderItems() { return $this->hasMany(OrderItem::class); }
     public function shop() { return $this->belongsTo(Shop::class); }

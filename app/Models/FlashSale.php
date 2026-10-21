@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class FlashSale extends Model
 {
     protected $appends = ['image_url'];
-    protected $casts = ['active' => 'boolean', 'starts_at' => 'datetime', 'ends_at' => 'datetime'];
+    protected $casts = ['active' => 'boolean', 'discount' => 'integer', 'starts_at' => 'datetime', 'ends_at' => 'datetime'];
 
     public function getImageUrlAttribute(): ?string
     {

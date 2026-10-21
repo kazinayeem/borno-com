@@ -72,7 +72,12 @@ class CheckoutController extends Controller
                 $order->update(['number' => 'RC'.str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]);
                 foreach ($o['lines'] as $l) {
                     $order->items()->create(['product_id' => $l['product_id'], 'name' => $l['name'], 'price' => $l['price'], 'qty' => $l['qty']]);
+                    $before = (int) Product::whereKey($l['product_id'])->value('stock');
                     Product::whereKey($l['product_id'])->decrement('stock', $l['qty']);
+                    $fresh = Product::find($l['product_id']);
+                    if ($fresh) {
+                        \App\Models\Setting::alertLowStock($fresh, $before);
+                    }
                 }
                 $created[] = $order->load('items');
             }

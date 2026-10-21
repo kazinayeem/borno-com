@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "i18n:check": "node scripts/i18n-check.mjs"
     },
     "devDependencies": {
         "@reduxjs/toolkit": "^2.13.0",

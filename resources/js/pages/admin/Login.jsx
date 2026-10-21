@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { errorMessage, useLoginMutation } from '../../app/api';
+import { errorMessage, useGetMasterQuery, useLoginMutation } from '../../app/api';
 import { loggedIn, pushToast } from '../../app/slices';
 import { Icon } from '../../components/ui';
 import { t } from '../../i18n';
@@ -15,6 +15,9 @@ export default function Login() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { token, user } = useSelector((s) => s.auth);
+    const { data: master } = useGetMasterQuery();
+    const brand = master?.data;
+    const name = brand?.app_name || t('ReadyEcommerce');
     if (token) return <Navigate to={user?.role === 'shop' ? '/shop' : '/admin'} replace />;
     const errs = error?.data?.errors ?? {};
 
@@ -30,16 +33,16 @@ export default function Login() {
         <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fdf7f3] px-4 py-8">
             <div className="pointer-events-none absolute inset-0 opacity-60" style={{ background: 'radial-gradient(circle at 10% 20%, #fde8c9 0, transparent 35%), radial-gradient(circle at 15% 85%, #dff3ee 0, transparent 35%), radial-gradient(circle at 90% 90%, #fdecf0 0, transparent 30%)' }} />
             <div className="absolute bottom-[28%] left-0 hidden items-center gap-2 lg:flex">
-                <img src="/assets/favicon.png" alt={t('logo')} className="h-10 w-10" />
-                <span className="text-xl font-bold text-gray-500">{t('ReadyEcommerce')}</span>
+                <img src={brand?.favicon || '/assets/favicon.png'} alt={name} className="h-10 w-10 object-contain" />
+                <span className="text-xl font-bold text-gray-500">{name}</span>
             </div>
             <div className="relative w-full max-w-[600px] rounded-2xl border border-line bg-sa-surface p-[18px] shadow-xl sm:p-[18px]">
                 <div className="flex items-center justify-between gap-2 text-[11px] text-gray-500">
                     <span>{t('Powered by')} <a href="https://razinsoft.com/" target="_blank" rel="noreferrer" className="font-bold text-primary">{t('RazinSoft')}</a> ©2026</span>
                     <span className="rounded bg-primary-soft px-2 py-1 font-bold text-primary">{t('v4.6.1')}</span>
                 </div>
-                <div className="mt-6 text-center"><img src="/assets/logo.png" alt={t('ReadyEcommerce')} className="mx-auto h-20 max-w-full" /></div>
-                <div className="my-4 text-center"><p className="my-3 text-sm">{t('Welcome to')} <b className="text-primary">{t('ReadyEcommerce')}</b></p><h2 className="text-2xl font-medium text-ink">{t('Login To Admin')}</h2></div>
+                <div className="mt-6 text-center"><img src={brand?.web_logo || '/assets/logo.png'} alt={name} className="mx-auto h-20 max-w-full object-contain" /></div>
+                <div className="my-4 text-center"><p className="my-3 text-sm">{t('Welcome to')} <b className="text-primary">{name}</b></p><h2 className="text-2xl font-medium text-ink">{t('Login To Admin')}</h2></div>
                 <hr className="mb-5 border-line" />
                 <form onSubmit={submit} noValidate>
                     <div className="mb-4"><label htmlFor="email" className="mb-1 block text-[15px]">{t('Enter Address')}</label>

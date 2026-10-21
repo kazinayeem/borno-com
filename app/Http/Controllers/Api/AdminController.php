@@ -59,7 +59,7 @@ class AdminController extends Controller
             'units' => [Unit::class, 'name', ['name' => 'required|string|max:30', 'active' => 'boolean'], []],
             'subcategories' => [SubCategory::class, 'name', ['category_id' => 'required|exists:categories,id', 'name' => 'required|string|max:120', 'image' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'active' => 'boolean'], ['category:id,name']],
             'coupons' => [Coupon::class, 'code', ['code' => 'required|string|max:40|unique:coupons,code', 'discount' => 'required|numeric|min:0', 'discount_type' => 'required|in:percent,fixed', 'min_amount' => 'nullable|numeric|min:0', 'starts_at' => 'nullable|date', 'expires_at' => 'nullable|date|after_or_equal:starts_at', 'active' => 'boolean'], []],
-            'flash-sales' => [FlashSale::class, 'name', ['name' => 'required|string|max:120', 'description' => 'nullable|string', 'image' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'starts_at' => 'nullable|date', 'ends_at' => 'nullable|date|after_or_equal:starts_at', 'active' => 'boolean'], []],
+            'flash-sales' => [FlashSale::class, 'name', ['name' => 'required|string|max:120', 'discount' => 'required|integer|min:0|max:100', 'description' => 'nullable|string', 'image' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'starts_at' => 'required|date', 'ends_at' => 'required|date|after_or_equal:starts_at', 'active' => 'boolean'], []],
             'riders' => [Rider::class, 'name', ['name' => 'required|string|max:120', 'first_name' => 'nullable|string|max:80', 'last_name' => 'nullable|string|max:80', 'phone' => 'nullable|string|max:30', 'email' => 'nullable|email|max:160', 'gender' => 'nullable|in:male,female', 'driving_licence' => 'nullable|string|max:60', 'vehicle_type' => 'nullable|string|max:40', 'active' => 'boolean'], []],
             'customers' => [User::class, 'name', ['name' => 'required|string|max:120', 'last_name' => 'nullable|string|max:80', 'phone' => 'required|string|max:30', 'email' => 'required|email|max:160|unique:users,email', 'password' => 'required|string|min:6|confirmed', 'gender' => 'nullable|in:male,female', 'date_of_birth' => 'nullable|date'], []],
             'currencies' => [Currency::class, 'name', ['name' => 'required|string|max:10', 'symbol' => 'required|string|max:6', 'rate' => 'required|numeric|min:0.0001'], []],
@@ -294,7 +294,11 @@ class AdminController extends Controller
         if ($res === 'coupons') {
             $rules['code'] = 'sometimes|required|string|max:40|unique:coupons,code,'.$id;
         }
-        $row->update($this->prepare($res, $request->validate($rules)));
+        $data = $this->prepare($res, $request->validate($rules));
+        if ($res === 'products' && $request->user()->role === 'shop') {
+            unset($data['shop_id']); // a seller can edit their product but never move it into another shop
+        }
+        $row->update($data);
 
         $this->dropFile($before, $this->imageOf($row->refresh()));
 
@@ -472,6 +476,18 @@ class AdminController extends Controller
 
         if (in_array($res, ['categories', 'brands']) && empty($data['slug']) && isset($data['name'])) {
             $data['slug'] = \Illuminate\Support\Str::slug($data['name']).'-'.substr(md5(uniqid()), 0, 4);
+        }
+
+        if ($res === 'flash-sales') {
+            $zone = Setting::storedGroup('business')['timezone'] ?? config('app.timezone');
+            if (! in_array($zone, timezone_identifiers_list(), true)) {
+                $zone = config('app.timezone');
+            }
+            foreach (['starts_at', 'ends_at'] as $key) {
+                if (! empty($data[$key])) {
+                    $data[$key] = \Carbon\Carbon::parse($data[$key], $zone)->utc();
+                }
+            }
         }
 
         return $data;

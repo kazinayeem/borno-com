@@ -125,7 +125,7 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ([['CRASH DEAL', '2026-07-08 15:00:00', '2026-07-31 07:00:00'], ['MEGA SALE', '2026-08-01 00:00:00', '2026-08-15 23:59:00'], ['WEEKEND OFFER', '2026-09-05 08:00:00', '2026-09-07 20:00:00']] as $i => [$n, $s, $e]) {
-            FlashSale::create(['name' => $n, 'starts_at' => $s, 'ends_at' => $e, 'active' => $i === 0, 'description' => "Don't miss our Mega Flash Sale! Save up to 60% on thousands of products including electronics, fashion, beauty, home essentials, and fast nationwide delivery."]);
+            FlashSale::create(['name' => $n, 'discount' => [50, 40, 30][$i], 'starts_at' => $s, 'ends_at' => $e, 'active' => $i === 0, 'description' => "Don't miss our Mega Flash Sale! Save up to 60% on thousands of products including electronics, fashion, beauty, home essentials, and fast nationwide delivery."]);
         }
 
         foreach (range(1, 9) as $i) {
