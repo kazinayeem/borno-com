@@ -8,6 +8,7 @@ import {
 import { pushToast } from '../../app/slices';
 import { ActBtn, Card, CardB, CardH, Cell, fdt, Modal, PageHead, Pager, SaIcon, Switch, Tabs, useDebounced } from '../../components/sa';
 import { isGenericResource, parseColumn, parseField, resolvePage, stripQuery, toRoute } from './spec/engine';
+import { BusinessSetup, ThemeColors } from './BusinessSettings';
 import { CUSTOM_PAGES } from './CustomPages';
 import { t } from '../../i18n';
 
@@ -202,7 +203,7 @@ export function GenericSettings({ page }) {
             <PageHead title={t(page.title)} />
             <form className="card" onSubmit={async (e) => { e.preventDefault(); notify(await save({ key: page.key, ...form }), t('Settings updated')); }}>
                 <div className="card-b form-grid">{fields.map((fl) => <FieldInput key={fl.name} f={fl} value={form[fl.name]} onChange={(v) => setForm((x) => ({ ...x, [fl.name]: v }))} error={errs[fl.name]?.[0]} />)}</div>
-                <div className="modal-f"><button className="btn primary" disabled={saving}>{saving ? t('Saving…') : t('Save Changes')}</button></div>
+                <div className="modal-f"><button className="btn primary" disabled={saving}>{saving ? t('Saving…') : t('Save And Update')}</button></div>
             </form>
         </>
     );
@@ -226,7 +227,12 @@ export default function GenericPage() {
     const mapped = toRoute(stripQuery(pathname));
     if (mapped !== stripQuery(pathname)) return <Navigate to={mapped} replace />;
     if (page.type === 'custom') { const C = CUSTOM_PAGES[page.view]; return C ? <C page={page} /> : <NotBuilt title={page.title} />; }
-    if (page.type === 'settings') return page.key === 'general' ? <Navigate to="/admin/settings" replace /> : <GenericSettings key={page.key} page={page} />;
+    if (page.type === 'settings') {
+        if (page.key === 'general') return <Navigate to="/admin/settings" replace />;
+        if (page.key === 'business') return <BusinessSetup />;
+        if (page.key === 'theme') return <ThemeColors />;
+        return <GenericSettings key={page.key} page={page} />;
+    }
     if (page.type === 'list' && isGenericResource(page.resource)) return <GenericList key={pathname} page={page} path={pathname} />;
     if (page.type === 'form' && (isGenericResource(page.resource) || page.resource === 'customers')) return <GenericForm key={pathname} page={page} />;
     return <NotBuilt title={page.title} />;

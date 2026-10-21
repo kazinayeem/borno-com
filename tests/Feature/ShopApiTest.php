@@ -210,4 +210,75 @@ class ShopApiTest extends TestCase
         $this->getJson('/api/admin/riders-with-load')->assertForbidden();
         $this->getJson('/api/admin/orders')->assertJsonCount(1, 'data');
     }
+
+    public function test_business_setup_persists_and_single_shop_blocks_new_shops(): void
+    {
+        $this->admin();
+        $this->getJson('/api/admin/settings-group/business')->assertOk()
+            ->assertJsonPath('shop_type', 'multi')->assertJsonPath('timezone', 'Asia/Dhaka');
+        $this->getJson('/api/master')->assertJsonPath('data.multi_vendor', true)
+            ->assertJsonPath('data.cash_on_delivery', true)->assertJsonPath('data.show_product_stock', false);
+
+        $this->putJson('/api/admin/settings-group/business', ['email' => 'not-an-email', 'shop_type' => 'single'])->assertJsonValidationErrors('email');
+        $this->putJson('/api/admin/settings-group/business', ['timezone' => 'Not/AZone'])->assertJsonValidationErrors('timezone');
+
+        $saved = [
+            'name' => 'Borno', 'email' => 'hello@borno.test', 'mobile' => '01700000000',
+            'shop_type' => 'single', 'currency_position' => 'suffix', 'timezone' => 'Asia/Dhaka',
+            'return_order_within_days' => 5, 'low_stock_alert' => true, 'low_stock_alert_quantity' => 4,
+            'low_stock_mail_notification' => false, 'show_product_stock' => true, 'default_phone_code' => '+880',
+            'show_address_map' => false, 'cash_on_delivery' => false, 'online_payment' => true,
+        ];
+        $this->putJson('/api/admin/settings-group/business', $saved)->assertOk()
+            ->assertJsonPath('name', 'Borno')->assertJsonPath('shop_type', 'single')->assertJsonPath('cash_on_delivery', false);
+        $this->getJson('/api/admin/settings-group/business')->assertJsonPath('return_order_within_days', 5)->assertJsonPath('currency_position', 'suffix');
+        $this->getJson('/api/master')->assertJsonPath('data.multi_vendor', false)
+            ->assertJsonPath('data.cash_on_delivery', false)->assertJsonPath('data.show_product_stock', true)
+            ->assertJsonPath('data.currency.position', 'suffix')->assertJsonPath('data.return_order_within_days', 5);
+
+        $buyer = User::create(['name' => 'Buyer', 'email' => 'buyer@x.test', 'role' => 'customer', 'password' => 'secret']);
+        Sanctum::actingAs($buyer);
+        $this->postJson('/api/account/checkout', [
+            'items' => [['product_id' => 1, 'qty' => 1]], 'payment_method' => 'Cash Payment',
+            'address' => ['name' => 'A', 'phone' => '1', 'address_line' => 'Street'],
+        ])->assertJsonValidationErrors('payment_method');
+
+        $this->admin();
+        $this->postJson('/api/admin/shops', [
+            'first_name' => 'A', 'phone' => '1', 'email' => 'newshop@x.test', 'password' => 'secret', 'password_confirmation' => 'secret', 'name' => 'Extra',
+        ])->assertForbidden();
+
+        $first = Shop::create(['name' => 'Primary']);
+        $second = Shop::create(['name' => 'Second']);
+        $cat = Category::firstOrCreate(['slug' => 'c-biz'], ['name' => 'Biz']);
+        $this->postJson('/api/admin/products', [
+            'shop_id' => $second->id, 'category_id' => $cat->id, 'name' => 'Pinned', 'description' => 'd', 'short_description' => 's',
+            'price' => 10, 'buy_price' => 5, 'sku' => 'PIN1', 'active' => true,
+        ])->assertCreated()->assertJsonPath('shop_id', $first->id);
+
+        $this->putJson('/api/admin/settings-group/delivery', [
+            'is_weight_charge' => true, 'is_distance_charge' => true, 'is_delivery_free' => true,
+        ])->assertOk()->assertJsonPath('is_weight_charge', true)->assertJsonPath('is_distance_charge', true)->assertJsonPath('is_delivery_free', true);
+        $this->putJson('/api/admin/settings-group/verification', ['phone_min_length' => 10, 'phone_max_length' => 6])->assertJsonValidationErrors('phone_max_length');
+        $this->putJson('/api/admin/settings-group/theme', [
+            'primary_color' => '#112233', 'secondary_color' => '#abcdef', 'generated_color_variants' => '["#112233"]',
+        ])->assertOk();
+        $this->getJson('/api/master')->assertJsonPath('data.theme_colors.primary', '#112233');
+
+        $this->putJson('/api/admin/settings-group/business', ['shop_type' => 'multi', 'cash_on_delivery' => true] + $saved)->assertOk()->assertJsonPath('shop_type', 'multi');
+        $this->postJson('/api/admin/shops', [
+            'first_name' => 'A', 'phone' => '1', 'email' => 'newshop@x.test', 'password' => 'secret', 'password_confirmation' => 'secret', 'name' => 'Extra',
+        ])->assertCreated();
+        $this->getJson('/api/master')->assertJsonPath('data.multi_vendor', true)->assertJsonPath('data.cash_on_delivery', true);
+        $this->getJson('/api/shops')->assertJsonPath('total', 3);
+
+        $this->putJson('/api/admin/settings-group/business', ['shop_type' => 'single'] + $saved)->assertOk();
+        $this->getJson('/api/shops')->assertJsonPath('total', 1)->assertJsonPath('data.0.name', 'Primary');
+
+        $this->seller();
+        $this->postJson('/api/admin/shops', [
+            'first_name' => 'B', 'phone' => '2', 'email' => 'other@x.test', 'password' => 'secret', 'password_confirmation' => 'secret', 'name' => 'Nope',
+        ])->assertForbidden();
+        $this->getJson('/api/admin/settings-group/business')->assertForbidden();
+    }
 }

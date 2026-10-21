@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { useGetMasterQuery } from '../app/api';
 import { addToCart, pushToast, toggleWish } from '../app/slices';
 import { Icon, Img, money } from './ui';
 import { t } from '../i18n';
 
 export default function ProductCard({ p }) {
     const dispatch = useDispatch();
+    const { data: master } = useGetMasterQuery();
     const wished = useSelector((s) => s.shop.wishlist.includes(p.id));
     const discount = p.old_price > p.price ? Math.round((1 - p.price / p.old_price) * 100) : 0;
 
@@ -27,6 +29,7 @@ export default function ProductCard({ p }) {
             <div className="mt-1 flex items-center gap-1 text-xs text-muted">
                 <Icon name="star" size={13} fill className="text-amber-400" /> <b className="text-ink">{p.rating}</b> ({p.reviews_count})
             </div>
+            {master?.data?.show_product_stock && <div className="mt-1 text-xs text-muted">{p.stock < 1 ? t('Out of stock') : t('{n} in stock', { n: p.stock })}</div>}
             <button disabled={p.stock < 1} onClick={() => { dispatch(addToCart({ ...p, qty: 1 })); dispatch(pushToast(t('Added to cart'))); }} className="btn-primary mt-3 w-full !py-1.5" aria-label={p.stock < 1 ? t('Out of stock') : t('Add to cart')}>
                 {p.stock < 1 ? t('Out of stock') : <Icon name="arrow" size={16} />}
             </button>

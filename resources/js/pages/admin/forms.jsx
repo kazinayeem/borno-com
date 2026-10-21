@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { errorMessage, useAdminGetQuery, useAdminSaveMutation, useGetOptionsQuery } from '../../app/api';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { errorMessage, useAdminGetQuery, useAdminSaveMutation, useGetGroupQuery, useGetOptionsQuery } from '../../app/api';
 import { pushToast } from '../../app/slices';
 import { Field, FormActions, ImagePicker, MultiSelect, PageTitle, Section, Select, TagInput, TextArea, TextInput } from '../../components/FormKit';
 import { t } from '../../i18n';
@@ -52,6 +52,11 @@ export function CategoryForm() {
 export function ShopForm() {
     const empty = { first_name: '', last_name: '', phone: '', gender: 'male', email: '', password: '', password_confirmation: '', name: '', name_ar: '', address: '', description: '', active: true, logo: '' };
     const { id, form, set, err, submit, saving, isLoading } = useAdminForm('shops', empty, '/admin/shops');
+    const { data: business, isLoading: loadingMode } = useGetGroupQuery('business');
+    if (!id && loadingMode) return <Loading />;
+    if (!id && business?.shop_type === 'single') {
+        return <div className="card"><div className="empty"><h2>{t('Add Shop is unavailable in Single Shop mode.')}</h2><Link to="/admin/shops" className="btn" style={{ marginTop: 14 }}>{t('Back to All Shop')}</Link></div></div>;
+    }
     if (isLoading) return <Loading />;
     return (
         <form onSubmit={submit} className="mx-auto max-w-[1100px]">
@@ -82,7 +87,13 @@ export function ShopForm() {
 export function ProductForm() {
     const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], image: '', active: true };
     const { id, form, set, err, submit, saving, isLoading, reset } = useAdminForm('products', empty, '/admin/products');
+    const isAdmin = useSelector((s) => s.auth.user?.role === 'admin');
+    const { data: business } = useGetGroupQuery('business', { skip: !isAdmin });
     const { data: opt } = useGetOptionsQuery();
+    const singleShop = business?.shop_type === 'single';
+    useEffect(() => {
+        if (singleShop && opt?.shops?.[0]) set('shop_id')(opt.shops[0].id);
+    }, [singleShop, opt]); // eslint-disable-line
     if (isLoading) return <Loading />;
     const o = opt ?? { categories: [], brands: [], shops: [], colors: [], sizes: [], units: [] };
     const num = (k, label, extra = {}) => <Field label={label} required={extra.required} error={err(k)}><TextInput value={form[k]} onChange={set(k)} placeholder={label.replace(' *', '')} {...extra.input} /></Field>;
@@ -99,7 +110,7 @@ export function ProductForm() {
             </Section>
             <Section title={t('Thumbnail (Ratio 1280 x 960 px) *')}><ImagePicker value={form.image} onChange={set('image')} error={err('image')} width="w-60" ratio="aspect-[4/3]" /></Section>
                         <Section title={t('Product Information')}><div className="grid gap-x-6 md:grid-cols-3">
-                <Field label={t('Select Shop')} required error={err('shop_id')}><Select value={form.shop_id} onChange={set('shop_id')} options={o.shops} placeholder={t('Select Shop')} /></Field>
+                {!singleShop && <Field label={t('Select Shop')} required error={err('shop_id')}><Select value={form.shop_id} onChange={set('shop_id')} options={o.shops} placeholder={t('Select Shop')} /></Field>}
                 <Field label={t('Select Category')} required error={err('category_id')}><Select value={form.category_id} onChange={set('category_id')} options={o.categories} placeholder={t('Select Category')} /></Field>
                 <Field label={t('Select Brand')}><Select value={form.brand_id} onChange={set('brand_id')} options={o.brands} placeholder={t('Select Brand')} /></Field>
                 <Field label={t('Select Color')}><MultiSelect value={form.color_ids} onChange={set('color_ids')} options={o.colors} /></Field>

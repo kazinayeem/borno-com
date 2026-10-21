@@ -30,6 +30,7 @@ import { OrderDetail, OrderDocument } from './pages/admin/OrderDetail';
 import GenericPage from './pages/admin/GenericPages';
 import ShopCatalog from './pages/admin/ShopCatalog';
 import Messages from './pages/admin/Messages';
+import { useGetMasterQuery } from './app/api';
 import { t } from './i18n';
 
 const AdminResource = () => {
@@ -40,6 +41,7 @@ const AdminResource = () => {
 export default function App() {
     const lang = useSelector((s) => s.ui.lang);
     const theme = useSelector((s) => s.ui.theme);
+    const { data: master } = useGetMasterQuery();
     setCurrentLang(lang);   // set before children render, so every t() call in this render pass uses the new language
     useEffect(() => {
         const l = LANGS.find((x) => x.code === lang) ?? LANGS[0];
@@ -47,7 +49,11 @@ export default function App() {
         root.lang = l.code;
         root.dir = l.dir;                 // Arabic flips the whole layout to right-to-left
         root.dataset.theme = theme;
-    }, [lang, theme]);
+        const primary = master?.data?.theme_colors?.primary;
+        const secondary = master?.data?.theme_colors?.secondary;
+        if (primary) { root.style.setProperty('--theme-primary', primary); root.style.setProperty('--color-primary', primary); }
+        if (secondary) root.style.setProperty('--theme-secondary', secondary);
+    }, [lang, theme, master]);
     return (
         // key={lang}: switching language remounts the tree so every string re-renders (data stays in the RTK cache).
         <React.Fragment key={lang}>

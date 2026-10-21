@@ -8,6 +8,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\ContactMessage;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Models\Shop;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,7 @@ class StoreController extends Controller
             'categories' => Category::where('active', true)->get(),
             'flash_sale' => Product::with($with)->where('is_flash_sale', true)->where('active', true)->where('approval', '!=', 'pending')->limit(5)->get(),
             'popular' => Product::with($with)->where('active', true)->where('approval', '!=', 'pending')->orderByDesc('reviews_count')->limit(12)->get(),
-            'shops' => Shop::withCount('products')->limit(6)->get(),
+            'shops' => Shop::withCount('products')->orderBy('id')->limit(Setting::shopType() === 'single' ? 1 : 6)->get(),
         ];
     }
 
@@ -31,17 +32,27 @@ class StoreController extends Controller
         $c = array_replace(\App\Http\Controllers\Api\SettingsController::DEFAULTS, \App\Models\Setting::all_());
         $img = fn ($p) => $p ? url('storage/'.$p) : url('assets/logo.png');
         $cur = \App\Models\Currency::where('name', $c['currency'])->first();
+        $business = Setting::storedGroup('business');
+        $theme = Setting::storedGroup('theme');
+        $variants = json_decode($theme['generated_color_variants'] ?? '[]', true);
 
         return ['message' => 'Success', 'data' => [
             'app_name' => $c['name'], 'app_title' => $c['title'], 'app_logo' => $img($c['app_logo']), 'web_logo' => $img($c['logo']), 'web_dark_logo' => $img($c['dark_logo']),
             'web_footer_logo' => $img($c['footer_logo']), 'web_footer_text' => $c['footer_text'], 'web_show_footer' => (bool) $c['show_footer'],
             'app_locale' => 'en', 'baseUrl' => url('/'), 'mobile' => $c['footer_phone'] ?: $c['mobile'], 'email' => $c['email'], 'address' => $c['address'],
-            'currency' => ['name' => $cur?->name ?? 'USD', 'symbol' => $cur?->symbol ?? '$', 'position' => $c['currency_position'], 'rate' => $cur?->rate ?? 1],
+            'currency' => ['name' => $cur?->name ?? 'USD', 'symbol' => $cur?->symbol ?? '$', 'position' => $business['currency_position'] ?? $c['currency_position'], 'rate' => $cur?->rate ?? 1],
             'currencies' => \App\Models\Currency::all(['name', 'symbol', 'rate']),
             'languages' => [['name' => 'English', 'code' => 'en']],
             'show_download_app' => (bool) $c['show_download_app'], 'google_client_id' => config('services.google.client_id') ?: null, 'google_playstore_link' => $c['google_playstore_url'], 'app_store_link' => $c['app_store_url'],
-            'cash_on_delivery' => true, 'online_payment' => true, 'multi_vendor' => true, 'preOrder' => true,
-            'return_order_within_days' => 7, 'show_product_stock' => true, 'theme_colors' => ['primary' => '#ee456b'],
+            'cash_on_delivery' => Setting::flag('cash_on_delivery', true), 'online_payment' => Setting::flag('online_payment', true),
+            'multi_vendor' => Setting::shopType() === 'multi', 'preOrder' => true,
+            'return_order_within_days' => (int) ($business['return_order_within_days'] ?? 7),
+            'show_product_stock' => Setting::flag('show_product_stock', false),
+            'theme_colors' => [
+                'primary' => $theme['primary_color'] ?? '#ee456b',
+                'secondary' => $theme['secondary_color'] ?? '#111827',
+                'variants' => is_array($variants) ? $variants : [],
+            ],
         ]];
     }
 
@@ -103,7 +114,12 @@ class StoreController extends Controller
 
     public function shops()
     {
-        return Shop::withCount('products')->paginate(12);
+        $q = Shop::withCount('products')->orderBy('id');
+        if (Setting::shopType() === 'single') {
+            $q->whereKey(Shop::orderBy('id')->value('id') ?? 0);
+        }
+
+        return $q->paginate(12);
     }
 
     public function shop(Shop $shop)

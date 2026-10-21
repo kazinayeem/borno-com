@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Services\Checkout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,9 @@ class CheckoutController extends Controller
 
     public function place(Request $request)
     {
+        if (! Setting::flag('cash_on_delivery', true)) {
+            throw ValidationException::withMessages(['payment_method' => ['Cash on delivery is turned off in Business Setup.']]);
+        }
         $data = $request->validate($this->cartRules() + [
             'payment_method' => 'required|in:Cash Payment',          // no online gateway is wired up yet
             'address_id' => 'nullable|integer', 'notes' => 'nullable|string|max:500', 'save_address' => 'boolean',

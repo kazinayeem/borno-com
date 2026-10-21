@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { errorMessage, useAdminDeleteMutation, useAdminListQuery, useAdminSaveMutation, useApproveProductMutation, useGetOptionsQuery } from '../../app/api';
+import { errorMessage, useAdminDeleteMutation, useAdminListQuery, useAdminSaveMutation, useApproveProductMutation, useGetGroupQuery, useGetOptionsQuery } from '../../app/api';
 import { pushToast } from '../../app/slices';
 import { ActBtn, Card, CardH, Modal, money as fmtMoney, PageHead, Pager, SaIcon, Switch, Thumb, useDebounced } from '../../components/sa';
 import { t } from '../../i18n';
@@ -53,6 +53,8 @@ export default function Resource({ res }) {
     const [sp] = useSearchParams();
     const approval = res === 'products' ? sp.get('status') : null;
     const isAdmin = useSelector((st) => st.auth.user?.role === 'admin');
+    const { data: business } = useGetGroupQuery('business', { skip: !isAdmin });
+    const singleShop = business?.shop_type === 'single';
     const [approve] = useApproveProductMutation();
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -76,25 +78,27 @@ export default function Resource({ res }) {
     const del = async (row) => { if (window.confirm(t('Delete this record?'))) notify(await remove({ res, id: row.id }), t('Deleted')); };
     const title = approval ? `${t('Shop Products')} · ${t(approval[0].toUpperCase() + approval.slice(1))}` : t(cfg.title);
     const rows = data?.data ?? [];
-    const colSpan = cfg.cols.length + (cfg.noSL ? 0 : 1);
+    const cols = cfg.cols.filter(([label]) => !(singleShop && label === 'Shop'));
+    const colSpan = cols.length + (cfg.noSL ? 0 : 1);
 
     return (
         <>
+            {res === 'vat-taxes' && <div className="card mb-4"><div className="card-b text-sm"><b>{t('🌟 Important Information')}</b><p className="mt-1 text-muted">{t('Just a quick note: VAT and Taxes are calculated based on your order. If you have multiple VAT and Tax rates active, your total VAT and Tax amount will be clearly displayed on the checkout page for your convenience.')}</p></div></div>}
             <PageHead title={title}>
-                {!approval && <button className="btn primary" onClick={() => (cfg.page ? navigate(`/admin/${cfg.page}/create`) : setEditing({ ...cfg.defaults }))}><SaIcon name="plus" /> {t('Add New')}</button>}
+                {!approval && !(singleShop && res === 'shops') && <button className="btn primary" onClick={() => (cfg.page ? navigate(`/admin/${cfg.page}/create`) : setEditing({ ...cfg.defaults }))}><SaIcon name="plus" /> {t('Add New')}</button>}
             </PageHead>
             <Card>
                 <CardH><div className="toolbar" style={{ flex: 1 }}>
                     <input className="input" aria-label={t('Search')} placeholder={t('Search…')} style={{ minWidth: 220 }} value={q} onChange={(e) => setQ(e.target.value)} />
-                    {cfg.shopFilter && isAdmin && <select className="input" aria-label={t('Shop')} value={shop} onChange={(e) => setShop(e.target.value)}><option value="">{t('All Shop')}</option>{shops?.data.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
+                    {cfg.shopFilter && isAdmin && !singleShop && <select className="input" aria-label={t('Shop')} value={shop} onChange={(e) => setShop(e.target.value)}><option value="">{t('All Shop')}</option>{shops?.data.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
                 </div></CardH>
                 <div className="table-wrap" style={{ opacity: isFetching ? 0.6 : 1 }}><table>
-                    <thead><tr>{!cfg.noSL && <th>{t('SL')}</th>}{cfg.cols.map(([l]) => <th key={l}>{t(l)}</th>)}</tr></thead>
+                    <thead><tr>{!cfg.noSL && <th>{t('SL')}</th>}{cols.map(([l]) => <th key={l}>{t(l)}</th>)}</tr></thead>
                     <tbody>
                         {rows.map((row, i) => (
                             <tr key={row.id}>
                                 {!cfg.noSL && <td>{(data.current_page - 1) * data.per_page + i + 1}</td>}
-                                {cfg.cols.map(([l, v]) => (
+                                {cols.map(([l, v]) => (
                                     <td key={l}>
                                         {v === 'status' ? <Switch checked={row.active} onChange={() => toggle(row, 'active')} />
                                             : v === 'published' ? <Switch checked={row.published} onChange={() => toggle(row, 'published')} />

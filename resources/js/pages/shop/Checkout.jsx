@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { errorMessage, useGetAccountQuery, useGetAddressesQuery, usePlaceOrderMutation } from '../../app/api';
+import { errorMessage, useGetAccountQuery, useGetAddressesQuery, useGetMasterQuery, usePlaceOrderMutation } from '../../app/api';
 import { clearCart, pushToast } from '../../app/slices';
 import { Field, TextArea, TextInput } from '../../components/FormKit';
 import { Empty, money } from '../../components/ui';
@@ -14,6 +14,7 @@ export default function Checkout() {
     const loc = useLocation();
     const [coupon, setCoupon] = useState(loc.state?.coupon ?? '');
     const { cart, data, couponError, issues, loading } = useCartQuote(coupon);
+    const { data: master } = useGetMasterQuery();
     const { data: me } = useGetAccountQuery();
     const { data: addresses } = useGetAddressesQuery();
     const [place, { isLoading, error }] = usePlaceOrderMutation();
@@ -30,6 +31,8 @@ export default function Checkout() {
     const errs = error?.data?.errors ?? {};
     const itemErrors = errs.items ?? [];
     const blocked = Object.keys(issues).length > 0;
+    const cashOnDelivery = master?.data?.cash_on_delivery !== false;
+    const onlinePayment = !!master?.data?.online_payment;
     const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
     const submit = async (e) => {
         e.preventDefault();
@@ -69,8 +72,9 @@ export default function Checkout() {
                     </section>
                     <section className="card p-5">
                         <h2 className="mb-3 font-semibold">{t('Payment')}</h2>
-                        <label className="flex items-center gap-3 rounded-lg border border-primary bg-primary-soft p-3 text-sm"><input type="radio" checked readOnly className="accent-primary" /><span><b>{t('Cash on delivery')}</b><br /><span className="text-muted">{t('Pay when your order arrives.')}</span></span></label>
-                        <p className="mt-2 text-xs text-muted">{t('Card and mobile-wallet payments are not available yet.')}</p>
+                        {cashOnDelivery && <label className="flex items-center gap-3 rounded-lg border border-primary bg-primary-soft p-3 text-sm"><input type="radio" checked readOnly className="accent-primary" /><span><b>{t('Cash on delivery')}</b><br /><span className="text-muted">{t('Pay when your order arrives.')}</span></span></label>}
+                        {onlinePayment && <p className="mt-2 text-xs text-muted">{t('Online payment is enabled. Card checkout is not connected on this store yet.')}</p>}
+                        {!cashOnDelivery && <p className="text-sm text-muted">{onlinePayment ? t('Cash on delivery is turned off, and online checkout is not connected yet.') : t('No payment method is enabled in Business Setup.')}</p>}
                     </section>
                     <section className="card p-5"><Field label={t('Order notes (optional)')}><TextArea value={notes} onChange={setNotes} placeholder={t('Delivery instructions…')} rows={3} /></Field></section>
                 </div>
@@ -78,7 +82,7 @@ export default function Checkout() {
                     <div className="card mb-3 p-4"><h2 className="mb-2 text-sm font-semibold">{t('Items ({n})', { n: cart.reduce((a, i) => a + i.qty, 0) })}</h2>{cart.map((i) => <div key={i.id} className="flex justify-between gap-2 py-1 text-sm"><span className="line-clamp-1">{i.qty} × {i.name}</span><span className="shrink-0">{money(i.price * i.qty)}</span></div>)}</div>
                     <Totals data={data} coupon={coupon} couponError={couponError} onCoupon={setCoupon} />
                     {data?.orders.length > 1 && <p className="mt-2 text-xs text-muted">{t('Your items come from {n} shops, so they are delivered as {n} separate orders.', { n: data.orders.length })}</p>}
-                    <button disabled={isLoading || blocked || !data} className="btn-primary mt-3 w-full !py-3">{isLoading ? t('Placing order…') : t('Place order · {total}', { total: money(data?.total) })}</button>
+                    <button disabled={isLoading || blocked || !data || !cashOnDelivery} className="btn-primary mt-3 w-full !py-3">{isLoading ? t('Placing order…') : t('Place order · {total}', { total: money(data?.total) })}</button>
                 </div>
             </div>
         </form>

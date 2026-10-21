@@ -28,7 +28,7 @@ const baseQueryWithAuth = async (args, api, extra) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithAuth,
-    tagTypes: ['Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts'],
+    tagTypes: ['Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts', 'Master'],
     endpoints: (b) => ({
         // storefront
         getHome: b.query({ query: () => '/home' }),
@@ -64,7 +64,7 @@ export const api = createApi({
         getCustomers: b.query({ query: (params) => ({ url: '/admin/customers', params }) }),
         uploadImage: b.mutation({ query: (file) => { const body = new FormData(); body.append('file', file); return { url: '/admin/uploads', method: 'POST', body }; } }),
         getSettings: b.query({ query: () => '/admin/settings', providesTags: ['Settings'] }),
-        saveSettings: b.mutation({ query: (body) => ({ url: '/admin/settings', method: 'PUT', body }), invalidatesTags: ['Settings'] }),
+        saveSettings: b.mutation({ query: (body) => ({ url: '/admin/settings', method: 'PUT', body }), invalidatesTags: ['Settings', 'Master'] }),
         posProducts: b.query({ query: (params) => ({ url: '/admin/pos/products', params }), providesTags: ['Pos'] }),
         posCustomers: b.query({ query: (search) => ({ url: '/admin/pos/customers', params: { search } }), providesTags: ['PosCustomers'] }),
         posAddCustomer: b.mutation({ query: (body) => ({ url: '/admin/pos/customers', method: 'POST', body }), invalidatesTags: ['PosCustomers'] }),
@@ -86,7 +86,7 @@ export const api = createApi({
         recDecide: b.mutation({ query: ({ res, id, decision }) => ({ url: `/admin/r/${res}/${id}/${decision}`, method: 'POST' }), invalidatesTags: (_r, _e, { res }) => [{ type: 'Rec', id: res }] }),
         getLookup: b.query({ query: (res) => `/admin/lookup/${res}` }),
         getGroup: b.query({ query: (key) => `/admin/settings-group/${key}`, providesTags: (_r, _e, key) => [{ type: 'Group', id: key }] }),
-        saveGroup: b.mutation({ query: ({ key, ...body }) => ({ url: `/admin/settings-group/${key}`, method: 'PUT', body }), invalidatesTags: (_r, _e, { key }) => [{ type: 'Group', id: key }] }),
+        saveGroup: b.mutation({ query: ({ key, ...body }) => ({ url: `/admin/settings-group/${key}`, method: 'PUT', body }), invalidatesTags: (_r, _e, { key }) => [{ type: 'Group', id: key }, 'Master'] }),
         approveProduct: b.mutation({ query: (id) => ({ url: `/admin/products/${id}/approve`, method: 'PATCH' }), invalidatesTags: ['Admin'] }),
         // custom screens
         reportAnalytics: b.query({ query: (params) => ({ url: '/admin/reports/analytics', params }) }),
@@ -107,7 +107,7 @@ export const api = createApi({
         getGallery: b.query({ query: () => '/admin/gallery', providesTags: ['Gallery'] }),
         deleteImage: b.mutation({ query: (name) => ({ url: `/admin/gallery/${name}`, method: 'DELETE' }), invalidatesTags: ['Gallery'] }),
         // storefront customer
-        getMaster: b.query({ query: () => '/master' }),
+        getMaster: b.query({ query: () => '/master', providesTags: ['Master'] }),
         quoteCart: b.mutation({ query: (body) => ({ url: '/checkout/quote', method: 'POST', body }) }),
         custRegister: b.mutation({ query: (body) => ({ url: '/account/register', method: 'POST', body }) }),
         custLogin: b.mutation({ query: (body) => ({ url: '/account/login', method: 'POST', body }) }),

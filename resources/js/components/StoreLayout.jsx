@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useGetCategoriesQuery } from '../app/api';
+import { useGetCategoriesQuery, useGetMasterQuery } from '../app/api';
 import { setLang, toggleTheme } from '../app/slices';
 import { Icon, Img, money } from './ui';
 import { LANGS, t } from '../i18n';
@@ -53,6 +53,8 @@ function CategoryMenu() {
 }
 
 function Header() {
+    const { data: master } = useGetMasterQuery();
+    const links = nav.filter(([to]) => master?.data?.multi_vendor !== false || to !== '/shops');
     const [q, setQ] = useState('');
     const navigate = useNavigate();
     const { cart, wishlist } = useSelector((s) => s.shop);
@@ -78,7 +80,7 @@ function Header() {
             <div className="flex items-center gap-8 pb-3">
                 <CategoryMenu />
                 <nav className="flex gap-6 overflow-x-auto text-[15px]">
-                    {nav.map(([to, label]) => (
+                    {links.map(([to, label]) => (
                         <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `whitespace-nowrap border-b-2 pb-1 ${isActive ? 'border-primary text-primary' : 'border-transparent hover:text-primary'}`}>{t(label)}</NavLink>
                     ))}
                 </nav>
@@ -88,10 +90,12 @@ function Header() {
 }
 
 function Footer() {
+    const { data: master } = useGetMasterQuery();
+    const company = ['About Us', 'Blog', 'Terms & Conditions', 'Privacy Policy', 'Return & Refund Policy', ...(master?.data?.multi_vendor === false ? [] : ['Become a Seller'])];
     const cols = [
         ['Shop', ['All Products', 'Digital Products', 'Top Rated Products', 'Best Deals']],
         ['Customer Service', ['Help Center', 'Easy Returns', 'Shipping Policy', 'Payment Methods', 'FAQ', 'Contact Us']],
-        ['Company', ['About Us', 'Blog', 'Terms & Conditions', 'Privacy Policy', 'Return & Refund Policy', 'Become a Seller']],
+        ['Company', company],
     ];
     return (
         <footer className="mt-16 bg-surface print:hidden">

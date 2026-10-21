@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useGetHomeQuery } from '../../app/api';
+import { useGetHomeQuery, useGetMasterQuery } from '../../app/api';
 import ProductCard from '../../components/ProductCard';
 import { Icon, Img } from '../../components/ui';
 import { t } from '../../i18n';
@@ -9,6 +9,7 @@ const perks = [['Secure Payments', '100% safe & trusted'], ['Free Delivery', 'On
 
 export default function Home() {
     const { data, isLoading, isError, refetch } = useGetHomeQuery();
+    const { data: master } = useGetMasterQuery();
     if (isError) return <div className="py-20 text-center">{t('Failed to load.')} <button className="text-primary underline" onClick={refetch}>{t('Retry')}</button></div>;
 
     return (
@@ -71,7 +72,7 @@ export default function Home() {
                 </div>
             </section>
 
-            <section>
+            {master?.data?.multi_vendor !== false && <section>
                 <h2 className="mb-4 text-xl font-semibold">{t('Top Shops')}</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
                     {(data?.shops ?? []).map((s) => (
@@ -80,7 +81,7 @@ export default function Home() {
                             <Link to={`/products?shop_id=${s.id}`} className="btn-outline mt-2">{t('Visit Shop')}</Link></div>
                     ))}
                 </div>
-            </section>
+            </section>}
         </div>
     );
 }

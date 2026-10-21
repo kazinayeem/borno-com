@@ -19,11 +19,13 @@ use App\Models\Order;
 use App\Models\ContactMessage;
 use App\Models\Product;
 use App\Models\Record;
+use App\Models\Setting;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
 {
@@ -258,7 +260,12 @@ class AdminController extends Controller
     {
         [$model, , $rules] = $this->cfg($res);
         if ($res === 'shops') {
+            abort_unless(Setting::shopType() === 'multi', 403, 'Add Shop is not available while the store is in Single Shop mode.');
+
             return response()->json($this->createShop($request, $rules), 201);
+        }
+        if ($res === 'products') {
+            $this->pinSingleShop($request);
         }
         $data = $this->prepare($res, $request->validate($rules));
         if ($res === 'products' && $request->user()->role === 'shop') {
@@ -274,6 +281,9 @@ class AdminController extends Controller
         [$model, , $rules] = $this->cfg($res);
         $row = $model::findOrFail($id);
         $this->guardOwnProduct($res, $row);
+        if ($res === 'products') {
+            $this->pinSingleShop($request);
+        }
         $before = $this->imageOf($row);
         $rules = array_map(fn ($r) => is_string($r) ? str_replace('required|', 'sometimes|required|', $r) : $r, $rules);
         foreach (['icon', 'logo', 'image'] as $imgField) {
@@ -367,6 +377,19 @@ class AdminController extends Controller
             'sizes' => Size::where('active', true)->get(['id', 'name']),
             'units' => Unit::where('active', true)->pluck('name'),
         ];
+    }
+
+    /** In Single Shop mode every admin product belongs to the first shop. Sellers stay on their own shop. */
+    private function pinSingleShop(Request $request): void
+    {
+        if ($request->user()->role !== 'admin' || Setting::shopType() !== 'single') {
+            return;
+        }
+        $only = Shop::orderBy('id')->value('id');
+        if (! $only) {
+            throw ValidationException::withMessages(['shop_id' => ['Single Shop mode has no shop to assign products to.']]);
+        }
+        $request->merge(['shop_id' => $only]);
     }
 
     private function createShop(Request $request, array $shopRules)

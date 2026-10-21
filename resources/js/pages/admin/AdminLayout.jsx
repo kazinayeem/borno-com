@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { api, useGetBellQuery, useGetDashboardQuery, useLogoutMutation, useReadAllNotificationsMutation } from '../../app/api';
+import { api, useGetBellQuery, useGetDashboardQuery, useGetGroupQuery, useLogoutMutation, useReadAllNotificationsMutation } from '../../app/api';
 import { loggedOut, setLang } from '../../app/slices';
 import { fdate, SaIcon } from '../../components/sa';
 import { menu, shopMenu, toRoute } from './spec/engine';
@@ -61,12 +61,16 @@ export default function AdminLayout() {
     const { data: bell } = useGetBellQuery(undefined, { skip: !isAdmin || !token, pollingInterval: 30000 });
     const [readAll] = useReadAllNotificationsMutation();
     const { data: dash } = useGetDashboardQuery(undefined, { skip: isAdmin || !token });
+    const { data: business } = useGetGroupQuery('business', { skip: !isAdmin || !token });
     useEffect(() => { try { localStorage.setItem('theme', theme); } catch { /* storage unavailable */ } }, [theme]);
     useEffect(() => { setDd(null); setMobileOpen(false); }, [loc.pathname]);
     useEffect(() => { const h = (e) => { if (!e.target.closest('.dropdown, [data-dd]')) setDd(null); }; document.addEventListener('click', h); return () => document.removeEventListener('click', h); }, []);
 
     const items = useMemo(() => {
-        if (isAdmin) return menu;
+        const hideAddShop = (list) => (business?.shop_type === 'single'
+            ? list.map((m) => (m.label === 'Shop' ? { ...m, children: m.children.filter(([label]) => label !== 'Add Shop') } : m))
+            : list);
+        if (isAdmin) return hideAddShop(menu);
         const counts = dash?.orders_by_status;
         if (!counts) return shopMenu;
         return shopMenu.map((m) => (m.label !== 'All Orders' ? m : {
@@ -76,7 +80,7 @@ export default function AdminLayout() {
                 return [n == null ? label : `${label} ${n}`, path];
             }),
         }));
-    }, [isAdmin, dash]);
+    }, [isAdmin, dash, business]);
 
     if (!token) return <Navigate to="/admin/login" replace />;
     if (user?.role === 'shop' && (loc.pathname === '/admin' || !shopOk(loc.pathname))) return <Navigate to="/shop" replace />;
