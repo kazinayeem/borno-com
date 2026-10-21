@@ -125,6 +125,8 @@ export const api = createApi({
         getAddresses: b.query({ query: () => '/account/addresses', providesTags: ['Addresses'] }),
         saveAddress: b.mutation({ query: ({ id, ...body }) => ({ url: `/account/addresses${id ? `/${id}` : ''}`, method: id ? 'PUT' : 'POST', body }), invalidatesTags: ['Addresses'] }),
         deleteAddress: b.mutation({ query: (id) => ({ url: `/account/addresses/${id}`, method: 'DELETE' }), invalidatesTags: ['Addresses'] }),
+        placeGuestOrder: b.mutation({ query: (body) => ({ url: '/checkout/guest', method: 'POST', body }) }),
+        getPaymentStatus: b.query({ query: (tran) => `/payments/${tran}` }),
         placeOrder: b.mutation({ query: (body) => ({ url: '/account/checkout', method: 'POST', body }), invalidatesTags: ['CustOrders', 'Addresses'] }),
         getStatistics: b.query({ query: (params) => ({ url: '/admin/statistics', params }), providesTags: ['Admin'] }),
         getHomeCollections: b.query({ query: () => '/collections', providesTags: ['Collections'] }),
@@ -161,6 +163,7 @@ export const api = createApi({
 });
 
 export const {
+    usePlaceGuestOrderMutation, useGetPaymentStatusQuery,
     useCustomerProfileQuery,
     useReportOverviewQuery, useReportSalesQuery, useReportCommissionsQuery, useReportPayoutsQuery,
     usePermissionsCatalogQuery, useStaffRolesQuery, useSaveStaffRoleMutation, useDeleteStaffRoleMutation, useStaffListQuery, useSaveStaffMutation, useDeleteStaffMutation, useActivityLogsQuery,

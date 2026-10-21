@@ -6,17 +6,32 @@ import { pushToast } from '../../app/slices';
 import { ActBtn, Card, CardH, Modal, money as fmtMoney, PageHead, Pager, SaIcon, Switch, Thumb, useDebounced } from '../../components/sa';
 import { t } from '../../i18n';
 import { RichEditor } from '../../components/RichEditor';
+import { ImagePicker } from '../../components/FormKit';
 
 const thumb = (row) => <Thumb src={row.image_url} name={row.name ?? row.title} id={row.id} />;
 const logo = (row) => <Thumb src={row.image_url} name={row.name ?? row.title} id={row.id} />;
 const money = (v) => fmtMoney(v);
+
+// Products with colors / sizes: show the price range, how many variants there are and which colors they come in.
+const variantPrices = (r) => (r.variants ?? []).map((v) => Number(v.price)).filter((n) => !Number.isNaN(n));
+const priceRange = (r) => { const p = variantPrices(r); if (p.length > 1 && Math.min(...p) !== Math.max(...p)) return `${money(Math.min(...p))} – ${money(Math.max(...p))}`; return money(p.length ? p[0] : r.price); };
+const variantsCell = (r) => {
+    const n = (r.variants ?? []).length;
+    if (!n) return <span className="muted">{r.is_digital ? t('Digital') : '—'}</span>;
+    return (
+        <div><b>{t('{n} variants', { n })}</b>
+            <div className="muted" style={{ fontSize: 11 }}>{[(r.colors ?? []).length && t('{n} colors', { n: r.colors.length }), (r.sizes ?? []).length && t('{n} sizes', { n: r.sizes.length })].filter(Boolean).join(' · ')}</div>
+            <div style={{ display: 'flex', gap: 3, marginTop: 3, flexWrap: 'wrap' }}>{(r.colors ?? []).slice(0, 8).map((c) => <span key={c.id} className="swatch" title={c.name} style={{ background: c.code }} />)}</div></div>
+    );
+};
+const nameCell = (r) => <div><b>{r.name}</b>{r.is_digital && <span className="chip" style={{ marginInlineStart: 6 }}>{t('Digital')}</span>}</div>;
 
 // Columns/fields mirror the reference admin's list pages. `status` renders a toggle switch bound to `active`.
 export const resources = {
     categories: { page: 'category', title: 'Categories', add: 'Add Category', cols: [['Thumbnail', thumb], ['Name', (r) => r.name], ['Status', 'status'], ['Action', 'actions']], fields: [['name', 'Name', 'text'], ['active', 'Active', 'checkbox']], defaults: { active: true } },
     brands: { title: 'Brands', add: 'Add Brand', cols: [['Image', thumb], ['Name', (r) => r.name], ['Status', 'status'], ['Action', 'actions']], fields: [['name', 'Name', 'text'], ['active', 'Active', 'checkbox']], defaults: { active: true } },
     shops: { page: 'shops', title: 'Shops', add: 'Add Shop', cols: [['Logo', logo], ['Name', (r) => r.name], ['Status', 'status'], ['Products', (r) => r.products_count], ['Orders', (r) => r.orders_count], ['Action', 'actions']], fields: [['name', 'Name', 'text'], ['active', 'Active', 'checkbox']], defaults: { active: true } },
-    products: { page: 'product', title: 'Product List', add: 'Add Product', shopFilter: true, cols: [['Thumbnail', thumb], ['Product Name', (r) => r.name], ['Shop', (r) => r.shop?.name], ['Price', (r) => money(r.price)], ['Discount Price', (r) => money(r.discount_price ?? r.price)], ['Stock', 'stock'], ['Action', 'actions']],
+    products: { page: 'product', title: 'Product List', add: 'Add Product', shopFilter: true, cols: [['Thumbnail', thumb], ['Product Name', nameCell], ['Shop', (r) => r.shop?.name], ['Variants', variantsCell], ['Price', priceRange], ['Discount Price', (r) => (variantPrices(r).length > 1 ? '—' : money(r.discount_price ?? r.price))], ['Stock', 'stock'], ['Action', 'actions']],
         fields: [['name', 'Name', 'text'], ['shop_id', 'Shop ID', 'number'], ['category_id', 'Category ID', 'number'], ['price', 'Price', 'number'], ['discount_price', 'Discount price', 'number'], ['stock', 'Stock', 'number'], ['description', 'Description', 'richtext'], ['is_flash_sale', 'Flash sale', 'checkbox'], ['active', 'Active', 'checkbox']], defaults: { shop_id: 1, active: true, stock: 0 } },
     riders: { title: 'All Drivers', add: 'Add Driver', cols: [['Profile', (r) => <Thumb name={r.name} id={r.id} />], ['Name', (r) => r.name], ['Phone', (r) => r.phone], ['Status', 'status'], ['Action', 'actions']], fields: [['name', 'Name', 'text'], ['phone', 'Phone', 'text'], ['email', 'Email', 'email'], ['vehicle_type', 'Vehicle type', 'text'], ['driving_licence', 'Driving licence', 'text'], ['active', 'Active', 'checkbox']], defaults: { active: true } },
     colors: { title: 'Colors', add: 'Add Color', cols: [['Name', (r) => r.name], ['Color', (r) => <><span className="swatch" style={{ background: r.code }} /> <span className="muted">{r.code}</span></>], ['Status', 'status'], ['Action', 'actions']], fields: [['name', 'Name', 'text'], ['code', 'Color', 'color'], ['active', 'Active', 'checkbox']], defaults: { code: '#000000', active: true } },
@@ -27,7 +42,7 @@ export const resources = {
     'flash-sales': { title: 'Flash Sales', add: 'Add Flash Sale', cols: [['Thumbnail', thumb], ['Name', (r) => r.name], ['Start Date', (r) => fmtRaw(r.starts_at)], ['End Date', (r) => fmtRaw(r.ends_at)], ['Status', 'status'], ['Description', (r) => <span className="muted">{(r.description ?? '').slice(0, 60)}</span>], ['Action', 'actions']], fields: [['name', 'Name', 'text'], ['discount', 'Minimum Discount', 'number'], ['start_date', 'Start Date', 'date'], ['start_time', 'Start Time', 'time'], ['end_date', 'End Date', 'date'], ['end_time', 'End Time', 'time'], ['description', 'Description', 'richtext'], ['active', 'Active', 'checkbox']], defaults: { active: true, discount: 10, start_time: '00:00', end_time: '23:59' } },
     currencies: { title: 'Currency', add: 'Add Currency', noSL: true, cols: [['Name', (r) => r.name], ['Symbol', (r) => r.symbol], ['Rate', (r) => (r.is_default ? `${r.rate} (Default)` : `${r.rate} (From USD)`)], ['Action', 'actions']], fields: [['name', 'Name', 'text'], ['symbol', 'Symbol', 'text'], ['rate', 'Rate', 'number']], defaults: { rate: 1 } },
     'vat-taxes': { title: 'VAT & Tax', add: 'Add VAT & Tax', cols: [['Name', (r) => r.name], ['Percentage', (r) => `${r.percentage}%`], ['Status', 'status'], ['Action', 'actions']], fields: [['name', 'Name', 'text'], ['percentage', 'Percentage', 'number'], ['active', 'Active', 'checkbox']], defaults: { active: true } },
-    blogs: { title: 'All Blog', add: 'Add Blog', cols: [['Thumbnail', thumb], ['Title', (r) => r.title], ['Category', (r) => r.category], ['Views', (r) => r.views], ['Created Date', (r) => fmtDate(r.created_at)], ['Status', 'published'], ['Action', 'actions']], fields: [['title', 'Title', 'text'], ['category', 'Category', 'text'], ['excerpt', 'Excerpt', 'textarea'], ['body', 'Body', 'richtext'], ['published', 'Published', 'checkbox']], defaults: { published: true } },
+    blogs: { title: 'All Blog', add: 'Add Blog', cols: [['Thumbnail', thumb], ['Title', (r) => r.title], ['Category', (r) => r.category], ['Views', (r) => r.views], ['Created Date', (r) => fmtDate(r.created_at)], ['Status', 'published'], ['Action', 'actions']], fields: [['title', 'Title', 'text'], ['image', 'Thumbnail', 'image'], ['category', 'Category', 'text'], ['excerpt', 'Excerpt', 'textarea'], ['body', 'Body', 'richtext'], ['published', 'Published', 'checkbox']], defaults: { published: true } },
 };
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '--');
@@ -57,6 +72,7 @@ function ModalField({ f: [key, label, type], value, onChange, error, categories 
     const err = <span className="err">{error}</span>;
     const set = (v) => onChange(v);
     if (type === 'checkbox') return <div className="sa-field check"><Switch checked={value} label={label} onChange={() => set(!value)} /><label>{label}</label></div>;
+    if (type === 'image') return <div className="sa-field wide">{lab}<ImagePicker value={value} onChange={set} error={error} width="w-56" ratio="aspect-[16/9]" /></div>;
     if (type === 'richtext') return <div className="sa-field wide">{lab}<RichEditor id={`m_${key}`} value={value} onChange={set} placeholder={label} />{err}</div>;
     if (type === 'textarea') return <div className="sa-field wide">{lab}<textarea id={`m_${key}`} className="input" value={value ?? ''} onChange={(e) => set(e.target.value)} />{err}</div>;
     if (type === 'categories') return <div className="sa-field">{lab}<select id={`m_${key}`} className="input" value={value ?? ''} onChange={(e) => set(e.target.value)}><option value="">{t('Select Category')}</option>{categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>{err}</div>;

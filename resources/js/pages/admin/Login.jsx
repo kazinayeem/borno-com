@@ -6,7 +6,15 @@ import { loggedIn, pushToast, setLang, toggleTheme } from '../../app/slices';
 import { Icon } from '../../components/ui';
 import { LANGS, t } from '../../i18n';
 
-const demos = [['Demo Admin Credentials', 'root@readyecommerce.com'], ['Demo Shop Credentials', 'shop@readyecommerce.com']];
+// Demo logins (all use the password "secret"); the second value says what each can open.
+const demos = [
+    ['Demo Admin Credentials', 'root@readyecommerce.com', 'Full access'],
+    ['Demo Shop Credentials', 'shop@readyecommerce.com', 'Seller panel'],
+    ['Demo Staff · Manager', 'manager@readyecommerce.com', 'Orders, POS, products, promotions, content'],
+    ['Demo Staff · Order Handler', 'order.handler@readyecommerce.com', 'View and update orders, POS sales'],
+    ['Demo Staff · Content Editor', 'content.editor@readyecommerce.com', 'Blog, pages, promotions'],
+    ['Demo Staff · Support Agent', 'support.agent@readyecommerce.com', 'View orders and customers, reply to messages'],
+];
 
 export default function Login() {
     const [form, setForm] = useState({ email: '', password: '' });
@@ -23,13 +31,13 @@ export default function Login() {
     if (token) return <Navigate to={user?.role === 'shop' ? '/shop' : '/admin'} replace />;
     const errs = error?.data?.errors ?? {};
 
-    const submit = async (e) => {
-        e.preventDefault();
-        const r = await login(form);
+    const signIn = async (creds) => {
+        const r = await login(creds);
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
         dispatch(loggedIn(r.data));
         navigate(r.data.user?.role === 'shop' ? '/shop' : '/admin');
     };
+    const submit = (e) => { e.preventDefault(); signIn(form); };
 
     return (
         <section className="login-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10">
@@ -56,10 +64,12 @@ export default function Login() {
                     <div className="mt-5 text-xs leading-5 text-muted">
                         <p>{t('This is a public demo environment for the ReadyEcommerce software.')}</p>
                         <p>{t('The accounts below are demo accounts for testing purposes only and do not contain real user data.')}</p>
-                        {demos.map(([title, email]) => (
-                            <div key={title} className="mt-2 overflow-hidden rounded-lg border border-line bg-surface"><div className="border-b border-line px-3 py-1.5 font-semibold text-ink">{t(title)}</div>
+                        <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pe-1">{demos.map(([title, email, access]) => (
+                            <div key={email} className="overflow-hidden rounded-lg border border-line bg-surface"><div className="flex items-center justify-between gap-2 border-b border-line px-3 py-1.5"><span className="font-semibold text-ink">{t(title)}</span><span className="truncate text-[11px] text-muted">{t(access)}</span></div>
                                 <div className="flex items-center justify-between gap-2 px-3 py-2"><div className="flex min-w-0 flex-col text-ink"><span className="truncate">{t('Email: {v}', { v: email })}</span><span>{t('Password: {v}', { v: 'secret' })}</span></div>
-                                    <button type="button" aria-label={t('Fill credentials')} title={t('Fill credentials')} onClick={() => setForm({ email, password: 'secret' })} className="grid h-8 w-8 shrink-0 place-items-center rounded bg-primary text-white transition hover:bg-primary-dark"><Icon name="copy" size={15} /></button></div></div>))}
+                                    <div className="flex shrink-0 gap-1.5">
+                                        <button type="button" aria-label={t('Fill credentials')} title={t('Fill credentials')} onClick={() => setForm({ email, password: 'secret' })} className="grid h-8 w-8 place-items-center rounded border border-line bg-sa-surface transition hover:border-primary hover:text-primary"><Icon name="copy" size={15} /></button>
+                                        <button type="button" disabled={isLoading} onClick={() => signIn({ email, password: 'secret' })} className="rounded bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary-dark disabled:opacity-60">{t('Quick login')}</button></div></div></div>))}</div>
                     </div>
                 </form>
             </div>

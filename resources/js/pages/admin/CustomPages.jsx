@@ -75,6 +75,19 @@ function ShopProfile() {
 }
 
 // ---- payment gateways ----------------------------------------------------------------------------------------------
+// Gateways this store can really charge through, with the credentials each one needs and the URLs the gateway must call back.
+const LIVE = {
+    SSLCommerz: { need: ['store_id', 'store_passwd'], urls: ['sslcommerz/success', 'sslcommerz/fail', 'sslcommerz/cancel', 'sslcommerz/ipn'] },
+    BKash: { need: ['app_key', 'app_secret', 'username', 'password'], urls: ['bkash/callback'] },
+    Nagad: { need: ['merchant_id', 'merchant_number', 'public_key', 'private_key'], urls: ['nagad/callback'] },
+};
+const gwState = (g) => {
+    const live = LIVE[g.name];
+    if (!live) return ['muted', t('Not connected to checkout yet')];
+    if (!g.is_active) return ['muted', t('Switched off')];
+    return live.need.every((k) => g.config[k]) ? ['ok', t('Live on checkout')] : ['warn', t('Needs credentials')];
+};
+
 function Gateways() {
     const { data, isLoading, isError } = useGetGatewaysQuery();
     const [save] = useSaveGatewayMutation();
@@ -88,7 +101,8 @@ function Gateways() {
                     <div key={g.id} className={`${card} p-4`}>
                         <div className="flex items-center justify-between"><span className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center overflow-hidden rounded-lg bg-primary-soft text-sm font-bold text-primary"><Img src={g.logo} alt="" className="h-full w-full object-cover" fallback={g.name[0]} /></span><b>{g.name}</b></span>
                             <Toggle label={t('{name} active', { name: g.name })} on={g.is_active} onChange={async () => notify(await save({ id: g.id, is_active: !g.is_active }), t('Gateway updated'))} /></div>
-                        <p className="mt-3 text-xs text-muted">{t('Mode:')} <b className="capitalize text-ink">{g.mode}</b> · {t('{set}/{total} credentials set', { set: Object.values(g.config).filter(Boolean).length, total: Object.keys(g.config).length })}</p>
+                        <p className="mt-2 text-xs font-semibold" style={{ color: gwState(g)[0] === 'ok' ? '#16a34a' : gwState(g)[0] === 'warn' ? '#d97706' : undefined }}>{gwState(g)[1]}</p>
+                        <p className="mt-1 text-xs text-muted">{t('Mode:')} <b className="capitalize text-ink">{g.mode}</b> · {t('{set}/{total} credentials set', { set: Object.values(g.config).filter(Boolean).length, total: Object.keys(g.config).length })}</p>
                         <button onClick={() => setEdit(g)} className="btn-outline mt-3 !rounded-lg">{t('Configure')}</button></div>))}
             </div>
             {edit && <GatewayModal g={edit} onClose={() => setEdit(null)} />}
@@ -104,7 +118,12 @@ function GatewayModal({ g, onClose }) {
             <form onSubmit={async (e) => { e.preventDefault(); if (notify(await save({ id: g.id, ...f }), t('Gateway saved'))) onClose(); }}>
                 <Field label={t('Title')}><TextInput value={f.title} onChange={(v) => setF({ ...f, title: v })} /></Field>
                 <Field label={t('Mode')}><Select value={f.mode} onChange={(v) => setF({ ...f, mode: v })} options={[{ id: 'test', name: 'Test' }, { id: 'live', name: 'Live' }]} /></Field>
-                {Object.keys(f.config).map((k) => <Field key={k} label={k.replace(/_/g, ' ')} hint={t('Stored securely; shown masked once saved.')}><TextInput type="password" autoComplete="off" value={f.config[k]} onChange={(v) => setF({ ...f, config: { ...f.config, [k]: v } })} /></Field>)}
+                {Object.keys(f.config).map((k) => <Field key={k} label={k.replace(/_/g, ' ')} hint={t('Stored securely; shown masked once saved.')}>{/key$/.test(k) && g.name === 'Nagad'
+                    ? <TextArea rows={3} value={f.config[k]} onChange={(v) => setF({ ...f, config: { ...f.config, [k]: v } })} placeholder={t('Paste the key (with or without the BEGIN/END lines)')} />
+                    : <TextInput type={k === 'currency' || k === 'base_url' || k === 'merchant_number' ? 'text' : 'password'} autoComplete="off" value={f.config[k]} onChange={(v) => setF({ ...f, config: { ...f.config, [k]: v } })} />}</Field>)}
+                {LIVE[g.name] && <div className="mb-3 rounded-lg border border-line bg-surface p-3 text-xs"><b>{t('Register these URLs in the {name} dashboard', { name: g.name })}</b>
+                    {LIVE[g.name].urls.map((u) => <div key={u}><code>{`${window.location.origin}/payments/${u}`}</code></div>)}
+                    <p className="mt-1 text-muted">{t('They must be reachable from the internet, so use your live domain (not localhost). Amounts are charged in {cur}.', { cur: g.name === 'SSLCommerz' ? (f.config.currency || 'BDT') : 'BDT' })}</p></div>}
                 <div className="flex justify-end gap-2"><button type="button" className="btn-outline" onClick={onClose}>{t('Cancel')}</button><button disabled={isLoading} className="btn-primary">{isLoading ? t('Saving…') : t('Save')}</button></div>
             </form>
         </Modal>

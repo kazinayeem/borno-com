@@ -31,7 +31,7 @@ export function OrderPrint({ o, brand, size = 'a4', kind = 'invoice', money }) {
                         <hr />
                         <p><b>{slip ? t('Payment Slip') : t('Receipt')}</b> #{o.number}</p>
                         <p>{fmtDate(o.created_at)}</p>
-                        {o.user?.name && <p>{t('Customer')}: {o.user.name}</p>}
+                        {(o.buyer?.name ?? o.user?.name) && <p>{t('Customer')}: {o.buyer?.name ?? o.user?.name}</p>}
                     </header>
                 ) : (
                     <header className="inv-head">
@@ -43,7 +43,7 @@ export function OrderPrint({ o, brand, size = 'a4', kind = 'invoice', money }) {
 
                 {!pos && (
                     <section className="inv-parties">
-                        <div><h3>{t('Billed to')}</h3><p><b>{o.user?.name}</b></p><p>{o.user?.phone}</p><p>{o.user?.email}</p></div>
+                        <div><h3>{t('Billed to')}</h3><p><b>{o.buyer?.name ?? o.user?.name}</b></p><p>{o.buyer?.phone ?? o.user?.phone}</p><p>{o.buyer?.email ?? o.user?.email}</p></div>
                         <div><h3>{t('Ship to')}</h3><p><b>{o.address_name}</b></p><p>{o.shipping_address}{o.area ? `, ${o.area}` : ''}</p><p>{o.address_phone}</p></div>
                         <div><h3>{t('Payment')}</h3><p><b>{o.payment_method}</b></p>{o.shop && <p>{t('Shop:')} {o.shop.name}</p>}</div>
                     </section>

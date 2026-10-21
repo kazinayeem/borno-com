@@ -535,4 +535,14 @@ class AdminEngineTest extends TestCase
         $this->postJson('/api/contact', $form + ["recaptcha_token" => "tok"])->assertSuccessful();
         $this->postJson('/api/account/login', ['email' => 'test@example.com', 'password' => 'secret', 'recaptcha_token' => 'tok'])->assertOk();
     }
+
+    public function test_blog_thumbnail_upload_path_is_validated_and_exposed_as_a_url(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        Sanctum::actingAs(\App\Models\User::where('role', 'admin')->whereNull('staff_role_id')->first());
+        $res = $this->postJson('/api/admin/blogs', ['title' => 'Hello', 'image' => 'uploads/thumb.png', 'body' => '<p>x</p>'])->assertCreated();
+        $this->assertSame('/storage/uploads/thumb.png', $res->json('image_url'));
+        $this->postJson('/api/admin/blogs', ['title' => 'Bad', 'image' => '../../.env'])->assertStatus(422);
+        $this->assertStringStartsWith('https://picsum.photos/', $this->getJson('/api/blogs')->json('posts.data.0.image_url'));
+    }
 }

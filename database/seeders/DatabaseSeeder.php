@@ -130,7 +130,7 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach (range(1, 9) as $i) {
-            BlogPost::create(['title' => fake()->sentence(6), 'category' => $cats->random()->name, 'excerpt' => fake()->sentence(18), 'body' => fake()->paragraphs(4, true), 'views' => fake()->numberBetween(0, 400)]);
+            BlogPost::create(['title' => fake()->sentence(6), 'category' => $cats->random()->name, 'excerpt' => fake()->sentence(18), 'body' => fake()->paragraphs(4, true), 'image' => "https://picsum.photos/seed/blog{$i}/800/450", 'views' => fake()->numberBetween(0, 400)]);
         }
 
         $this->seedReference();
@@ -255,6 +255,7 @@ class DatabaseSeeder extends Seeder
             'Manager' => ['orders' => $all, 'pos' => $all, 'catalog' => $all, 'shops' => ['view', 'edit'], 'customers' => ['view', 'edit'], 'promotion' => $all, 'content' => $all, 'messages' => ['view', 'add'], 'reports' => ['view']],
             'Order Handler' => ['orders' => ['view', 'edit'], 'pos' => ['view', 'add'], 'customers' => ['view'], 'messages' => ['view', 'add']],
             'Content Editor' => ['content' => $all, 'promotion' => $all, 'catalog' => ['view']],
+            'Support Agent' => ['orders' => ['view'], 'customers' => ['view'], 'messages' => ['view', 'add']],
         ];
         foreach ($roles as $name => $perms) {
             $role = \App\Models\StaffRole::firstOrCreate(['name' => $name], ['permissions' => $perms]);

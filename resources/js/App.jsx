@@ -66,8 +66,8 @@ export default function App() {
                     <Route path="cart" element={<Cart />} />
                     <Route path="login" element={<CustomerLogin />} />
                     <Route path="wishlist" element={<Wishlist />} />
-                    <Route path="checkout" element={<RequireCustomer><Checkout /></RequireCustomer>} />
-                    <Route path="order-success" element={<RequireCustomer><OrderSuccess /></RequireCustomer>} />
+                    <Route path="checkout" element={<Checkout />} />
+                    <Route path="order-success" element={<OrderSuccess />} />
                     <Route path="account" element={<RequireCustomer><AccountLayout /></RequireCustomer>}>
                         <Route index element={<AccountHome />} />
                         <Route path="orders" element={<AccountOrders />} />

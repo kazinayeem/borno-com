@@ -3,6 +3,8 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useGetCategoriesQuery, useGetHomeQuery, useGetMasterQuery } from '../app/api';
 import { setCurrency, setLang, toggleTheme } from '../app/slices';
+import { AnimatePresence } from 'framer-motion';
+import { PageTransition, motion } from './Motion';
 import { applyCurrency, Icon, Img, money } from './ui';
 import { LANGS, t } from '../i18n';
 
@@ -23,7 +25,7 @@ function Dropdown({ label, button, children }) {
         <div ref={ref} className="relative" onMouseEnter={(e) => e.pointerType !== 'touch' && setOpen(true)} onMouseLeave={() => setOpen(false)}>
             <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} onClick={() => setOpen((v) => !v)}
                 className="flex items-center gap-1 rounded-md px-2 py-1 transition hover:bg-primary-soft hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">{button} <Icon name="chevron" size={12} className={`transition ${open ? 'rotate-180' : ''}`} /></button>
-            {open && <ul role="listbox" className="card absolute end-0 top-full z-50 w-40 p-1 shadow-lg">{typeof children === 'function' ? children(() => setOpen(false)) : children}</ul>}
+            <AnimatePresence>{open && <motion.ul role="listbox" className="card absolute end-0 top-full z-50 w-40 p-1 shadow-lg" initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.14 }}>{typeof children === 'function' ? children(() => setOpen(false)) : children}</motion.ul>}</AnimatePresence>
         </div>
     );
 }
@@ -73,11 +75,11 @@ function CategoryMenu() {
                 <span className="flex items-center gap-2"><Icon name="menu" size={16} /> {t('All Categories')}</span> <Icon name="chevron" size={14} />
             </button>
             {open && (
-                <ul className="card absolute start-0 top-full z-30 w-64 p-2 shadow-lg">
+                <motion.ul className="card absolute start-0 top-full z-30 w-64 p-2 shadow-lg" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
                     {data.filter((c) => c.image_url).map((c) => (
                         <li key={c.id}><Link onClick={() => setOpen(false)} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-primary-soft"><span className="flex items-center gap-2"><Img src={c.image_url} alt="" className="h-5 w-5 rounded object-cover" />{(lang === 'ar' && c.name_ar) || c.name}</span><Icon name="right" size={14} /></Link></li>
                     ))}
-                </ul>
+                </motion.ul>
             )}
         </div>
     );
@@ -173,7 +175,7 @@ function Footer() {
                     {d?.footer_qrcode && <img src={d.footer_qrcode} alt={t('Scan the QR')} className="mt-3 h-20 w-20 object-contain" />}
                 </div>
             </div>}
-            <div className="border-t border-line py-4 text-center text-sm text-muted">{t('© {year} {name}', { year, name: d?.company_name || d?.app_name || t('ReadyEcommerce') })}</div>
+            <div className="flex flex-col items-center justify-between gap-1 border-t border-line px-4 py-4 text-sm text-muted sm:flex-row mx-auto max-w-[1320px]"><span>{t('© {year} {name}', { year, name: d?.company_name || d?.app_name || t('ReadyEcommerce') })}</span><span>{t('Developed by')} <a href="https://bornosoft.bd" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">bornosoft.bd</a></span></div>
         </footer>
     );
 }
@@ -197,7 +199,7 @@ export default function StoreLayout() {
     return (
         <>
             <TopBar /><Header />
-            <main className="mx-auto min-h-[60vh] max-w-[1320px] px-4"><Outlet key={`${code}-${master?.data?.currency?.position ?? 'prefix'}`} /></main>
+            <main className="mx-auto min-h-[60vh] max-w-[1320px] px-4"><PageTransition><Outlet key={`${code}-${master?.data?.currency?.position ?? 'prefix'}`} /></PageTransition></main>
             <Footer /><MiniCart />
         </>
     );

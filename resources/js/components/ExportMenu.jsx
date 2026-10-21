@@ -129,7 +129,10 @@ export default function ExportMenu() {
                 await makePdf(data, title(), company(), master?.data?.web_logo, name);
             }
         } catch (e) {
-            window.alert(t('Export failed: {msg}', { msg: e.message }));
+            if (/dynamically imported module|Importing a module script failed/i.test(e.message)) {
+                // The site was updated while this page was open: the export tools have a new file name now.
+                if (window.confirm(t('The site was updated. Reload this page and try the export again?'))) window.location.reload();
+            } else window.alert(t('Export failed: {msg}', { msg: e.message }));
         } finally { setBusy(false); }
     };
     return (

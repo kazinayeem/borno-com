@@ -334,3 +334,19 @@
 .sa .head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .sa .page-head { gap: 12px; flex-wrap: wrap; }
 @media print { .sa .head-actions, .sa .page-head .btn { display: none !important; } }
+
+/* Motion: soft entrances for admin dropdowns, table rows, stat tiles and buttons (framer-motion handles pages, modals and cards) */
+@keyframes sa-pop { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes sa-row { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.sa .dropdown { animation: sa-pop .15s ease-out; transform-origin: top; }
+.sa tbody tr { animation: sa-row .3s ease-out both; }
+.sa tbody tr:nth-child(2) { animation-delay: .03s; } .sa tbody tr:nth-child(3) { animation-delay: .06s; } .sa tbody tr:nth-child(4) { animation-delay: .09s; } .sa tbody tr:nth-child(5) { animation-delay: .12s; }
+.sa tbody tr:nth-child(6) { animation-delay: .15s; } .sa tbody tr:nth-child(7) { animation-delay: .18s; } .sa tbody tr:nth-child(8) { animation-delay: .21s; } .sa tbody tr:nth-child(n+9) { animation-delay: .24s; }
+.sa .stat, .sa .mini, .sa .card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.sa .stat:hover, .sa .mini:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.12); }
+.sa .btn, .sa .icon-btn, .sa .act { transition: transform .12s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.sa .btn:active, .sa .icon-btn:active { transform: scale(.96); }
+.sa .submenu { animation: sa-pop .18s ease-out; }
+.sa .menu-item { transition: background-color .15s ease, color .15s ease, padding .15s ease; }
+.sa .layout { transition: grid-template-columns .22s ease; }
+@media (prefers-reduced-motion: reduce) { .sa *, .sa *::before, .sa *::after { animation: none !important; transition: none !important; } }

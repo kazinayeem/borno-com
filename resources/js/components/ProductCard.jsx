@@ -5,8 +5,9 @@ import { useGetMasterQuery } from '../app/api';
 import { addToCart, pushToast, toggleWish } from '../app/slices';
 import { Icon, Img, money } from './ui';
 import { t } from '../i18n';
+import { motion, staggerItem } from './Motion';
 
-export default function ProductCard({ p }) {
+export default function ProductCard({ p, i = 0 }) {
     const dispatch = useDispatch();
     const { data: master } = useGetMasterQuery();
     const wished = useSelector((s) => s.shop.wishlist.includes(p.id));
@@ -17,7 +18,7 @@ export default function ProductCard({ p }) {
     const discount = p.old_price > price ? Math.round((1 - price / p.old_price) * 100) : 0;
 
     return (
-        <div className="card group relative flex flex-col p-3 transition hover:shadow-md">
+        <motion.div className="card group relative flex flex-col p-3 transition hover:shadow-md" {...staggerItem(i % 6)} whileHover={{ y: -4 }}>
             {discount > 0 && <span className="absolute start-3 top-3 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">{discount}%</span>}
             <button onClick={() => dispatch(toggleWish(p.id))} aria-label={t('Wishlist')} className={`absolute end-3 top-3 grid h-7 w-7 place-items-center rounded-full border border-line bg-sa-surface ${wished ? 'text-primary' : 'text-muted'}`}>
                 <Icon name="heart" size={14} fill={wished} />
@@ -38,6 +39,6 @@ export default function ProductCard({ p }) {
                 <button disabled={p.stock < 1} onClick={() => { dispatch(addToCart({ ...p, qty: 1 })); dispatch(pushToast(t('Added to cart'))); }} className="btn-primary mt-3 w-full !py-1.5" aria-label={p.stock < 1 ? t('Out of stock') : t('Add to cart')}>
                     {p.stock < 1 ? t('Out of stock') : <Icon name="arrow" size={16} />}
                 </button>)}
-        </div>
+        </motion.div>
     );
 }

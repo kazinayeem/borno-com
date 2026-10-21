@@ -12,7 +12,7 @@ export const BUILT = {
     '/shop/pos': '/admin/pos', '/shop/pos/sales': '/admin/pos/sales', '/shop/pos/draft': '/admin/pos/draft',
     '/admin/categories': '/admin/categories', '/admin/category/create': '/admin/category/create',
     '/admin/subcategories': '/admin/subcategories', '/admin/subcategory/create': '/admin/subcategories',
-    '/shop/products': '/admin/products', '/shop/product/create': '/admin/product/create', '/shop/digital-product/create': '/admin/product/create',
+    '/shop/products': '/admin/products', '/shop/product/create': '/admin/product/create', '/shop/digital-product/create': '/admin/digital-product/create',
     '/admin/brands': '/admin/brands', '/admin/colors': '/admin/colors', '/admin/sizes': '/admin/sizes', '/admin/units': '/admin/units',
     '/admin/flash-sales': '/admin/flash-sales', '/admin/coupons': '/admin/coupons',
     '/admin/blogs': '/admin/blogs', '/admin/blog/create': '/admin/blogs',

@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import ExportMenu from '../ExportMenu';
 import React from 'react';
 import { statusLabel } from '../OrderBadge';
@@ -79,13 +80,13 @@ export function Modal({ title, onClose, children, footer, wide }) {
         return () => window.removeEventListener('keydown', h);
     }, [onClose]);
     return (
-        <div className="backdrop" onMouseDown={onClose}>
-            <div className="modal" role="dialog" aria-modal="true" aria-label={title} style={wide ? { width: 'min(860px,100%)' } : undefined} onMouseDown={(e) => e.stopPropagation()}>
+        <motion.div className="backdrop" onMouseDown={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <motion.div className="modal" role="dialog" aria-modal="true" aria-label={title} style={wide ? { width: 'min(860px,100%)' } : undefined} onMouseDown={(e) => e.stopPropagation()} initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
                 <div className="card-h"><h3>{title}</h3><button className="act" aria-label={t('Close')} onClick={onClose}><SaIcon name="x" /></button></div>
                 <div className="card-b">{children}</div>
                 {footer && <div className="modal-f">{footer}</div>}
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }
 

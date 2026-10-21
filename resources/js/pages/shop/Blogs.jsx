@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useGetBlogsQuery } from '../../app/api';
-import { Empty, Icon, Pagination } from '../../components/ui';
+import { Empty, Icon, Img, Pagination } from '../../components/ui';
 import { t } from '../../i18n';
 
 export default function Blogs() {
@@ -14,7 +14,7 @@ export default function Blogs() {
             <section>
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                     {isLoading ? Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton h-72" />) : data.posts.data.map((p) => (
-                        <article key={p.id} className="card overflow-hidden"><div className="grid h-40 place-items-center bg-surface text-gray-300"><Icon name="doc" size={48} /></div>
+                        <article key={p.id} className="card overflow-hidden"><Link to={`/blogs/${p.id}`} className="grid h-40 place-items-center overflow-hidden bg-surface text-gray-300"><Img src={p.image_url} alt={p.title} className="h-full w-full object-cover" fallback={<Icon name="doc" size={48} />} /></Link>
                             <div className="p-4"><span className="text-[11px] font-semibold uppercase text-primary">{p.category}</span>
                                 <h3 className="mt-1 line-clamp-2 font-semibold"><Link to={`/blogs/${p.id}`} className="hover:text-primary">{p.title}</Link></h3><p className="mt-1 line-clamp-2 text-sm text-muted">{p.excerpt}</p>
                                 <p className="mt-3 text-xs text-muted">{fmt(p.created_at)} · {t('{n} views', { n: p.views })}</p></div></article>))}

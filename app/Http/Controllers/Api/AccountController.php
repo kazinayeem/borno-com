@@ -126,7 +126,23 @@ class AccountController extends Controller
 
     public function order(Request $request, int $id)
     {
-        return Order::where('user_id', $request->user()->id)->with(['items.product:id,image', 'shop:id,name', 'rider:id,name'])->findOrFail($id);
+        return Order::where('user_id', $request->user()->id)->with(['items.product:id,image,is_digital', 'shop:id,name', 'rider:id,name'])->findOrFail($id);
+    }
+
+    /** Download a purchased digital item. Only the buyer, and only once the order is paid (or marked delivered). */
+    public function download(Request $request, int $id, int $item)
+    {
+        $order = Order::where('user_id', $request->user()->id)->findOrFail($id);
+        abort_unless($order->status !== 'cancelled' && ($order->payment_status === 'paid' || $order->status === 'delivered'), 403, 'This download unlocks once the order is paid.');
+        $line = $order->items()->findOrFail($item);
+        $product = $line->product_id ? Product::find($line->product_id) : null;
+        abort_unless($product && $product->is_digital, 404, 'This item has no download.');
+        if ($product->digital_file && \Illuminate\Support\Facades\Storage::disk('local')->exists($product->digital_file)) {
+            return \Illuminate\Support\Facades\Storage::disk('local')->download($product->digital_file, \Illuminate\Support\Str::slug($product->name).'.'.pathinfo($product->digital_file, PATHINFO_EXTENSION));
+        }
+        abort_unless($product->digital_url, 404, 'The file is not available. Please contact the shop.');
+
+        return response()->json(['url' => $product->digital_url]);
     }
 
     /** Customers may cancel only while the order is still pending; stock goes back on the shelf. */

@@ -11,14 +11,14 @@ class Permissions
     public const ACTIONS = ['view', 'add', 'edit', 'delete'];
 
     public const MODULES = [
-        'orders' => ['label' => 'Orders', 'ui' => ['/admin/orders', '/admin/courier-tracking', '/admin/refund'], 'api' => ['orders']],
+        'orders' => ['label' => 'Orders', 'ui' => ['/admin/orders', '/admin/courier-tracking', '/admin/refund', '/admin/return-orders'], 'api' => ['orders']],
         'pos' => ['label' => 'POS', 'ui' => ['/admin/pos'], 'api' => ['pos']],
         'catalog' => ['label' => 'Products & Catalog', 'ui' => ['/admin/products', '/admin/product', '/admin/categor', '/admin/category', '/admin/subcategor', '/admin/brands', '/admin/colors', '/admin/sizes', '/admin/units', '/admin/variant'], 'api' => ['products', 'categories', 'subcategories', 'brands', 'colors', 'sizes', 'units', 'options', 'catalog']],
         'shops' => ['label' => 'Shops', 'ui' => ['/admin/shops', '/admin/shop'], 'api' => ['shops']],
-        'customers' => ['label' => 'Customers', 'ui' => ['/admin/customers', '/admin/riders'], 'api' => ['customers', 'riders']],
+        'customers' => ['label' => 'Customers', 'ui' => ['/admin/customers', '/admin/riders', '/admin/rider-cash'], 'api' => ['customers', 'riders']],
         'promotion' => ['label' => 'Promotion', 'ui' => ['/admin/flash-sales', '/admin/banners', '/admin/ads', '/admin/grid-advertisements', '/admin/coupons', '/admin/collections'], 'api' => ['flash-sales', 'coupons', 'collections', 'banners', 'ads', 'grid_ads']],
         'content' => ['label' => 'Blog & Pages', 'ui' => ['/admin/blog', '/admin/pages', '/admin/menus', '/admin/footers'], 'api' => ['blogs', 'pages', 'menus', 'footers']],
-        'messages' => ['label' => 'Messages', 'ui' => ['/admin/messages'], 'api' => ['messages']],
+        'messages' => ['label' => 'Messages', 'ui' => ['/admin/messages', '/shop/customer-chats', '/admin/customer-chats'], 'api' => ['messages', 'chats']],
         'reports' => ['label' => 'Reports', 'ui' => ['/admin/report'], 'api' => ['reports']],
         'staff' => ['label' => 'Roles, Staff & Logs', 'ui' => ['/admin/roles', '/admin/staff', '/admin/employee', '/admin/activity-logs'], 'api' => ['roles', 'staff', 'activity-logs']],
         'settings' => ['label' => 'Settings & Integrations', 'ui' => ['/admin/settings', '/admin/generale-setting', '/admin/business-setting', '/admin/payment-gateway', '/admin/courier-configuration', '/admin/sms-gateway', '/admin/pusher', '/admin/google', '/admin/mail', '/admin/email-templates', '/admin/ai-prompts', '/admin/firebase', '/admin/currencies', '/admin/vat-taxes', '/admin/theme-color', '/admin/social-links', '/admin/ticket-issue', '/admin/delivery-setting', '/admin/support-item', '/admin/verifications'], 'api' => ['settings', 'settings-group', 'gateways', 'currencies', 'vat-taxes', 'test-sms', 'send-test-mail', 'email-templates']],

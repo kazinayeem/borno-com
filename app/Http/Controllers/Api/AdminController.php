@@ -50,12 +50,12 @@ class AdminController extends Controller
                 'video_type' => 'nullable|string|max:30', 'video_url' => 'nullable|string|max:255',
                 'meta_title' => 'nullable|string|max:255', 'meta_description' => 'nullable|string', 'meta_keywords' => 'nullable|array',
                 'old_price' => 'nullable|numeric|min:0', 'discount_price' => 'nullable|numeric|min:0', 'stock' => 'nullable|integer|min:0',
-                'is_digital' => 'boolean', 'is_preorder' => 'boolean', 'is_flash_sale' => 'boolean', 'active' => 'boolean',
+                'is_digital' => 'boolean', 'digital_file' => ['nullable', 'string', 'regex:/^digital\/[\w.\-]+$/'], 'digital_url' => 'nullable|url:https,http|max:500', 'is_preorder' => 'boolean', 'is_flash_sale' => 'boolean', 'active' => 'boolean',
             ], ['shop:id,name', 'category:id,name']],
             'categories' => [Category::class, 'name', ['name' => 'required|string|max:120', 'name_ar' => 'nullable|string|max:120', 'order_by' => 'nullable|integer|min:0', 'description' => 'nullable|string', 'description_ar' => 'nullable|string', 'icon' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'slug' => 'nullable|string|max:140', 'active' => 'boolean'], []],
             'brands' => [Brand::class, 'name', ['name' => 'required|string|max:120', 'slug' => 'nullable|string|max:140', 'active' => 'boolean'], []],
             'shops' => [Shop::class, 'name', ['name' => 'required|string|max:120', 'name_ar' => 'nullable|string|max:120', 'logo' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'address' => 'nullable|string|max:255', 'description' => 'nullable|string', 'online' => 'boolean', 'active' => 'boolean'], []],
-            'blogs' => [BlogPost::class, 'title', ['title' => 'required|string|max:255', 'category' => 'nullable|string|max:120', 'excerpt' => 'nullable|string', 'body' => 'nullable|string', 'published' => 'boolean'], []],
+            'blogs' => [BlogPost::class, 'title', ['title' => 'required|string|max:255', 'image' => 'nullable|string|regex:/^uploads\/[\w.\-]+$/', 'category' => 'nullable|string|max:120', 'excerpt' => 'nullable|string', 'body' => 'nullable|string', 'published' => 'boolean'], []],
             'colors' => [Color::class, 'name', ['name' => 'required|string|max:60', 'code' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'], 'active' => 'boolean'], []],
             'sizes' => [Size::class, 'name', ['name' => 'required|string|max:30', 'active' => 'boolean'], []],
             'units' => [Unit::class, 'name', ['name' => 'required|string|max:30', 'active' => 'boolean'], []],
@@ -271,6 +271,7 @@ class AdminController extends Controller
         }
         $valid = $request->validate($rules);
         $this->checkGallery($res, $valid, []);
+        $this->checkDigital($res, $valid, []);
         $data = $this->prepare($res, $valid);
         if ($res === 'products' && $request->user()->role === 'shop') {
             $data['shop_id'] = Shop::where('user_id', $request->user()->id)->value('id') ?? $data['shop_id'];
@@ -300,6 +301,7 @@ class AdminController extends Controller
         }
         $valid = $request->validate($rules);
         $this->checkGallery($res, $valid, (array) ($row->gallery ?? []));
+        $this->checkDigital($res, $valid, $row->only(['is_digital', 'digital_file', 'digital_url']));
         $data = $this->prepare($res, $valid);
         if ($res === 'products' && $request->user()->role === 'shop') {
             unset($data['shop_id']); // a seller can edit their product but never move it into another shop
@@ -464,6 +466,22 @@ class AdminController extends Controller
         $user = request()->user();
         if ($user->role === 'shop') {
             $query->whereIn('shop_id', Shop::where('user_id', $user->id)->pluck('id'));
+        }
+    }
+
+    /** A digital product needs something to deliver: an uploaded file or a link. Physical products never carry one. */
+    private function checkDigital(string $res, array &$valid, array $current): void
+    {
+        if ($res !== 'products') {
+            return;
+        }
+        $m = $valid + $current;
+        if (! empty($m['is_digital']) && empty($m['digital_file']) && empty($m['digital_url'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['digital_file' => 'Upload the file or paste a download link for this digital product.']);
+        }
+        if (array_key_exists('is_digital', $valid) && ! $valid['is_digital']) {
+            $valid['digital_file'] = null;
+            $valid['digital_url'] = null;
         }
     }
 

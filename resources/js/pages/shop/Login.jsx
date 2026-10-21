@@ -10,7 +10,7 @@ import { t } from '../../i18n';
 // Only same-site paths are honoured, so a crafted ?next= cannot send people to another website.
 const safeNext = (n) => (n && /^\/(?!\/)/.test(n) ? n : '/account');
 
-function GoogleButton({ clientId, onCredential }) {
+export function GoogleButton({ clientId, onCredential }) {
     const box = useRef(null);
     const cb = useRef(onCredential);
     const [err, setErr] = useState(null);

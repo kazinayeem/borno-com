@@ -41,7 +41,7 @@ class Setting extends Model
                 'name' => 'ReadyEcommerce', 'email' => '', 'mobile' => '',
                 'shop_type' => 'multi', 'currency_position' => 'prefix', 'timezone' => 'Asia/Dhaka',
                 'return_order_within_days' => 3, 'low_stock_alert' => true, 'low_stock_alert_quantity' => 3,
-                'low_stock_mail_notification' => false, 'show_product_stock' => false, 'default_phone_code' => '',
+                'low_stock_mail_notification' => false, 'guest_checkout' => false, 'show_product_stock' => false, 'default_phone_code' => '',
                 'show_address_map' => false, 'cash_on_delivery' => true, 'online_payment' => true,
             ],
             'mail' => ['is_active' => true],

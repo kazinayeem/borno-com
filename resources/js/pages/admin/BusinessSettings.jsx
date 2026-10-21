@@ -108,6 +108,7 @@ export function BusinessSetup() {
             <Section title={t('Payment Method Setup')}>
                 <Check label={t('💰 Cash on Delivery Enable')} on={f.cash_on_delivery} onChange={set('cash_on_delivery')} />
                 <Check label={t('💳 Online Payment Enable')} on={f.online_payment} onChange={set('online_payment')} />
+                <Check label={t('👤 Allow guest checkout (no login needed)')} on={f.guest_checkout} onChange={set('guest_checkout')} />
             </Section>
             <div className="flex justify-end pb-6"><button disabled={saving} className="btn-primary !rounded-lg !px-8">{saving ? t('Saving…') : t('Save And Update')}</button></div>
         </form>

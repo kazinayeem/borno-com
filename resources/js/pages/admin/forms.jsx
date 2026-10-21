@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { errorMessage, useAdminGetQuery, useAdminSaveMutation, useGetGroupQuery, useGetOptionsQuery } from '../../app/api';
 import { pushToast } from '../../app/slices';
@@ -103,8 +103,26 @@ function buildVariants(colorIds, sizeIds, prev, basePrice, baseStock) {
 }
 
 export function ProductForm() {
-    const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], image: '', gallery: [], is_flash_sale: false, active: true };
+    const empty = { name: '', name_ar: '', slug: '', short_description: '', short_description_ar: '', description: '', category_id: '', brand_id: '', shop_id: '', color_ids: [], size_ids: [], unit: '', sku: '', weight: '', buy_price: '', price: '', discount_type: 'fixed', discount_price: '', stock: '', video_type: 'file', video_url: '', meta_title: '', meta_description: '', meta_keywords: [], image: '', gallery: [], is_digital: false, digital_file: '', digital_url: '', is_flash_sale: false, active: true };
     const { id, form, set, err, submit, saving, isLoading, reset } = useAdminForm('products', empty, '/admin/products');
+    const loc = useLocation();
+    const token = useSelector((s) => s.auth.token);
+    const digital = !!form.is_digital || (!id && /digital/.test(loc.pathname));
+    const [fileBusy, setFileBusy] = useState(false);
+    const [fileName, setFileName] = useState('');
+    useEffect(() => { if (!id && /digital/.test(loc.pathname) && !form.is_digital) set('is_digital')(true); }, [id, loc.pathname]); // eslint-disable-line
+    const pickFile = async (e) => {
+        const file = e.target.files[0]; e.target.value = '';
+        if (!file) return;
+        setFileBusy(true);
+        try {
+            const body = new FormData(); body.append('file', file);
+            const res = await fetch('/api/admin/uploads/digital', { method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body });
+            const j = await res.json();
+            if (!res.ok) throw new Error(j.errors?.file?.[0] ?? j.message ?? t('Upload failed'));
+            set('digital_file')(j.path); setFileName(j.name);
+        } catch (er) { dispatch(pushToast(er.message, 'error')); } finally { setFileBusy(false); }
+    };
     const isAdmin = useSelector((s) => s.auth.user?.role === 'admin');
     const { data: business } = useGetGroupQuery('business', { skip: !isAdmin });
     const { data: opt } = useGetOptionsQuery();
@@ -124,8 +142,8 @@ export function ProductForm() {
     const labelOf = (list, id) => list.find((x) => Number(x.id) === Number(id))?.name ?? '—';
     const num = (k, label, extra = {}) => <Field label={label} required={extra.required} error={err(k)}><TextInput value={form[k]} onChange={set(k)} placeholder={label.replace(' *', '')} {...extra.input} /></Field>;
     return (
-        <form onSubmit={(e) => submit(e, { variants: variantRows })} className="mx-auto w-full max-w-[1100px]">
-            <PageTitle icon="box">{id ? t('Edit Product') : t('Add New Product')}</PageTitle>
+        <form onSubmit={(e) => submit(e, digital ? { is_digital: true, variants: [], color_ids: [], size_ids: [], stock: Number(form.stock) || 100000, weight: null } : { variants: variantRows })} className="mx-auto w-full max-w-[1100px]">
+            <PageTitle icon="box">{digital ? (id ? t('Edit Digital Product') : t('Add Digital Product')) : (id ? t('Edit Product') : t('Add New Product'))}</PageTitle>
             <Section title={t('Product Info')}>
                 <Field label={t('Product Name')} required error={err('name')}><TextInput value={form.name} onChange={set('name')} placeholder={t('Enter Product Name')} /></Field>
                 <Field label={t('Product Name (2nd Language)')}><TextInput value={form.name_ar} onChange={set('name_ar')} placeholder={t('Enter Arabic product name')} /></Field>
@@ -142,16 +160,16 @@ export function ProductForm() {
                 <Field label={t('Select Brand')}><Select value={form.brand_id} onChange={set('brand_id')} options={o.brands} placeholder={t('Select Brand')} /></Field>
                 <Field label={t('Select Unit')}><Select value={form.unit} onChange={set('unit')} options={o.units} placeholder={t('Select Unit')} /></Field>
                 <Field label={t('Product SKU')} required error={err('sku')}><div className="flex gap-2"><TextInput value={form.sku} onChange={set('sku')} placeholder={t('Ex: 134543')} /><button type="button" onClick={() => set('sku')(String(Math.floor(100000 + Math.random() * 900000)))} className="whitespace-nowrap rounded-md bg-primary-soft px-3 text-xs text-primary">{t('Generate Code')}</button></div></Field>
-                {num('weight', 'Product Weight (in kg)')}
+                {!digital && num('weight', 'Product Weight (in kg)')}
                 {num('buy_price', 'Buying Price *', { required: true })}
                 {num('price', 'Selling Price *', { required: true })}
                 <Field label={t('Discount Type')}><Select value={form.discount_type} onChange={set('discount_type')} options={[{ id: 'fixed', name: 'Fixed' }, { id: 'percent', name: 'Percent' }]} /></Field>
                 {num('discount_price', 'Discount')}
-                {num('stock', 'Current Stock Quantity')}
+                {!digital && num('stock', 'Current Stock Quantity')}
                 <Field label={t('Flash Sale')}><label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-primary" checked={!!form.is_flash_sale} onChange={(e) => set('is_flash_sale')(e.target.checked)} />{t('Show this product on the homepage flash sale')}</label></Field>
             </div>
             </Section>
-            <Section title={t('Variants: Color & Size')}>
+            {!digital && <Section title={t('Variants: Color & Size')}>
                 <p className="mb-3 text-sm text-muted">{t('Tap the colors and sizes this product comes in. Each combination gets its own price and stock below.')}</p>
                 <div className="grid gap-x-6 md:grid-cols-2">
                     <Field label={t('Select Color')}><MultiSelect swatch value={form.color_ids} onChange={(ids) => setOptions('color_ids', ids)} options={o.colors} /></Field>
@@ -171,7 +189,17 @@ export function ProductForm() {
                             })}</tbody></table>
                     </div>)}
                 {variantRows.length === 0 && <p className="text-sm text-muted">{t('No color or size selected. The product is sold as a single option.')}</p>}
-            </Section>
+            </Section>}
+            {digital && <Section title={t('Digital file')}>
+                <p className="mb-3 text-sm text-muted">{t('Customers download this after their order is paid. Upload the file (kept private, never public) or paste a link to where it is hosted. No stock, shipping or variants apply.')}</p>
+                <div className="grid gap-x-6 md:grid-cols-2">
+                    <Field label={t('Upload file')} hint={t('zip, pdf, epub, mp3, mp4, docs… up to 100 MB')} error={err('digital_file')}>
+                        <div className="flex items-center gap-3"><input type="file" disabled={fileBusy} onChange={pickFile} className="text-[13px]" />{fileBusy && <span className="text-xs text-muted">{t('Uploading…')}</span>}</div>
+                        {form.digital_file && <p className="mt-1 text-xs text-emerald-600">✓ {fileName || form.digital_file} <button type="button" className="ms-2 text-red-500" onClick={() => { set('digital_file')(''); setFileName(''); }}>{t('Remove')}</button></p>}
+                    </Field>
+                    <Field label={t('…or download link')} hint={t('Used when no file is uploaded')} error={err('digital_url')}><TextInput value={form.digital_url} onChange={set('digital_url')} placeholder="https://" /></Field>
+                </div>
+            </Section>}
             <Section title={t('Upload or Add Product Video')}>
                 <Field label={t('Select Video Type')}><Select value={form.video_type} onChange={set('video_type')} options={[{ id: 'file', name: 'Upload Video File' }, { id: 'youtube', name: 'YouTube Link' }, { id: 'vimeo', name: 'Vimeo Link' }, { id: 'dailymotion', name: 'Dailymotion Link' }]} /></Field>
                 {form.video_type === 'file' ? <Field label={t('Upload Product Video')}><input type="file" accept="video/*" className="text-[13px]" /></Field> : <Field label={t('Video Link')}><TextArea value={form.video_url} onChange={set('video_url')} placeholder={t('Paste the video link')} /></Field>}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { AnimatePresence, motion } from 'framer-motion';
 import { dismiss } from '../app/slices';
 import { t } from '../i18n';
 
@@ -67,11 +68,11 @@ export function Toasts() {
     }, [toasts, dispatch]);
     return (
         <div className="fixed end-4 top-4 z-[100] flex flex-col gap-2">
-            {toasts.map((t) => (
-                <div key={t.id} role="status" className={`min-w-64 rounded-lg border-s-4 bg-sa-surface px-4 py-3 text-sm shadow-lg ${t.type === 'error' ? 'border-red-500' : 'border-emerald-500'}`}>
+            <AnimatePresence initial={false}>{toasts.map((t) => (
+                <motion.div key={t.id} layout role="status" initial={{ opacity: 0, x: 40, scale: 0.96 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, x: 40 }} transition={{ duration: 0.22 }} className={`min-w-64 rounded-lg border-s-4 bg-sa-surface px-4 py-3 text-sm shadow-lg ${t.type === 'error' ? 'border-red-500' : 'border-emerald-500'}`}>
                     {t.message}
-                </div>
-            ))}
+                </motion.div>
+            ))}</AnimatePresence>
         </div>
     );
 }
@@ -107,14 +108,14 @@ export function Modal({ title, onClose, children }) {
         return () => window.removeEventListener('keydown', h);
     }, [onClose]);
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
-            <div role="dialog" aria-modal="true" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-sa-surface p-6 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <motion.div role="dialog" aria-modal="true" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-sa-surface p-6 shadow-xl" onMouseDown={(e) => e.stopPropagation()} initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-semibold">{title}</h3>
                     <button onClick={onClose} aria-label={t('Close')}><Icon name="close" /></button>
                 </div>
                 {children}
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }

@@ -5,6 +5,7 @@ import { useGetHomeCollectionsQuery, useGetHomeQuery, useGetMasterQuery } from '
 import ProductCard from '../../components/ProductCard';
 import { Icon, Img } from '../../components/ui';
 import { t } from '../../i18n';
+import { motion, rise } from '../../components/Motion';
 import { stripHtml } from '../../components/RichText';
 
 const catName = (c, lang) => (lang === 'ar' && c.name_ar) || c.name;
@@ -44,13 +45,13 @@ function BannerSlider({ banners }) {
 function GridAds({ items }) {
     if (!items?.length) return null;
     return (
-        <section className={`grid gap-4 ${items.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${items.length >= 3 ? 'md:grid-cols-3' : ''} ${items.length >= 4 ? 'lg:grid-cols-4' : ''}`}>
+        <motion.section {...rise} className={`grid gap-4 ${items.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${items.length >= 3 ? 'md:grid-cols-3' : ''} ${items.length >= 4 ? 'lg:grid-cols-4' : ''}`}>
             {items.map((a) => {
                 const img = <Img src={a.image} alt={a.title} className={`w-full object-cover ${items.length === 1 ? 'aspect-[16/5]' : items.length === 2 ? 'aspect-[2/1]' : 'aspect-[3/2]'}`} />;
                 const cls = 'card block overflow-hidden transition hover:shadow-md';
                 return /^https?:\/\//.test(a.url) ? <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className={cls}>{img}</a> : <Link key={a.id} to={a.url || '/'} className={cls}>{img}</Link>;
             })}
-        </section>
+        </motion.section>
     );
 }
 
@@ -69,7 +70,7 @@ export default function Home() {
 
     return (
         <div className="space-y-10 pb-4">
-            <section className="grid items-start gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <motion.section {...rise} className="grid items-start gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
                 <aside className="hidden h-full flex-col overflow-hidden rounded-[12px] border border-line bg-sa-surface shadow-[0_8px_24px_rgba(15,23,42,0.06)] xl:flex">
                     {isLoading ? <div className="skeleton m-3 h-64" /> : menuCats.map((c) => (
                         <Link key={c.id} to={`/products?category_slug=${c.slug}`} className="flex items-center justify-between px-4 py-3 text-[15px] text-slate-700 hover:bg-primary-soft hover:text-primary"><span className="flex min-w-0 items-center gap-3"><Img src={c.image_url} alt="" className="h-7 w-7 shrink-0 rounded object-cover" /><span className="truncate">{catName(c, lang)}</span></span><Icon name="right" size={14} /></Link>
@@ -87,17 +88,17 @@ export default function Home() {
                         {side.map((a) => <Link key={a.image} to={a.url || '/products'} className="overflow-hidden rounded-[12px] bg-sa-surface"><Img src={a.image} alt={a.title || ''} className="aspect-[4/3] h-[180px] w-full object-cover lg:h-full" /></Link>)}
                     </div>
                 </div>
-            </section>
+            </motion.section>
 
             <GridAds items={data?.grid_ads?.home_top} />
 
-            <section className="card grid grid-cols-2 gap-4 p-5 md:grid-cols-5">
+            <motion.section {...rise} className="card grid grid-cols-2 gap-4 p-5 md:grid-cols-5">
                 {(data?.support?.length ? data.support : perks.map(([title, description]) => ({ title, description, image: null }))).map((p) => (
                     <div key={p.title} className="flex items-center gap-3"><Img src={p.image} alt="" className="h-10 w-10 object-contain" /><div><p className="text-sm font-semibold">{t(p.title)}</p><p className="text-xs text-muted">{t(p.description)}</p></div></div>
                 ))}
-            </section>
+            </motion.section>
 
-            <section>
+            <motion.section {...rise}>
                 <h2 className="mb-4 text-xl font-semibold">{t('Shop By Categories')}</h2>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
                     {(isLoading ? Array.from({ length: 8 }) : menuCats).map((c, i) => c ? (
@@ -105,9 +106,9 @@ export default function Home() {
                             <span className="grid h-20 w-20 place-items-center overflow-hidden rounded-full bg-surface text-primary shadow-sm"><Img src={c.image_url} alt={catName(c, lang)} className="h-full w-full object-cover" fallback={<Icon name="tag" size={28} />} /></span>{catName(c, lang)}</Link>
                     ) : <div key={i} className="skeleton h-24" />)}
                 </div>
-            </section>
+            </motion.section>
 
-            <section className="relative isolate overflow-hidden rounded-[28px] bg-gradient-to-br from-[#fb7185] via-primary to-[#9f1239] px-4 py-6 text-white sm:px-8 lg:px-10 lg:py-8">
+            <motion.section {...rise} className="relative isolate overflow-hidden rounded-[28px] bg-gradient-to-br from-[#fb7185] via-primary to-[#9f1239] px-4 py-6 text-white sm:px-8 lg:px-10 lg:py-8">
                 <div className="grid items-center gap-6 lg:grid-cols-2">
                     <div>
                         <p className="text-xs font-semibold tracking-[0.25em]">{t('COMING SOON')}</p>
@@ -121,9 +122,9 @@ export default function Home() {
                         <h3 className="text-3xl font-extrabold">{t('Big Deals Are Waiting For You')}</h3>
                     </div>
                 </div>
-            </section>
+            </motion.section>
 
-            <section className="grid gap-4 lg:grid-cols-[280px_1fr]">
+            <motion.section {...rise} className="grid gap-4 lg:grid-cols-[280px_1fr]">
                 <div className="rounded-2xl bg-gradient-to-b from-stone-500 to-stone-700 p-6 text-white">
                     <span className="rounded bg-sa-surface px-2 py-1 text-xs font-semibold text-ink">{t('Limited Time Only')}</span>
                     <h2 className="mt-4 text-3xl font-bold">{dealName}</h2>
@@ -132,32 +133,32 @@ export default function Home() {
                     <Link to="/products?flash=1" className="btn-primary mt-6 w-full">{t('Shop Now')} <Icon name="arrow" size={16} /></Link>
                 </div>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                    {isLoading ? Array.from({ length: 5 }, (_, i) => <div key={i} className="skeleton h-72" />) : data.flash_sale.map((p) => <ProductCard key={p.id} p={p} />)}
+                    {isLoading ? Array.from({ length: 5 }, (_, i) => <div key={i} className="skeleton h-72" />) : data.flash_sale.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
                 </div>
-            </section>
+            </motion.section>
 
             <GridAds items={data?.grid_ads?.home_middle} />
 
-            {collections.map((c) => <section key={c.id}>
+            {collections.map((c) => <motion.section {...rise} key={c.id}>
                 <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">{c.title}</h2><Link to={`/collections/${c.slug}`} className="text-sm text-primary">{t('View all')}</Link></div>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">{c.products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
-            </section>)}
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">{c.products.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}</div>
+            </motion.section>)}
 
-            <section>
+            <motion.section {...rise}>
                 <h2 className="mb-4 text-xl font-semibold">{t('Popular Products')}</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-                    {isLoading ? Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton h-72" />) : data.popular.map((p) => <ProductCard key={p.id} p={p} />)}
+                    {isLoading ? Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton h-72" />) : data.popular.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
                 </div>
-            </section>
+            </motion.section>
 
-            {data?.quick?.length > 0 && <section>
+            {data?.quick?.length > 0 && <motion.section {...rise}>
                 <h2 className="mb-4 text-xl font-semibold">{t('Quick Access')}</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                    {data.quick.map((p) => <ProductCard key={p.id} p={p} />)}
+                    {data.quick.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
                 </div>
-            </section>}
+            </motion.section>}
 
-            {master?.data?.multi_vendor && <section>
+            {master?.data?.multi_vendor && <motion.section {...rise}>
                 <h2 className="mb-4 text-xl font-semibold">{t('Top Shops')}</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
                     {(data?.shops ?? []).map((s) => (
@@ -166,7 +167,7 @@ export default function Home() {
                             <Link to={`/products?shop_id=${s.id}`} className="btn-outline mt-2">{t('Visit Shop')}</Link></div>
                     ))}
                 </div>
-            </section>}
+            </motion.section>}
 
             <GridAds items={data?.grid_ads?.home_bottom} />
         </div>

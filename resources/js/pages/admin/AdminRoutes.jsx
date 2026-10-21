@@ -48,6 +48,7 @@ export function AdminRoutes() {
                     <Route path="shops/create" element={<ShopForm />} />
                     <Route path="shops/:id/edit" element={<ShopForm />} />
                     <Route path="product/create" element={<ProductForm />} />
+                    <Route path="digital-product/create" element={<ProductForm />} />
                     <Route path="products/:id/edit" element={<ProductForm />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="pos" element={<Pos />} />

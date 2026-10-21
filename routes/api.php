@@ -27,6 +27,7 @@ Route::post('account/register', [CustomerAuthController::class, 'register'])->mi
 Route::post('account/login', [CustomerAuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('account/google', [CustomerAuthController::class, 'google'])->middleware('throttle:20,1');
 Route::post('checkout/quote', [CheckoutController::class, 'quote'])->middleware('throttle:60,1');
+Route::post('checkout/guest', [CheckoutController::class, 'guest'])->middleware('throttle:10,1');
 
 Route::middleware(['auth:sanctum', 'customer'])->prefix('account')->group(function () {
     Route::post('logout', [CustomerAuthController::class, 'logout']);
@@ -42,9 +43,12 @@ Route::middleware(['auth:sanctum', 'customer'])->prefix('account')->group(functi
         Route::get('orders', 'orders');
         Route::get('orders/{id}', 'order')->whereNumber('id');
         Route::post('orders/{id}/cancel', 'cancel')->whereNumber('id');
+        Route::get('orders/{id}/items/{item}/download', 'download')->whereNumber('id')->whereNumber('item');
     });
     Route::post('checkout', [CheckoutController::class, 'place'])->middleware('throttle:20,1');
 });
+
+Route::get('payments/{tran}', [\App\Http\Controllers\PaymentCallbackController::class, 'status'])->middleware('throttle:60,1');
 
 Route::controller(StoreController::class)->group(function () {
     Route::get('home', 'home');
@@ -153,6 +157,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('drafts/{id}', 'destroyDraft');
         });
         Route::post('uploads', [UploadController::class, 'image']);
+        Route::post('uploads/digital', [UploadController::class, 'digital'])->middleware('throttle:20,1');
         Route::get('orders', 'orders');
         Route::get('orders/{id}', 'order');
         Route::get('riders-with-load', 'riders')->middleware('staff:admin');

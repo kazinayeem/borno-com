@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['staff' => \App\Http\Middleware\EnsureStaff::class, 'customer' => \App\Http\Middleware\EnsureCustomer::class, 'access' => \App\Http\Middleware\StaffAccess::class]);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        $middleware->validateCsrfTokens(except: ['payments/*']);   // gateways post back from their own servers / the shopper's browser
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

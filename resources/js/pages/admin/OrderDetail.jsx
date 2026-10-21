@@ -68,7 +68,7 @@ export function OrderDetail() {
                             <div><span>{t('Delivery Charge')}</span><span>{money(o.shipping)}</span></div><div><span>{t('VAT & Tax')}</span><span>{money(o.vat_tax)}</span></div>
                             <div className="grand"><span>{t('Grand Total')}</span><span>{money(o.total)}</span></div></div></CardB>
                     </Card>
-                    <Card><CardH><h3>{t('Customer Info')}</h3></CardH><CardB><Kv rows={[['Name', o.user?.name], ['Phone', o.user?.phone], ['Email', o.user?.email]]} /></CardB></Card>
+                    <Card><CardH><h3>{t('Customer Info')}</h3></CardH><CardB><Kv rows={[['Name', o.buyer?.name ?? o.user?.name], ['Phone', o.buyer?.phone ?? o.user?.phone], ['Email', o.buyer?.email ?? o.user?.email]]} /></CardB></Card>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     <Card>

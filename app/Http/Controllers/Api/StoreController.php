@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 
 class StoreController extends Controller
 {
-    private const PRIVATE_PRODUCT = ['buy_price', 'approval'];
+    private const PRIVATE_PRODUCT = ['buy_price', 'approval', 'digital_file', 'digital_url'];
 
     public function home()
     {
@@ -67,7 +67,7 @@ class StoreController extends Controller
             'currency' => ['name' => $cur?->name ?? 'USD', 'symbol' => $cur?->symbol ?? '$', 'position' => $business['currency_position'] ?? $c['currency_position'], 'rate' => $cur?->rate ?? 1],
             'currencies' => \App\Models\Currency::all(['name', 'symbol', 'rate']),
             'languages' => [['name' => 'English', 'code' => 'en']],
-            'show_download_app' => (bool) $c['show_download_app'], 'google_client_id' => config('services.google.client_id') ?: null, 'recaptcha_site_key' => \App\Support\Recaptcha::enabled() ? \App\Support\Recaptcha::config()['site_key'] : null, 'google_playstore_link' => $c['google_playstore_url'], 'app_store_link' => $c['app_store_url'],
+            'show_download_app' => (bool) $c['show_download_app'], 'google_client_id' => config('services.google.client_id') ?: null, 'guest_checkout' => Setting::flag('guest_checkout', false), 'payment_gateways' => \App\Services\Payments\Gateways::available(), 'recaptcha_site_key' => \App\Support\Recaptcha::enabled() ? \App\Support\Recaptcha::config()['site_key'] : null, 'google_playstore_link' => $c['google_playstore_url'], 'app_store_link' => $c['app_store_url'],
             'cash_on_delivery' => Setting::flag('cash_on_delivery', true), 'online_payment' => Setting::flag('online_payment', true),
             'multi_vendor' => Setting::shopType() === 'multi', 'preOrder' => true,
             'return_order_within_days' => (int) ($business['return_order_within_days'] ?? 7),
@@ -141,7 +141,7 @@ class StoreController extends Controller
         // Inactive and not-yet-approved products are not public.
         abort_if(! $product->active || $product->approval === 'pending', 404);
 
-        return $product->load(['shop:id,name,online,rating', 'category:id,name,slug', 'brand:id,name']);
+        return $product->load(['shop:id,name,online,rating', 'category:id,name,slug', 'brand:id,name'])->makeHidden(self::PRIVATE_PRODUCT);
     }
 
     public function shops()

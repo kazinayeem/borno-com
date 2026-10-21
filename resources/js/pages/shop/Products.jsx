@@ -57,7 +57,7 @@ export default function Products() {
                 </div>
                 {isError ? <Empty title={t('Could not load products')} hint={t('Please try again.')} /> : (
                     <div className={`grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 ${isFetching ? 'opacity-60' : ''}`}>
-                        {!data ? Array.from({ length: 8 }, (_, i) => <div key={i} className="skeleton h-72" />) : data.data.map((p) => <ProductCard key={p.id} p={p} />)}
+                        {!data ? Array.from({ length: 8 }, (_, i) => <div key={i} className="skeleton h-72" />) : data.data.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
                     </div>
                 )}
                 {data?.data.length === 0 && <Empty title={t('No products match your filters')} hint={t('Try clearing some filters.')} />}

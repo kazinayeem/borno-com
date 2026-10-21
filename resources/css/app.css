@@ -135,3 +135,11 @@ html[data-theme='dark'] .rich-editor .ql-toolbar.ql-snow, html[data-theme='dark'
 /* Admin / seller login backdrop follows the theme */
 .login-bg { background: #fdf7f3 radial-gradient(circle at 10% 20%, #fde8c9 0, transparent 35%), radial-gradient(circle at 15% 85%, #dff3ee 0, transparent 35%), radial-gradient(circle at 90% 90%, #fdecf0 0, transparent 30%); }
 html[data-theme='dark'] .login-bg { background: #1d1d20 radial-gradient(circle at 12% 18%, rgba(238,69,107,.16) 0, transparent 38%), radial-gradient(circle at 88% 88%, rgba(59,130,246,.14) 0, transparent 38%); }
+
+/* Storefront: smooth hover/press feedback (framer-motion drives page, card, dropdown and modal animation) */
+.btn-primary, .btn-outline, .field { transition: transform .12s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease; }
+.btn-primary:active, .btn-outline:active { transform: scale(.97); }
+.btn-primary:hover { box-shadow: 0 6px 16px rgba(238, 69, 107, .28); }
+.card { transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

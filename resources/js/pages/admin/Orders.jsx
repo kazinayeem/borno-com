@@ -34,7 +34,7 @@ export default function Orders() {
                     <tbody>
                         {rows.map((o) => (
                             <tr key={o.id}>
-                                <td>{o.number}</td><td>{fdt(o.created_at)}</td><td>{o.user?.name}</td><td>{o.shop?.name}</td>
+                                <td>{o.number}</td><td>{fdt(o.created_at)}</td><td>{o.buyer?.name ?? o.user?.name}{o.buyer?.guest ? <small className="muted"> ({t('guest')})</small> : null}</td><td>{o.shop?.name}</td>
                                 <td>{money(o.total)}<br /><span className="chip">{o.payment_status === 'paid' ? t('Paid') : t('Pending')}</span></td>
                                 <td>{o.payment_method}</td>
                                 <td><div className="actions"><Link className="act" to={`/admin/orders/${o.id}/show`} title={t('view details')} aria-label={t('view details')}><SaIcon name="eye" /></Link><Link className="act" to={`/admin/orders/${o.id}/invoice`} title={t('Download Invoice')} aria-label={t('Download Invoice')}><SaIcon name="download" /></Link></div></td>

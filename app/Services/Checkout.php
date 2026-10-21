@@ -48,7 +48,7 @@ class Checkout
             }
             $byShop[$p->shop_id][] = [
                 'key' => $key, 'product_id' => $p->id, 'name' => $p->name, 'price' => $sel['price'], 'qty' => $q, 'image_url' => $p->image_url,
-                'color' => $sel['color'], 'size' => $sel['size'], 'color_id' => $sel['color_id'], 'size_id' => $sel['size_id'],
+                'color' => $sel['color'], 'size' => $sel['size'], 'color_id' => $sel['color_id'], 'size_id' => $sel['size_id'], 'digital' => (bool) $p->is_digital,
             ];
         }
         if ($strict && $issues) {
@@ -70,7 +70,7 @@ class Checkout
             // Coupon is shared across shops in proportion to each shop's subtotal; the last one absorbs rounding.
             $share = $n === count($shopIds) - 1 ? round($discount - $allocated, 2) : round($subtotal > 0 ? $discount * $sub / $subtotal : 0, 2);
             $allocated += $share;
-            $ship = $sub >= self::FREE_SHIPPING_FROM ? 0.0 : self::SHIPPING;
+            $ship = ($sub >= self::FREE_SHIPPING_FROM || collect($lines)->every(fn ($l) => ! empty($l['digital']))) ? 0.0 : self::SHIPPING;   // nothing to deliver when every item is a download
             $orders[] = ['shop_id' => $shopId, 'lines' => $lines, 'subtotal' => $sub, 'discount' => $share, 'shipping' => $ship, 'total' => round($sub - $share + $ship, 2)];
         }
 

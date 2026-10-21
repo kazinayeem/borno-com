@@ -5,12 +5,15 @@ import { api, usePermissionsCatalogQuery, useGetBellQuery, useGetDashboardQuery,
 import { loggedOut, setLang, toggleTheme } from '../../app/slices';
 import { fdate, SaIcon } from '../../components/sa';
 import { menu, shopMenu, toRoute } from './spec/engine';
+import { PageTransition } from '../../components/Motion';
 
 // Staff roles: hide sidebar pages whose section the role cannot view (the API enforces it as well).
-const canSeePath = (perms, cat, path) => {
+const needsAdd = (label, path) => /^add\b/i.test(String(label ?? '')) || /\/(create|add)(\b|-|\/|$)/i.test(String(path));
+const canSeePath = (perms, cat, path, label) => {
     if (!perms || !cat) return true;
     const p = toRoute(String(path).split('?')[0]);
-    for (const m of cat.modules) for (const prefix of m.ui) if (p === prefix || p.startsWith(prefix)) return (perms[m.key] ?? []).includes('view');
+    if (p === '/admin' || p === '/admin/') return true;          // the dashboard is open to every staff member
+    for (const m of cat.modules) for (const prefix of m.ui) if (p === prefix || p.startsWith(prefix)) return (perms[m.key] ?? []).includes('view') && (!needsAdd(label, path) || (perms[m.key] ?? []).includes('add'));
     return (perms.settings ?? []).includes('view'); // unmapped pages behave like the API: administrative settings
 };
 import { LANGS, t } from '../../i18n';
@@ -69,7 +72,7 @@ export default function AdminLayout() {
     const { data: bell } = useGetBellQuery(undefined, { skip: !isAdmin || !token, pollingInterval: 30000 });
     const [readAll] = useReadAllNotificationsMutation();
     const { data: dash } = useGetDashboardQuery(undefined, { skip: isAdmin || !token });
-    const { data: business, isError: businessError } = useGetGroupQuery('business', { skip: !isAdmin || !token });
+    const { data: business, isError: businessError } = useGetGroupQuery('business', { skip: !isAdmin || !token || (!!user?.permissions && !(user.permissions.settings ?? []).includes('view')) });
     const { data: master } = useGetMasterQuery();
     const perms = isAdmin ? user?.permissions : null;     // null/undefined = super admin
     const { data: cat } = usePermissionsCatalogQuery(undefined, { skip: !perms || !token });
@@ -86,7 +89,7 @@ export default function AdminLayout() {
         if (isAdmin) {
             const base = hideAddShop(menu);
             if (!perms || !cat) return base;
-            const kept = base.map((m) => (m.children ? { ...m, children: m.children.filter(([, path]) => canSeePath(perms, cat, path)) } : m))
+            const kept = base.map((m) => (m.children ? { ...m, children: m.children.filter(([label, path]) => canSeePath(perms, cat, path, label)) } : m))
                 .filter((m) => (m.children ? m.children.length > 0 : m.section || (m.path === '/admin' || canSeePath(perms, cat, m.path))));
             // drop section headings that no longer have anything under them
             return kept.filter((m, i) => !m.section || (kept[i + 1] && !kept[i + 1].section));
@@ -123,7 +126,7 @@ export default function AdminLayout() {
                         <button className="icon-btn" aria-label={t('Toggle sidebar')} onClick={toggleSide}><SaIcon name="menu" /></button>
                         <div className="hello"><h2>{t('Welcome Back, {name}', { name })}</h2><p>{t('Monitor your business analytics and statistics.')}</p></div>
                         <div className="spacer" />
-                        <Link to={loc.pathname.startsWith('/shop') ? '/shop/pos' : '/admin/pos'} className="btn primary sm" style={{ gap: 6 }}><SaIcon name="cart" /> {t('POS')}</Link>
+                        {(!perms || !cat || canSeePath(perms, cat, '/admin/pos')) && <Link to={loc.pathname.startsWith('/shop') ? '/shop/pos' : '/admin/pos'} className="btn primary sm" style={{ gap: 6 }}><SaIcon name="cart" /> {t('POS')}</Link>}
                         <button className="icon-btn" aria-label={t('Toggle dark mode')} onClick={() => dispatch(toggleTheme())}><SaIcon name={theme === 'dark' ? 'sun' : 'moon'} /></button>
                         <div className="rel">
                             <button className="icon-btn" data-dd aria-label={t('Language')} aria-expanded={dd === 'lang'} onClick={() => setDd(dd === 'lang' ? null : 'lang')} style={{ width: 'auto', padding: '0 10px', fontSize: 13, fontWeight: 600 }}>{LANGS.find((l) => l.code === lang)?.short ?? 'EN'}</button>
@@ -155,7 +158,7 @@ export default function AdminLayout() {
                                 </div>)}
                         </div>
                     </header>
-                    <main className="content"><Outlet /></main>
+                    <main className="content"><PageTransition><Outlet /></PageTransition></main>
                 </div>
             </div>
         </div>
