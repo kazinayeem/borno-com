@@ -1,20 +1,26 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const baseQuery = fetchBaseQuery({
+const make = (select) => fetchBaseQuery({
     baseUrl: '/api',
     prepareHeaders: (headers, { getState }) => {
         headers.set('Accept', 'application/json');
-        const token = getState().auth.token;
+        const token = select(getState());
         if (token) headers.set('Authorization', `Bearer ${token}`);
         return headers;
     },
 });
+const staffQuery = make((st) => st.auth.token);
+const customerQuery = make((st) => st.customer.token);
+const isStaffUrl = (args) => { const u = typeof args === 'string' ? args : args.url; return u.startsWith('/admin') || u.startsWith('/auth'); };
 
-// Central place for 401 handling: drop the session and let the guard redirect.
+// Staff (/admin, /auth) and storefront customers (/account, /checkout, public) use separate tokens.
+// A 401 on either one drops only that session.
 const baseQueryWithAuth = async (args, api, extra) => {
-    const result = await baseQuery(args, api, extra);
-    if (result.error?.status === 401 && api.getState().auth.token) {
-        api.dispatch({ type: 'auth/loggedOut' });
+    const staff = isStaffUrl(args);
+    const result = await (staff ? staffQuery : customerQuery)(args, api, extra);
+    if (result.error?.status === 401) {
+        if (staff && api.getState().auth.token) api.dispatch({ type: 'auth/loggedOut' });
+        if (!staff && api.getState().customer.token && !String(typeof args === 'string' ? args : args.url).includes('/account/login')) api.dispatch({ type: 'customer/customerLoggedOut' });
     }
     return result;
 };
@@ -22,7 +28,7 @@ const baseQueryWithAuth = async (args, api, extra) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithAuth,
-    tagTypes: ['Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts'],
+    tagTypes: ['Bell', 'Account', 'CustOrders', 'Addresses', 'Profile', 'MyShop', 'Gateways', 'Chats', 'Gallery', 'Rec', 'Group', 'Admin', 'Messages', 'Orders', 'Settings', 'Pos', 'PosCustomers', 'PosSales', 'PosDrafts'],
     endpoints: (b) => ({
         // storefront
         getHome: b.query({ query: () => '/home' }),
@@ -76,6 +82,7 @@ export const api = createApi({
         }),
         recDelete: b.mutation({ query: ({ res, id }) => ({ url: `/admin/r/${res}/${id}`, method: 'DELETE' }), invalidatesTags: (_r, _e, { res }) => [{ type: 'Rec', id: res }] }),
         recToggle: b.mutation({ query: ({ res, id, field }) => ({ url: `/admin/r/${res}/${id}/toggle`, method: 'PATCH', params: field ? { field } : undefined }), invalidatesTags: (_r, _e, { res }) => [{ type: 'Rec', id: res }] }),
+        recDecide: b.mutation({ query: ({ res, id, decision }) => ({ url: `/admin/r/${res}/${id}/${decision}`, method: 'POST' }), invalidatesTags: (_r, _e, { res }) => [{ type: 'Rec', id: res }] }),
         getLookup: b.query({ query: (res) => `/admin/lookup/${res}` }),
         getGroup: b.query({ query: (key) => `/admin/settings-group/${key}`, providesTags: (_r, _e, key) => [{ type: 'Group', id: key }] }),
         saveGroup: b.mutation({ query: ({ key, ...body }) => ({ url: `/admin/settings-group/${key}`, method: 'PUT', body }), invalidatesTags: (_r, _e, { key }) => [{ type: 'Group', id: key }] }),
@@ -98,6 +105,27 @@ export const api = createApi({
         importProducts: b.mutation({ query: (body) => ({ url: '/admin/products-import', method: 'POST', body }), invalidatesTags: ['Admin'] }),
         getGallery: b.query({ query: () => '/admin/gallery', providesTags: ['Gallery'] }),
         deleteImage: b.mutation({ query: (name) => ({ url: `/admin/gallery/${name}`, method: 'DELETE' }), invalidatesTags: ['Gallery'] }),
+        // storefront customer
+        getMaster: b.query({ query: () => '/master' }),
+        quoteCart: b.mutation({ query: (body) => ({ url: '/checkout/quote', method: 'POST', body }) }),
+        custRegister: b.mutation({ query: (body) => ({ url: '/account/register', method: 'POST', body }) }),
+        custLogin: b.mutation({ query: (body) => ({ url: '/account/login', method: 'POST', body }) }),
+        custGoogle: b.mutation({ query: (credential) => ({ url: '/account/google', method: 'POST', body: { credential } }) }),
+        custLogout: b.mutation({ query: () => ({ url: '/account/logout', method: 'POST' }) }),
+        getAccount: b.query({ query: () => '/account/me', providesTags: ['Account'] }),
+        saveAccount: b.mutation({ query: (body) => ({ url: '/account/me', method: 'PUT', body }), invalidatesTags: ['Account'] }),
+        changeAccountPassword: b.mutation({ query: (body) => ({ url: '/account/password', method: 'PUT', body }), invalidatesTags: ['Account'] }),
+        accountSummary: b.query({ query: () => '/account/summary', providesTags: ['CustOrders'] }),
+        accountOrders: b.query({ query: (params) => ({ url: '/account/orders', params }), providesTags: ['CustOrders'] }),
+        accountOrder: b.query({ query: (id) => `/account/orders/${id}`, providesTags: (_r, _e, id) => [{ type: 'CustOrders', id }, 'CustOrders'] }),
+        cancelMyOrder: b.mutation({ query: (id) => ({ url: `/account/orders/${id}/cancel`, method: 'POST' }), invalidatesTags: ['CustOrders'] }),
+        getAddresses: b.query({ query: () => '/account/addresses', providesTags: ['Addresses'] }),
+        saveAddress: b.mutation({ query: ({ id, ...body }) => ({ url: `/account/addresses${id ? `/${id}` : ''}`, method: id ? 'PUT' : 'POST', body }), invalidatesTags: ['Addresses'] }),
+        deleteAddress: b.mutation({ query: (id) => ({ url: `/account/addresses/${id}`, method: 'DELETE' }), invalidatesTags: ['Addresses'] }),
+        placeOrder: b.mutation({ query: (body) => ({ url: '/account/checkout', method: 'POST', body }), invalidatesTags: ['CustOrders', 'Addresses'] }),
+        getStatistics: b.query({ query: (params) => ({ url: '/admin/statistics', params }), providesTags: ['Admin'] }),
+        getBell: b.query({ query: () => '/admin/bell', providesTags: ['Bell'] }),
+        readAllNotifications: b.mutation({ query: () => ({ url: '/admin/notifications/read-all', method: 'POST' }), invalidatesTags: ['Bell'] }),
         getOptions: b.query({ query: () => '/admin/options' }),
         adminGet: b.query({ query: ({ res, id }) => `/admin/${res}/${id}`, providesTags: (_r, _e, { res, id }) => [{ type: 'Admin', id: `${res}-${id}` }] }),
         getMessages: b.query({ query: (page = 1) => ({ url: '/admin/messages', params: { page } }), providesTags: ['Messages'] }),
@@ -108,7 +136,7 @@ export const api = createApi({
 export const {
     useGetHomeQuery, useGetCategoriesQuery, useGetProductsQuery, useGetProductQuery, useGetShopsQuery, useGetBrandsQuery, useGetBlogsQuery,
     useSendContactMutation, useLoginMutation, useLogoutMutation, useGetDashboardQuery, useAdminListQuery,
-    useAdminSaveMutation, useAdminDeleteMutation, useGetMessagesQuery, useGetOptionsQuery, useReportAnalyticsQuery, useEarningSummaryQuery, usePreorderStatsQuery, useGetProfileQuery, useSaveProfileMutation, useChangePasswordMutation, useGetMyShopQuery, useSaveMyShopMutation, useGetGatewaysQuery, useSaveGatewayMutation, useChatUsersQuery, useChatMessagesQuery, useChatSendMutation, usePushSendMutation, useImportProductsMutation, useGetGalleryQuery, useDeleteImageMutation, useRecListQuery, useRecGetQuery, useRecSaveMutation, useRecDeleteMutation, useRecToggleMutation, useGetLookupQuery, useGetGroupQuery, useSaveGroupMutation, useApproveProductMutation, useGetSettingsQuery, useSaveSettingsMutation, usePosProductsQuery, usePosCustomersQuery, usePosAddCustomerMutation, usePosQuoteMutation, usePosCheckoutMutation, usePosSalesQuery, usePosDraftsQuery, usePosSaveDraftMutation, usePosDeleteDraftMutation, useUploadImageMutation, useAdminGetQuery, useGetOrdersQuery, useGetRidersQuery, useGetOrderQuery, useUpdateOrderMutation, useGetCustomersQuery, useMarkMessageMutation,
+    useAdminSaveMutation, useAdminDeleteMutation, useGetMessagesQuery, useGetOptionsQuery, useGetStatisticsQuery, useGetBellQuery, useReadAllNotificationsMutation, useGetMasterQuery, useQuoteCartMutation, useCustRegisterMutation, useCustLoginMutation, useCustGoogleMutation, useCustLogoutMutation, useGetAccountQuery, useSaveAccountMutation, useChangeAccountPasswordMutation, useAccountSummaryQuery, useAccountOrdersQuery, useAccountOrderQuery, useCancelMyOrderMutation, useGetAddressesQuery, useSaveAddressMutation, useDeleteAddressMutation, usePlaceOrderMutation, useReportAnalyticsQuery, useEarningSummaryQuery, usePreorderStatsQuery, useGetProfileQuery, useSaveProfileMutation, useChangePasswordMutation, useGetMyShopQuery, useSaveMyShopMutation, useGetGatewaysQuery, useSaveGatewayMutation, useChatUsersQuery, useChatMessagesQuery, useChatSendMutation, usePushSendMutation, useImportProductsMutation, useGetGalleryQuery, useDeleteImageMutation, useRecListQuery, useRecGetQuery, useRecSaveMutation, useRecDeleteMutation, useRecToggleMutation, useRecDecideMutation, useGetLookupQuery, useGetGroupQuery, useSaveGroupMutation, useApproveProductMutation, useGetSettingsQuery, useSaveSettingsMutation, usePosProductsQuery, usePosCustomersQuery, usePosAddCustomerMutation, usePosQuoteMutation, usePosCheckoutMutation, usePosSalesQuery, usePosDraftsQuery, usePosSaveDraftMutation, usePosDeleteDraftMutation, useUploadImageMutation, useAdminGetQuery, useGetOrdersQuery, useGetRidersQuery, useGetOrderQuery, useUpdateOrderMutation, useGetCustomersQuery, useMarkMessageMutation,
 } = api;
 
 export const errorMessage = (e) => e?.data?.message || (e?.status === 'FETCH_ERROR' ? 'Network error. Please try again.' : 'Something went wrong.');

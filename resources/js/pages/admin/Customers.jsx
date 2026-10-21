@@ -1,21 +1,31 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useGetCustomersQuery } from '../../app/api';
-import { Empty, Pagination } from '../../components/ui';
+import { Card, CardH, fdate, PageHead, Pager, SaIcon, Thumb, useDebounced } from '../../components/sa';
 
 export default function Customers() {
     const [page, setPage] = useState(1);
-    const { data, isFetching, isError } = useGetCustomersQuery({ page });
+    const [q, setQ] = useState('');
+    const search = useDebounced(q);
+    useEffect(() => setPage(1), [search]);
+    const { data, isFetching, isError } = useGetCustomersQuery({ page, search: search || undefined });
+    const rows = data?.data ?? [];
     return (
-        <div>
-            <h2 className="mb-4 text-[22px] font-semibold">All Customers</h2>
-            <div className="card overflow-x-auto rounded-xl !border-[#f4f4f4] p-3"><table className="w-full min-w-[720px] text-left text-sm">
-                <thead><tr className="bg-[#f6f7f9] text-[13px]">{['SL.', 'Profile', 'Name', 'Phone', 'Email', 'Gender', 'Date of Birth'].map((h) => <th key={h} className="px-4 py-4">{h}</th>)}</tr></thead>
-                <tbody className={isFetching ? 'opacity-50' : ''}>{data?.data.map((c, i) => (
-                    <tr key={c.id} className="border-b border-[#f4f4f4] last:border-0"><td className="px-4 py-3">{(data.current_page - 1) * data.per_page + i + 1}</td>
-                        <td className="px-4"><span className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 font-bold text-amber-600">{c.name[0]}</span></td>
-                        <td className="px-4">{c.name}</td><td className="px-4">{c.phone ?? '--'}</td><td className="px-4">{c.email}</td><td className="px-4">{c.gender ?? '--'}</td><td className="px-4">{c.birth_date?.slice(0, 10) ?? '--'}</td></tr>))}</tbody></table>
-                {!data && !isError && <div className="skeleton m-4 h-40" />}{isError && <Empty title="Could not load customers" />}{data?.data.length === 0 && <Empty title="No customers found" />}</div>
-            <Pagination meta={data} onPage={setPage} />
-        </div>
+        <>
+            <PageHead title="All Customer"><Link className="btn primary" to="/admin/customers/create"><SaIcon name="plus" /> Add New</Link></PageHead>
+            <Card>
+                <CardH><div className="toolbar" style={{ flex: 1 }}><input className="input" aria-label="Search customers" placeholder="Name or email…" style={{ minWidth: 220 }} value={q} onChange={(e) => setQ(e.target.value)} /></div></CardH>
+                <div className="table-wrap" style={{ opacity: isFetching ? 0.6 : 1 }}><table>
+                    <thead><tr><th>SL</th><th>Profile</th><th>Name</th><th>Phone</th><th>Email</th><th>Orders</th><th>Gender</th><th>Date of Birth</th></tr></thead>
+                    <tbody>
+                        {rows.map((c, i) => <tr key={c.id}><td>{(data.current_page - 1) * data.per_page + i + 1}</td><td><Thumb name={c.name} id={c.id} /></td><td>{c.name}</td><td>{c.phone ?? '--'}</td><td>{c.email}</td><td>{c.orders_count}</td><td>{c.gender ?? '--'}</td><td>{c.birth_date ? fdate(c.birth_date) : '--'}</td></tr>)}
+                        {!data && !isError && <tr><td colSpan={8} className="empty">Loading…</td></tr>}
+                        {isError && <tr><td colSpan={8} className="empty">Could not load customers.</td></tr>}
+                        {data && rows.length === 0 && <tr><td colSpan={8} className="empty">No Data Found</td></tr>}
+                    </tbody>
+                </table></div>
+                <Pager meta={data} count={rows.length} onPage={setPage} />
+            </Card>
+        </>
     );
 }

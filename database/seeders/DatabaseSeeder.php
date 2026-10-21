@@ -25,20 +25,6 @@ use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
-    /** Product name bank per category (index matches the category list below). */
-    private const PRODUCTS = [
-        ['Wireless Headphones', 'Smart Watch', 'Bluetooth Speaker', 'Gaming Mouse', 'Mechanical Keyboard', '4K Action Camera', 'Power Bank 20000mAh', 'Laptop Stand', 'USB-C Hub', 'Electric Heater', 'Desk Fan', 'LED Monitor 27"', 'Smartphone Case', 'Wi-Fi Router', 'Webcam HD'],
-        ['Trench Coat', 'Denim Jacket', 'Cotton T-Shirt', 'Slim Fit Jeans', 'Hooded Sweatshirt', 'Summer Dress', 'Leather Belt', 'Wool Scarf', 'Running Shoes', 'Canvas Sneakers', 'Formal Shirt', 'Cargo Shorts', 'Rain Jacket', 'Polo Shirt', 'Knit Cardigan'],
-        ['Vitamin C Serum', 'Moisturizing Cream', 'Argan Shampoo', 'Sunscreen SPF 50', 'Lip Balm Set', 'Face Wash Gel', 'Hair Dryer', 'Beard Trimmer', 'Perfume Eau de Parfum', 'Body Lotion', 'Nail Care Kit', 'Charcoal Face Mask', 'Shower Gel', 'Hair Oil', 'Eye Cream'],
-        ['Table Lamp', 'Throw Pillow Set', 'Ceramic Vase', 'Wall Clock', 'Bed Sheet Set', 'Coffee Maker', 'Non-stick Pan', 'Storage Basket', 'Scented Candle', 'Bath Towel Set', 'Kitchen Knife Set', 'Floor Rug', 'Curtain Panel', 'Wooden Shelf', 'Air Purifier'],
-        ['Basmati Rice 5kg', 'Olive Oil 1L', 'Organic Honey', 'Green Tea Pack', 'Whole Wheat Pasta', 'Almond Butter', 'Farm Fresh Crate', 'Mixed Nuts 500g', 'Instant Coffee', 'Dark Chocolate Bar', 'Oat Cereal', 'Peanut Butter', 'Spice Collection', 'Quinoa 1kg', 'Dried Fruit Box'],
-        ['Building Blocks Set', 'Remote Control Car', 'Board Game Classic', 'Puzzle 1000 Pieces', 'Plush Teddy Bear', 'Art & Craft Kit', 'Toy Train Set', 'Doll House', 'Card Game Deck', 'Water Gun', 'Science Experiment Kit', 'Magnetic Tiles', 'Toy Kitchen Set', 'Kids Drum Set', 'Chess Set'],
-        ['Yoga Mat', 'Adjustable Dumbbells', 'Racing Helmet', 'Ice Skates', 'Camping Tent', 'Hiking Backpack', 'Cycling Gloves', 'Football Size 5', 'Jump Rope', 'Resistance Bands', 'Water Bottle 1L', 'Badminton Racket', 'Swim Goggles', 'Fishing Rod', 'Sleeping Bag'],
-        ['Gold Necklace Set', 'Silver Bracelet', 'Pearl Earrings', 'Diamond Ring', 'Leather Wallet', 'Aviator Sunglasses', 'Analog Wrist Watch', 'Crossbody Bag', 'Charm Pendant', 'Hair Accessories Set', 'Cufflinks', 'Tote Bag', 'Anklet', 'Brooch', 'Key Holder'],
-        ['Notebook Pack', 'Fountain Pen', 'Desk Organizer', 'Sketch Pad', 'Highlighter Set', 'Hardcover Planner', 'Novel Collection', 'Cookbook', 'Gel Pen Box', 'Sticky Notes'],
-        ['Car Phone Holder', 'Seat Cover Set', 'Dash Cam', 'Tyre Inflator', 'Car Vacuum Cleaner', 'Engine Oil 4L', 'Wiper Blades', 'Steering Wheel Cover', 'Jump Starter', 'Floor Mats'],
-    ];
-
     public function run(): void
     {
         User::create(['name' => 'Root Admin', 'email' => 'root@readyecommerce.com', 'role' => 'admin', 'password' => 'secret']);
@@ -50,9 +36,6 @@ class DatabaseSeeder extends Seeder
         foreach (['Gift Sets', 'Watches', 'Phones', 'Laptops', 'Men', 'Women', 'Kids', 'Skincare', 'Furniture', 'Snacks'] as $i => $n) {
             SubCategory::create(['category_id' => $cats[[7, 7, 0, 0, 1, 1, 1, 2, 3, 4][$i]]->id, 'name' => $n, 'active' => $i % 4 !== 3]);
         }
-
-        $brands = collect(['Nike', 'Adidas', 'Gucci', 'Canon', 'Samsung', 'Apple', 'Sony', 'Philips', 'Zara', 'Lego', 'Puma', 'Dell', 'HP', 'LG', 'Asus', 'Lenovo', 'Xiaomi', 'Bosch', 'Casio'])
-            ->map(fn ($n) => Brand::create(['name' => $n, 'slug' => Str::slug($n)]));
 
         foreach ([['Red', '#e53935'], ['Green', '#43a047'], ['Blue', '#1e88e5'], ['Orange', '#fb8c00'], ['Gray', '#808080'], ['Purple', '#800080'], ['Black', '#000000'], ['White', '#ffffff'], ['Yellow', '#fdd835'], ['Pink', '#ec407a'], ['Brown', '#6d4c41'], ['Teal', '#00897b']] as [$n, $c]) {
             Color::create(['name' => $n, 'code' => $c]);
@@ -71,31 +54,26 @@ class DatabaseSeeder extends Seeder
             'address' => fake()->address(), 'description' => fake()->sentence(14),
         ]));
 
-        // 148 products spread across categories, shops and brands.
-        $count = 0;
-        while ($count < 148) {
-            foreach (self::PRODUCTS as $ci => $names) {
-                if ($count >= 148) {
-                    break;
-                }
-                $name = $names[intdiv($count, 10) % count($names)];
-                $name .= $count >= 100 ? ' #'.($count - 99) : '';
-                $price = fake()->randomFloat(2, 8, 600);
-                Product::create([
-                    'shop_id' => $shops[$count % 14]->id, 'category_id' => $cats[$ci]->id, 'brand_id' => $brands[$count % 19]->id,
-                    'name' => $name, 'slug' => Str::slug($name).'-'.($count + 1),
-                    'short_description' => fake()->sentence(10), 'description' => fake()->paragraphs(2, true),
-                    'sku' => (string) fake()->unique()->numberBetween(100000, 999999), 'unit' => fake()->randomElement(['pcs', 'kg', 'pack', 'box']),
-                    'buy_price' => round($price * 0.7, 2), 'price' => $price,
-                    'old_price' => $count % 3 === 0 ? round($price * 1.2, 2) : null,
-                    'discount_price' => round($price * fake()->randomFloat(2, 0.5, 1), 2),
-                    'color_ids' => fake()->randomElements([1, 2, 3, 4, 5, 6], rand(0, 3)), 'size_ids' => $ci === 1 ? fake()->randomElements([1, 2, 3, 4, 5], rand(2, 4)) : [],
-                    'rating' => fake()->randomFloat(1, 0, 5), 'reviews_count' => fake()->numberBetween(0, 25),
-                    'stock' => fake()->numberBetween(0, 120), 'is_digital' => $count % 23 === 0, 'is_preorder' => $count % 17 === 0,
-                    'is_flash_sale' => $count % 9 === 0, 'active' => $count % 31 !== 0,
-                ]);
-                $count++;
-            }
+        // 148 real demo products (names, descriptions, prices, brands) from database/seeders/data/products.json.
+        // Their photos are NOT stored here: `image` and `gallery` hold URLs to the hosted images.
+        $data = json_decode(file_get_contents(database_path('seeders/data/products.json')), true)['products'];
+        $brands = collect($data)->pluck('brand')->filter()->unique()->values()
+            ->mapWithKeys(fn ($n) => [$n => Brand::create(['name' => $n, 'slug' => Str::slug($n)])->id]);
+        $catIds = $cats->mapWithKeys(fn ($c) => [$c->name => $c->id]);
+        foreach ($data as $i => $p) {
+            Product::create([
+                'shop_id' => $shops[$i % 14]->id, 'category_id' => $catIds[$p['category']], 'brand_id' => $brands[$p['brand']] ?? null,
+                'name' => $p['name'], 'slug' => Str::slug($p['name']).'-'.($i + 1), 'short_description' => $p['short_description'], 'description' => $p['description'],
+                'sku' => $p['sku'], 'unit' => 'pcs', 'weight' => $p['weight'], 'buy_price' => round($p['price'] * 0.7, 2), 'price' => $p['price'],
+                'old_price' => $p['old_price'], 'discount_price' => $p['old_price'] ? $p['price'] : null,
+                'favorites' => $i % 5, 'rating' => $p['rating'], 'reviews_count' => (int) round($p['rating'] * fake()->numberBetween(1, 6)), 'stock' => $p['stock'],
+                'image' => $p['image'], 'gallery' => $p['gallery'], 'meta_keywords' => $p['keywords'], 'color_ids' => [], 'size_ids' => [],
+                'is_digital' => false, 'is_preorder' => $i % 17 === 0, 'is_flash_sale' => $i % 9 === 0, 'active' => $i % 31 !== 0,
+            ]);
+        }
+        // A category with no products stays switched off.
+        foreach ($cats as $c) {
+            $c->update(['active' => Product::where('category_id', $c->id)->exists()]);
         }
 
         $customers = collect(['test tuhin', 'Forest Mills', 'Alexa Windler', 'Doug Schulist', 'Johnpaul Effertz', 'Carmel Quigley', 'Ernie Beier', 'Lexus Gleason', 'Bettie Goyette', 'Reginald Gulgowski', 'Mara Kunde', 'Tobin Hartmann'])

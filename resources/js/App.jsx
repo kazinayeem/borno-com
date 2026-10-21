@@ -6,6 +6,12 @@ import Home from './pages/shop/Home';
 import Products from './pages/shop/Products';
 import ProductDetail from './pages/shop/ProductDetail';
 import Shops from './pages/shop/Shops';
+import Cart from './pages/shop/Cart';
+import CustomerLogin from './pages/shop/Login';
+import Checkout from './pages/shop/Checkout';
+import OrderSuccess from './pages/shop/OrderSuccess';
+import RequireCustomer from './components/RequireCustomer';
+import { AccountAddresses, AccountHome, AccountLayout, AccountOrderDetail, AccountOrders, AccountProfile, Wishlist } from './pages/shop/account/Account';
 import Brands from './pages/shop/Brands';
 import Blogs from './pages/shop/Blogs';
 import Contact from './pages/shop/Contact';
@@ -39,6 +45,18 @@ export default function App() {
                     <Route path="brands" element={<Brands />} />
                     <Route path="blogs" element={<Blogs />} />
                     <Route path="contact-us" element={<Contact />} />
+                    <Route path="cart" element={<Cart />} />
+                    <Route path="login" element={<CustomerLogin />} />
+                    <Route path="wishlist" element={<Wishlist />} />
+                    <Route path="checkout" element={<RequireCustomer><Checkout /></RequireCustomer>} />
+                    <Route path="order-success" element={<RequireCustomer><OrderSuccess /></RequireCustomer>} />
+                    <Route path="account" element={<RequireCustomer><AccountLayout /></RequireCustomer>}>
+                        <Route index element={<AccountHome />} />
+                        <Route path="orders" element={<AccountOrders />} />
+                        <Route path="orders/:id" element={<AccountOrderDetail />} />
+                        <Route path="addresses" element={<AccountAddresses />} />
+                        <Route path="profile" element={<AccountProfile />} />
+                    </Route>
                     <Route path="*" element={<p className="py-20 text-center">Page not found</p>} />
                 </Route>
                 <Route path="admin/login" element={<Login />} />

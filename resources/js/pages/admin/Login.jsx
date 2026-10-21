@@ -32,7 +32,7 @@ export default function Login() {
                 <img src="/assets/favicon.png" alt="logo" className="h-10 w-10" />
                 <span className="text-xl font-bold text-gray-500">ReadyEcommerce</span>
             </div>
-            <div className="relative w-full max-w-[600px] rounded-2xl border border-line bg-white p-[18px] shadow-xl sm:p-[18px]">
+            <div className="relative w-full max-w-[600px] rounded-2xl border border-line bg-sa-surface p-[18px] shadow-xl sm:p-[18px]">
                 <div className="flex items-center justify-between gap-2 text-[11px] text-gray-500">
                     <span>Powered by <a href="https://razinsoft.com/" target="_blank" rel="noreferrer" className="font-bold text-primary">RazinSoft</a> ©2026</span>
                     <span className="rounded bg-primary-soft px-2 py-1 font-bold text-primary">v4.6.1</span>

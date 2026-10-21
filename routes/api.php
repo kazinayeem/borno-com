@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\CustomerAuthController;
 use App\Http\Controllers\Api\CatalogIoController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\GatewayController;
@@ -18,6 +21,30 @@ use App\Http\Controllers\Api\UploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+
+// ---- storefront customers --------------------------------------------------------------------------------------
+Route::post('account/register', [CustomerAuthController::class, 'register'])->middleware('throttle:6,1');
+Route::post('account/login', [CustomerAuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('account/google', [CustomerAuthController::class, 'google'])->middleware('throttle:20,1');
+Route::post('checkout/quote', [CheckoutController::class, 'quote'])->middleware('throttle:60,1');
+
+Route::middleware(['auth:sanctum', 'customer'])->prefix('account')->group(function () {
+    Route::post('logout', [CustomerAuthController::class, 'logout']);
+    Route::controller(AccountController::class)->group(function () {
+        Route::get('me', 'me');
+        Route::put('me', 'update');
+        Route::put('password', 'password');
+        Route::get('summary', 'summary');
+        Route::get('addresses', 'addresses');
+        Route::post('addresses', 'storeAddress');
+        Route::put('addresses/{id}', 'updateAddress')->whereNumber('id');
+        Route::delete('addresses/{id}', 'destroyAddress')->whereNumber('id');
+        Route::get('orders', 'orders');
+        Route::get('orders/{id}', 'order')->whereNumber('id');
+        Route::post('orders/{id}/cancel', 'cancel')->whereNumber('id');
+    });
+    Route::post('checkout', [CheckoutController::class, 'place'])->middleware('throttle:20,1');
+});
 
 Route::controller(StoreController::class)->group(function () {
     Route::get('home', 'home');
@@ -42,6 +69,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('messages', 'messages')->middleware('staff:admin');
         Route::patch('messages/{id}/read', 'markMessage')->middleware('staff:admin');
         Route::get('options', 'options');
+        Route::get('statistics', 'statistics')->middleware('staff:admin');
+        Route::get('bell', 'bell')->middleware('staff:admin');
+        Route::post('notifications/read-all', 'readAllNotifications')->middleware('staff:admin');
         Route::get('reports/analytics', [ReportController::class, 'analytics']);
         Route::get('reports/earning-summary', [ReportController::class, 'earningSummary']);
         Route::get('reports/preorder', [ReportController::class, 'preorderAnalytics'])->middleware('staff:admin');
@@ -72,6 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('{id}', 'update')->whereNumber('id');
             Route::delete('{id}', 'destroy')->whereNumber('id');
             Route::patch('{id}/toggle', 'toggle')->whereNumber('id');
+            Route::post('{id}/{decision}', 'decide')->whereNumber('id')->whereIn('decision', ['approve', 'reject']);
         });
         Route::get('settings', [SettingsController::class, 'show'])->middleware('staff:admin');
         Route::put('settings', [SettingsController::class, 'update'])->middleware('staff:admin');

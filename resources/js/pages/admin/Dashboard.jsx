@@ -1,81 +1,147 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useGetDashboardQuery } from '../../app/api';
-import { Empty, money } from '../../components/ui';
-import { Badge } from './Orders';
+import { useGetDashboardQuery, useGetStatisticsQuery } from '../../app/api';
+import { Empty } from '../../components/ui';
+import { ActBtn, Card, CardB, CardH, Chip, fdate, money, Pill, SaIcon, statusLabel } from '../../components/sa';
 
-const stat = [['shops', 'Total Shops', 'border-purple-400 bg-purple-50'], ['products', 'Total Products', 'border-sky-400 bg-sky-50'], ['orders', 'Total Orders', 'border-rose-400 bg-rose-50'], ['customers', 'Total Customers', 'border-emerald-400 bg-emerald-50']];
-const analytics = [['pending', 'Pending'], ['confirm', 'Confirm'], ['processing', 'Processing'], ['pickup', 'Pickup'], ['on_the_way', 'On The Way'], ['delivered', 'Delivered'], ['cancelled', 'Cancelled']];
-const Panel = ({ title, children }) => <section className="card mt-4 rounded-xl !border-[#f4f4f4] p-5"><h2 className="mb-4 text-sm font-medium">{title}</h2>{children}</section>;
+const STATUSES = ['pending', 'confirm', 'processing', 'pickup', 'on_the_way', 'delivered', 'cancelled'];
+const S_ICON = { pending: 'refund', confirm: 'cart', processing: 'settings', pickup: 'box', on_the_way: 'truck', delivered: 'check', cancelled: 'x' };
 
-// Seller dashboard — layout and colours follow the ShopDesk seller panel (stat cards, analytics tiles, wallet tiles, 7-day bars, top products).
-const SELLER_STATS = [['products', 'Total Products', '📦', 'border-[#a78bfa] bg-[#f5f3ff]'], ['orders', 'Total Orders', '🛒', 'border-[#60a5fa] bg-[#eff6ff]'], ['categories', 'Total Categories', '🗂', 'border-[#f87171] bg-[#fef2f2]'], ['brands', 'Total Brands', '🏷', 'border-[#4ade80] bg-[#f0fdf4]']];
-const SELLER_STATUS = [['pending', 'Pending', '⏱'], ['confirm', 'Confirm', '🛒'], ['processing', 'Processing', '⚙️'], ['pickup', 'Pickup', '📦'], ['on_the_way', 'On The Way', '🚚'], ['delivered', 'Delivered', '✅'], ['cancelled', 'Cancelled', '✖']];
-const Box = ({ title, children, className = '' }) => <section className={`mb-[18px] rounded-xl border border-[#e5e7eb] bg-white p-[18px] ${className}`}>{title && <h3 className="mb-3 text-[15px] font-semibold">{title}</h3>}{children}</section>;
-const Mini = ({ label, value, to, big }) => {
-    const body = <><span className="text-[13px] text-[#6b7280]">{label}</span>{to && <span className="float-right text-[#6b7280]">↗</span>}<b className={`mt-1.5 block ${big ? 'text-[28px]' : 'text-lg'}`}>{value}</b></>;
-    const cls = 'block rounded-lg border border-[#e5e7eb] p-3 hover:border-primary';
-    return to ? <Link to={to} className={cls}>{body}</Link> : <div className={cls}>{body}</div>;
-};
-
-function Last7Chart({ days }) {
-    const max = Math.max(1, ...days.map((d) => d.count));
+// ---- charts (same geometry as the original) ---------------------------------------------------------------------------
+function BarChart({ labels, values }) {
+    const W = 640, H = 260, pl = 36, pb = 28, max = Math.max(1, ...values) * 1.15, bw = (W - pl) / labels.length;
+    const y = (v) => H - pb - (v / max) * (H - pb - 10);
+    const ticks = [0, 1, 2, 3, 4].map((i) => Math.round((max / 4) * i));
+    const cx = (i) => pl + i * bw + bw / 2;
     return (
-        <div className="mb-6 flex h-[200px] items-end gap-2.5 pt-2.5" role="img" aria-label="Orders in the last 7 days">
-            {days.map((d) => (
-                <div key={d.date} className="relative min-h-[2px] flex-1 rounded-t-md bg-primary" style={{ height: `${(d.count / max) * 100}%` }}>
-                    <em className="absolute -top-[18px] left-0 right-0 text-center text-[11px] not-italic">{d.count}</em>
-                    <span className="absolute -bottom-5 left-0 right-0 text-center text-[11px] text-[#6b7280]">{d.date.slice(5)}</span>
-                </div>))}
-        </div>
+        <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Order statistics chart">
+            {ticks.map((v) => <g key={v}><line x1={pl} x2={W} y1={y(v)} y2={y(v)} stroke="var(--border)" /><text x={pl - 6} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--muted)">{v}</text></g>)}
+            {values.map((v, i) => <g key={labels[i]}><rect x={pl + i * bw + bw * 0.2} y={y(v)} width={bw * 0.6} height={H - pb - y(v)} rx="6" fill="var(--primary)" opacity=".35"><title>{`${labels[i]}: ${v}`}</title></rect><text x={cx(i)} y={H - 8} textAnchor="middle" fontSize="11" fill="var(--muted)">{String(labels[i]).slice(-5)}</text></g>)}
+            <polyline fill="none" stroke="var(--primary)" strokeWidth="2" points={values.map((v, i) => `${cx(i)},${y(v)}`).join(' ')} />
+            {values.map((v, i) => <circle key={i} cx={cx(i)} cy={y(v)} r="3.5" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2" />)}
+        </svg>
     );
 }
 
-function SellerDashboard({ data }) {
-    const w = data.wallet;
+function Donut({ parts }) {
+    const total = parts.reduce((a, p) => a + p.v, 0) || 1;
+    const R = 80, r = 50, cx = 100, cy = 100;
+    let a0 = Math.PI;
+    const pt = (rad, a) => `${cx + rad * Math.cos(a)},${cy + rad * Math.sin(a)}`;
+    const paths = parts.map((p) => {
+        const a1 = a0 + (Math.PI * p.v) / total;
+        const big = a1 - a0 > Math.PI ? 1 : 0;
+        const d = `M${pt(R, a0)} A${R},${R} 0 ${big} 1 ${pt(R, a1)} L${pt(r, a1)} A${r},${r} 0 ${big} 0 ${pt(r, a0)} Z`;
+        a0 = a1;
+        return <path key={p.l} d={d} fill={p.c} stroke="var(--surface)" strokeWidth="2"><title>{`${p.l}: ${p.v}`}</title></path>;
+    });
     return (
-        <div>
-            <Box><div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-                {SELLER_STATS.map(([k, label, icon, cls]) => <div key={k} className={`relative rounded-[10px] border p-[18px] ${cls}`}><b className="block text-[26px]">{data.stats[k]}</b><span className="text-[#6b7280]">{label}</span><i className="absolute bottom-3.5 right-3.5 text-[22px] not-italic">{icon}</i></div>)}</div></Box>
-            <Box title="Order Analytics"><div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-                {SELLER_STATUS.map(([k, label, icon]) => <Mini key={k} to={`/admin/orders?status=${k}`} label={`${icon} ${label}`} value={data.orders_by_status[k] ?? 0} />)}</div></Box>
-            <Box title="👛 Shop Wallet"><div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
-                <Mini label="Available Balance" value={money(w.balance)} big />
-                <Mini label="Pending Withdraw" value={money(w.pending_withdraw)} />
-                <Mini label="Already Withdraw" value={money(w.already_withdraw)} />
-                <Mini label="Total Sales" value={money(w.total_sales)} />
-                <Mini label="Delivery Charge Collected" value={money(w.delivery_charge)} />
-                <Mini label="POS Sales" value={money(w.pos_sales)} /></div></Box>
-            <div className="grid gap-3.5 lg:grid-cols-[2fr_1fr]">
-                <Box title="Orders – last 7 days"><Last7Chart days={data.last7} /></Box>
-                <Box title="Top Selling Products">
-                    {data.top_products.length === 0 && <p className="p-5 text-center text-[#6b7280]">No sales yet</p>}
-                    {data.top_products.map((p) => <div key={p.name} className="my-2 flex items-center justify-between gap-2"><span className="truncate">{p.name}</span><b className="shrink-0">{p.sold} sold</b></div>)}</Box>
+        <>
+            <svg viewBox="0 0 200 110" style={{ width: '100%', maxWidth: 260, display: 'block', margin: 'auto' }} role="img" aria-label="User overview">{paths}</svg>
+            <div className="donut-legend">{parts.map((p) => <span key={p.l}><i style={{ background: p.c }} />{p.l} ({p.v})</span>)}</div>
+        </>
+    );
+}
+
+function RoundImg({ src, name }) {
+    const [bad, setBad] = useState(false);
+    return <img src={!src || bad ? `/placeholder/${encodeURIComponent(name || '?')}.svg?h=200` : src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBad(true)} />;
+}
+
+const Rank = ({ title, rows, render }) => (
+    <Card><CardH><h3>{title}</h3></CardH><CardB className="rank">
+        {rows.length === 0 && <div className="empty">Nothing yet</div>}
+        {rows.map((r) => <div key={r.id ?? r.name} className="rank-row">{render(r)}</div>)}
+    </CardB></Card>
+);
+
+function Statistics({ users }) {
+    const [type, setType] = useState('yearly');
+    const [date, setDate] = useState('');
+    const { data, isFetching } = useGetStatisticsQuery({ type, date: date || undefined });
+    const totalUsers = users.customer + users.shop + users.rider;
+    return (
+        <Card>
+            <CardH>
+                <h3 style={{ flex: 1 }}>Statistics</h3>
+                <div className="seg">{['daily', 'monthly', 'yearly'].map((t) => <button key={t} className={t === type ? 'active' : ''} onClick={() => setType(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div>
+                <input type="date" className="input" style={{ width: 'auto' }} aria-label="Date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <button className="btn sm" onClick={() => setDate('')}>Reset</button>
+            </CardH>
+            <CardB className="sa-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+                <div style={{ opacity: isFetching ? 0.5 : 1 }}>
+                    <b style={{ fontSize: 26 }}>{data?.total ?? '–'}</b><div className="muted">Total Orders</div>
+                    {data ? <BarChart labels={data.labels} values={data.values} /> : <div className="empty">Loading…</div>}
+                </div>
+                <div>
+                    <b style={{ fontSize: 26 }}>{totalUsers}</b><div className="muted" style={{ marginBottom: 24 }}>User Overview</div>
+                    <Donut parts={[{ l: 'Customer', v: users.customer, c: '#e11d48' }, { l: 'Shop', v: users.shop, c: '#2563eb' }, { l: 'Rider', v: users.rider, c: '#f59e0b' }]} />
+                </div>
+            </CardB>
+        </Card>
+    );
+}
+
+function AdminDashboard({ d }) {
+    const w = d.wallet;
+    return (
+        <>
+            <div className="sa-grid sa-g4">
+                {[['Total Shops', d.totals.shops, 'store', 'a', '/admin/shops'], ['Total Products', d.totals.products, 'box', 'b', '/admin/products'], ['Total Orders', d.totals.orders, 'cart', 'c', '/admin/orders'], ['Total Customers', d.totals.customers, 'users', 'd', '/admin/customers']]
+                    .map(([l, v, i, c, to]) => <Link key={l} to={to} className={`stat st-${c}`}><div><b>{v}</b>{l}</div><div className="ico"><SaIcon name={i} /></div></Link>)}
             </div>
-        </div>
+            <Card><CardH><h3>Order Analytics</h3></CardH><CardB className="sa-grid sa-g4">
+                {STATUSES.map((s) => <Link key={s} className="mini" to={`/admin/orders?status=${s}`}><div className="t"><span><SaIcon name={S_ICON[s]} className="inline-icon" />{statusLabel(s)}</span><span>↗</span></div><b>{d.order_analytics[s] ?? 0}</b></Link>)}
+            </CardB></Card>
+            <Card><CardH><h3>Admin Wallet</h3></CardH><CardB className="sa-grid sa-g3" style={{ gridTemplateColumns: '1.4fr 1fr 1fr' }}>
+                <div className="wallet-big"><b>{money(w.total_earning)}</b><span className="muted">Total Earning</span></div>
+                {[['Already Withdraw', w.already_withdraw], ['Pending Withdraw', w.pending_withdraw], ['Total Commission', w.total_commission], ['Rejected Withdraw', w.rejected_withdraw]].map(([l, v]) => <div key={l} className="mini"><b style={{ margin: '0 0 6px' }}>{money(v)}</b><span className="muted">{l}</span></div>)}
+            </CardB></Card>
+            <Statistics users={d.user_overview} />
+            <Card><CardH><h3>Order Summary (Latest 6 Orders)</h3></CardH><div className="table-wrap"><table>
+                <thead><tr><th>Order ID</th><th>Qty</th><th>Shop</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>{d.latest_orders.map((o) => <tr key={o.id}><td>#{o.number}</td><td>{o.qty}</td><td>{o.shop_name}</td><td>{fdate(o.created_at)}</td><td><Pill value={o.status} /></td><td><div className="actions"><Link to={`/admin/orders/${o.id}/show`} className="act" aria-label="View"><SaIcon name="eye" /></Link></div></td></tr>)}</tbody>
+            </table></div></Card>
+            <div className="sa-grid sa-g3">
+                <Rank title="Top Trending Shops" rows={d.top_shops} render={(s) => <><RoundImg src={s.image_url} name={s.name} /><div className="grow"><div>{s.name}</div><span className="stars">★ {s.rating}</span></div><Chip>Order: {s.orders}</Chip></>} />
+                <Rank title="Most Favorite Products" rows={d.favorite_products} render={(p) => <><RoundImg src={p.image_url} name={p.name} /><div className="grow"><div>{p.name}</div><small style={{ color: 'var(--primary)' }}>♥ {p.favorites}</small></div></>} />
+                <Rank title="Top Selling Products" rows={d.top_selling} render={(p) => <><RoundImg src={p.image_url} name={p.name} /><div className="grow"><div>{p.name}</div><small>{money(p.price)}</small></div><Chip>Sold: {p.sold}</Chip></>} />
+            </div>
+        </>
+    );
+}
+
+// Seller dashboard (ShopDesk layout) drawn with the same shop-admin styles.
+function SellerDashboard({ d }) {
+    const w = d.wallet;
+    const max = Math.max(1, ...d.last7.map((x) => x.count));
+    return (
+        <>
+            <div className="sa-grid sa-g4">
+                {[['Total Products', d.stats.products, 'box', 'a'], ['Total Orders', d.stats.orders, 'cart', 'b'], ['Total Categories', d.stats.categories, 'grid', 'c'], ['Total Brands', d.stats.brands, 'star', 'd']].map(([l, v, i, c]) => <div key={l} className={`stat st-${c}`}><div><b>{v}</b>{l}</div><div className="ico"><SaIcon name={i} /></div></div>)}
+            </div>
+            <Card><CardH><h3>Order Analytics</h3></CardH><CardB className="sa-grid sa-g4">
+                {STATUSES.map((s) => <Link key={s} className="mini" to={`/admin/orders?status=${s}`}><div className="t"><span><SaIcon name={S_ICON[s]} className="inline-icon" />{statusLabel(s)}</span><span>↗</span></div><b>{d.orders_by_status[s] ?? 0}</b></Link>)}
+            </CardB></Card>
+            <Card><CardH><h3>Shop Wallet</h3></CardH><CardB className="sa-grid sa-g3">
+                <div className="mini"><span className="muted">Available Balance</span><b style={{ fontSize: 28 }}>{money(w.balance)}</b></div>
+                {[['Pending Withdraw', w.pending_withdraw], ['Already Withdraw', w.already_withdraw], ['Total Sales', w.total_sales], ['Delivery Charge Collected', w.delivery_charge], ['POS Sales', w.pos_sales]].map(([l, v]) => <div key={l} className="mini"><span className="muted">{l}</span><b>{money(v)}</b></div>)}
+            </CardB></Card>
+            <div className="sa-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+                <Card><CardH><h3>Orders – last 7 days</h3></CardH><CardB>
+                    <div role="img" aria-label="Orders in the last 7 days" style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 200, paddingTop: 10, marginBottom: 24 }}>
+                        {d.last7.map((x) => <div key={x.date} style={{ flex: 1, minHeight: 2, height: `${(x.count / max) * 100}%`, background: 'var(--primary)', borderRadius: '6px 6px 0 0', position: 'relative' }}><em style={{ position: 'absolute', top: -18, left: 0, right: 0, textAlign: 'center', fontSize: 11, fontStyle: 'normal' }}>{x.count}</em><span style={{ position: 'absolute', bottom: -20, left: 0, right: 0, textAlign: 'center', fontSize: 11, color: 'var(--muted)' }}>{x.date.slice(5)}</span></div>)}
+                    </div></CardB></Card>
+                <Rank title="Top Selling Products" rows={d.top_products.map((p) => ({ ...p, id: p.name }))} render={(p) => <><div className="grow"><div>{p.name}</div></div><Chip>{p.sold} sold</Chip></>} />
+            </div>
+        </>
     );
 }
 
 export default function Dashboard() {
-    const { data, isLoading, isError } = useGetDashboardQuery();
+    const { data, isError } = useGetDashboardQuery();
     if (isError) return <Empty title="Could not load dashboard" />;
-    if (data?.scope === 'shop') return <SellerDashboard data={data} />;
-    return (
-        <div>
-            <section className="card rounded-xl !border-[#f4f4f4] p-5"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {stat.map(([k, label, cls]) => !data ? <div key={k} className="skeleton h-[110px]" /> : (
-                    <div key={k} className={`rounded-lg border p-4 ${cls}`}><p className="text-3xl font-bold">{data.stats[k]}</p><p className="mt-3 text-[15px]">{label}</p></div>))}</div></section>
-            <Panel title="Order Analytics"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {analytics.map(([k, label]) => <Link key={k} to="/admin/orders" className="rounded-lg border border-line p-3 hover:border-primary"><p className="text-sm text-[#556070]">{label}</p><p className="mt-1 text-xl font-bold text-[#556070]">{data?.orders_by_status[k] ?? 0}</p></Link>)}</div></Panel>
-            <Panel title="Admin Wallet"><div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-lg border border-line p-4"><p className="text-3xl font-bold">{money(data?.wallet.balance)}</p><p className="text-xs text-muted">Available balance</p></div>
-                <div className="rounded-lg border border-line p-4"><p className="text-2xl font-bold">{money(data?.wallet.earning)}</p><p className="text-xs text-muted">Total Earning</p></div>
-                <div className="rounded-lg border border-line p-4"><p className="text-2xl font-bold">{money(0)}</p><p className="text-xs text-muted">Pending Withdraw</p></div></div></Panel>
-            <Panel title="Order Summary (Latest 5 Order)"><div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm">
-                <thead className="bg-[#f6f7f9] text-xs"><tr>{['Order ID', 'Qty', 'Shop', 'Date', 'Status'].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead>
-                <tbody>{data?.latest_orders.map((o) => <tr key={o.id} className="border-t border-line"><td className="px-3 py-3">#{o.number}</td><td className="px-3">{o.qty}</td><td className="px-3">{o.shop?.name}</td><td className="px-3">{new Date(o.created_at).toLocaleDateString()}</td><td className="px-3"><Badge v={o.status} /></td></tr>)}</tbody></table></div></Panel>
-            <Panel title="Top Trending Shops"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                {data?.trending_shops.map((s) => <div key={s.id} className="rounded-lg border border-line p-3"><p className="font-medium">{s.name}</p><p className="text-xs text-muted">★ {s.rating} · Order: {s.orders_count}</p></div>)}</div></Panel>
-        </div>
-    );
+    if (!data) return <div className="card"><div className="empty">Loading…</div></div>;
+    return data.scope === 'shop' ? <SellerDashboard d={data} /> : <AdminDashboard d={data} />;
 }
+void ActBtn;

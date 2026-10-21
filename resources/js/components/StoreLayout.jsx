@@ -8,7 +8,7 @@ const nav = [['/', 'Home'], ['/products', 'Products'], ['/shops', 'Shops'], ['/b
 
 function TopBar() {
     return (
-        <div className="border-b border-line text-[13px] text-ink">
+        <div className="border-b border-line text-[13px] text-ink print:hidden">
             <div className="mx-auto flex max-w-[1320px] items-center justify-between px-4 py-2.5">
                 <span className="flex items-center gap-2"><Icon name="truck" size={14} className="text-primary" /> Free Delivery on orders over $999.00</span>
                 <div className="hidden items-center gap-6 md:flex">
@@ -43,10 +43,11 @@ function Header() {
     const [q, setQ] = useState('');
     const navigate = useNavigate();
     const { cart, wishlist } = useSelector((s) => s.shop);
-    const token = useSelector((s) => s.auth.token);
+    const signedIn = useSelector((s) => !!s.customer.token);
+    const qtyInCart = cart.reduce((a, i) => a + i.qty, 0);
     const submit = (e) => { e.preventDefault(); navigate(`/products?search=${encodeURIComponent(q)}`); };
     return (
-        <header className="mx-auto max-w-[1320px] px-4">
+        <header className="mx-auto max-w-[1320px] px-4 print:hidden">
             <div className="flex items-center gap-4 py-4">
                 <Link to="/"><img src="/assets/logo.png" alt="ReadyEcommerce" className="h-12 w-auto" /></Link>
                 <form onSubmit={submit} className="mx-auto flex w-full max-w-xl overflow-hidden rounded-md border border-line shadow-sm">
@@ -54,11 +55,11 @@ function Header() {
                     <button className="bg-primary px-5 text-white" aria-label="Search"><Icon name="search" /></button>
                 </form>
                 <div className="ml-auto flex items-center gap-3">
-                    {[['heart', wishlist.length, '/products'], ['bag', cart.length, '/products']].map(([i, n, to]) => (
+                    {[['heart', wishlist.length, '/wishlist'], ['bag', qtyInCart, '/cart']].map(([i, n, to]) => (
                         <Link key={i} to={to} className="relative grid h-10 w-10 place-items-center rounded-full border border-line"><Icon name={i} />
                             <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] text-white">{n}</span></Link>
                     ))}
-                    <Link to={token ? '/admin' : '/admin/login'} className="grid h-10 w-10 place-items-center rounded-full border border-line" aria-label="Account"><Icon name="user" /></Link>
+                    <Link to={signedIn ? '/account' : '/login'} className="grid h-10 w-10 place-items-center rounded-full border border-line" aria-label={signedIn ? 'My account' : 'Sign in'}><Icon name="user" /></Link>
                 </div>
             </div>
             <div className="flex items-center gap-8 pb-3">
@@ -80,7 +81,7 @@ function Footer() {
         ['Company', ['About Us', 'Blog', 'Terms & Conditions', 'Privacy Policy', 'Return & Refund Policy', 'Become a Seller']],
     ];
     return (
-        <footer className="mt-16 bg-surface">
+        <footer className="mt-16 bg-surface print:hidden">
             <div className="mx-auto grid max-w-[1320px] gap-8 px-4 py-12 md:grid-cols-4">
                 <div><img src="/assets/logo.png" alt="" className="h-12" />
                     <p className="mt-3 text-sm text-muted">The ultimate all-in-one solution for your eCommerce business worldwide.</p>
@@ -99,10 +100,10 @@ function MiniCart() {
     const cart = useSelector((s) => s.shop.cart);
     const total = cart.reduce((a, i) => a + i.price * i.qty, 0);
     return (
-        <div className="fixed right-0 top-1/2 z-20 w-14 overflow-hidden rounded-l-lg border border-r-0 border-line bg-white text-center text-xs shadow-md">
+        <Link to="/cart" aria-label="Open cart" className="fixed right-0 top-1/2 z-20 block w-14 overflow-hidden rounded-l-lg border border-r-0 border-line bg-sa-surface text-center text-xs shadow-md print:hidden">
             <div className="py-2 text-primary"><Icon name="bag" fill className="mx-auto" /><div className="text-ink">{cart.reduce((a, i) => a + i.qty, 0)}</div></div>
             <div className="bg-primary py-1 font-semibold text-white">{money(total)}</div>
-        </div>
+        </Link>
     );
 }
 

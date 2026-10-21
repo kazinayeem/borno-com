@@ -10,10 +10,10 @@ import { pushToast } from '../../app/slices';
 import { Field, ImagePicker, PageTitle, Section, Select, TextArea, TextInput } from '../../components/FormKit';
 import { Empty, Icon, Img, Modal, money } from '../../components/ui';
 
-const card = 'card rounded-xl !border-[#f4f4f4]';
-const Toggle = ({ on, onChange, label }) => <button role="switch" aria-checked={!!on} aria-label={label} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-primary' : 'bg-gray-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} /></button>;
+const card = 'card rounded-xl !border-line';
+const Toggle = ({ on, onChange, label }) => <button role="switch" aria-checked={!!on} aria-label={label} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-primary' : 'bg-gray-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-sa-surface shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} /></button>;
 const useNotify = () => { const d = useDispatch(); return (r, ok) => { d(r.error ? pushToast(errorMessage(r.error), 'error') : pushToast(ok)); return !r.error; }; };
-const Stat = ({ label, value, tone = 'border-sky-300 bg-sky-50' }) => <div className={`rounded-lg border p-4 ${tone}`}><p className="text-2xl font-bold">{value}</p><p className="mt-2 text-sm text-[#556070]">{label}</p></div>;
+const Stat = ({ label, value, tone = 'border-sky-300 bg-sky-50' }) => <div className={`rounded-lg border p-4 ${tone}`}><p className="text-2xl font-bold">{value}</p><p className="mt-2 text-sm text-muted">{label}</p></div>;
 const authHeader = () => { try { return { Authorization: `Bearer ${JSON.parse(localStorage.getItem('token'))}` }; } catch { return {}; } };
 
 // ---- profile -------------------------------------------------------------------------------------------------------
@@ -127,7 +127,7 @@ function ReportAnalytics() {
     return (
         <div><PageTitle icon="doc">Analytics</PageTitle>
             <div className={`${card} p-5`}>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div className="flex gap-2">{['earning', 'sale', 'cost'].map((t) => <button key={t} onClick={() => setType(t)} className={`rounded-full border px-4 py-1.5 text-sm capitalize ${type === t ? 'border-ink font-medium' : 'border-line text-[#556070]'}`}>{t}</button>)}</div>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div className="flex gap-2">{['earning', 'sale', 'cost'].map((t) => <button key={t} onClick={() => setType(t)} className={`rounded-full border px-4 py-1.5 text-sm capitalize ${type === t ? 'border-ink font-medium' : 'border-line text-muted'}`}>{t}</button>)}</div>
                     <select aria-label="Year" className="field !w-auto !py-1.5" value={year} onChange={(e) => setYear(Number(e.target.value))}>{[0, 1, 2].map((d) => <option key={d}>{new Date().getFullYear() - d}</option>)}</select></div>
                 {!data ? <div className="skeleton h-56" /> : <div className={isFetching ? 'opacity-50' : ''}><p className="mb-2 text-sm text-muted">Total {type}: <b className="text-lg text-ink">{money(data.total)}</b></p><BarChart labels={data.labels} values={data.values} /></div>}
             </div></div>
@@ -185,11 +185,11 @@ function Chats() {
                 <ul className="border-b border-line md:border-b-0 md:border-r">
                     {!users && <li className="p-4"><div className="skeleton h-12" /></li>}
                     {users?.length === 0 && <li className="p-6 text-center text-sm text-muted">No conversations yet.</li>}
-                    {users?.map((u) => <li key={u.id}><button onClick={() => setSel(u.id)} className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm ${sel === u.id ? 'bg-primary-soft' : 'hover:bg-[#f6f7f9]'}`}><span className="min-w-0"><b className="block truncate">{u.name}</b><span className="block truncate text-xs text-muted">{u.last_message}</span></span>{u.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] text-white">{u.unread}</span>}</button></li>)}
+                    {users?.map((u) => <li key={u.id}><button onClick={() => setSel(u.id)} className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm ${sel === u.id ? 'bg-primary-soft' : 'hover:bg-surface'}`}><span className="min-w-0"><b className="block truncate">{u.name}</b><span className="block truncate text-xs text-muted">{u.last_message}</span></span>{u.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] text-white">{u.unread}</span>}</button></li>)}
                 </ul>
                 <div className="flex flex-col">
                     {!sel ? <p className="m-auto text-sm text-muted">Select a conversation</p> : (<>
-                        <div className="flex-1 space-y-2 overflow-y-auto p-4" style={{ maxHeight: 420 }}>{msgs?.map((m) => <div key={m.id} className={`flex ${m.from_staff ? 'justify-end' : ''}`}><span className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${m.from_staff ? 'bg-primary text-white' : 'bg-[#f1f2f4]'}`}>{m.body}</span></div>)}<div ref={end} /></div>
+                        <div className="flex-1 space-y-2 overflow-y-auto p-4" style={{ maxHeight: 420 }}>{msgs?.map((m) => <div key={m.id} className={`flex ${m.from_staff ? 'justify-end' : ''}`}><span className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${m.from_staff ? 'bg-primary text-white' : 'bg-surface'}`}>{m.body}</span></div>)}<div ref={end} /></div>
                         <form onSubmit={async (e) => { e.preventDefault(); if (!text.trim()) return; if (notify(await send({ id: sel, body: text }), 'Message sent')) setText(''); }} className="flex gap-2 border-t border-line p-3"><input aria-label="Message" className="field" placeholder="Type a message…" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} /><button disabled={isLoading || !text.trim()} className="btn-primary">Send</button></form></>)}
                 </div></div></div>
     );
@@ -210,7 +210,7 @@ function ProductExport() {
         } catch { dispatch(pushToast('Export failed', 'error')); }
         setBusy(false);
     };
-    return <div className="mx-auto max-w-[700px]"><PageTitle icon="doc">Product Export</PageTitle><Section><p className="mb-4 text-sm text-[#556070]">Download your catalogue as a CSV file (name, descriptions, SKU, category, brand, prices, stock).</p><button onClick={download} disabled={busy} className="btn-primary !rounded-lg">{busy ? 'Preparing…' : 'Export products (CSV)'}</button></Section></div>;
+    return <div className="mx-auto max-w-[700px]"><PageTitle icon="doc">Product Export</PageTitle><Section><p className="mb-4 text-sm text-muted">Download your catalogue as a CSV file (name, descriptions, SKU, category, brand, prices, stock).</p><button onClick={download} disabled={busy} className="btn-primary !rounded-lg">{busy ? 'Preparing…' : 'Export products (CSV)'}</button></Section></div>;
 }
 function ProductImport() {
     const [csv, setCsv] = useState('');
@@ -221,7 +221,7 @@ function ProductImport() {
     return (
         <div className="mx-auto max-w-[800px]"><PageTitle icon="doc">Product Import</PageTitle>
             <Section title="Upload a CSV" icon="doc">
-                <p className="mb-3 text-sm text-[#556070]">Required columns: <code>name, sku, price, buy_price, category</code>. Categories and brands are matched by name. Up to 500 rows; if any row is invalid nothing is imported.</p>
+                <p className="mb-3 text-sm text-muted">Required columns: <code>name, sku, price, buy_price, category</code>. Categories and brands are matched by name. Up to 500 rows; if any row is invalid nothing is imported.</p>
                 <a href={`data:text/csv;charset=utf-8,${encodeURIComponent(sample)}`} download="products-template.csv" className="mb-3 inline-block text-sm text-primary underline">Download template</a>
                 <input type="file" accept=".csv,text/csv" aria-label="CSV file" className="mb-3 block text-[13px]" onChange={async (e) => { const f = e.target.files[0]; if (f) setCsv(await f.text()); }} />
                 <Field label="…or paste CSV"><TextArea rows={8} value={csv} onChange={setCsv} /></Field>

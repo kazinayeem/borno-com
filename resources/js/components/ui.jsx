@@ -44,7 +44,7 @@ export function Img({ src, alt = '', className = '', fallback }) {
     const [failed, setFailed] = React.useState(false);
     React.useEffect(() => setFailed(false), [src]);
     if (!src || failed) return fallback ?? null;
-    return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} className={className} />;
+    return <img src={src} alt={alt} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} className={className} />;
 }
 
 export const money = (n) => `$${Number(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -59,7 +59,7 @@ export function Toasts() {
     return (
         <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2">
             {toasts.map((t) => (
-                <div key={t.id} role="status" className={`min-w-64 rounded-lg border-l-4 bg-white px-4 py-3 text-sm shadow-lg ${t.type === 'error' ? 'border-red-500' : 'border-emerald-500'}`}>
+                <div key={t.id} role="status" className={`min-w-64 rounded-lg border-l-4 bg-sa-surface px-4 py-3 text-sm shadow-lg ${t.type === 'error' ? 'border-red-500' : 'border-emerald-500'}`}>
                     {t.message}
                 </div>
             ))}
@@ -99,7 +99,7 @@ export function Modal({ title, onClose, children }) {
     }, [onClose]);
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
-            <div role="dialog" aria-modal="true" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
+            <div role="dialog" aria-modal="true" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-sa-surface p-6 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-semibold">{title}</h3>
                     <button onClick={onClose} aria-label="Close"><Icon name="close" /></button>

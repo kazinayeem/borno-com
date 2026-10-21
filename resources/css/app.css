@@ -1,4 +1,8 @@
+/* Cascade order: the shop-admin stylesheet ("sa") sits above Tailwind's components but below utilities. */
+@layer theme, base, components, sa, utilities;
+
 @import 'tailwindcss';
+@import './sa.css' layer(sa);
 
 @theme {
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
@@ -11,12 +15,34 @@
     --color-surface: #f8f9fb;
 }
 
+/* Surface tokens that fall back to the storefront look and switch to the shop-admin palette inside .sa (incl. dark mode). */
+@theme {
+    --color-sa-surface: var(--surface, #ffffff);
+    --color-sa-bg: var(--bg, #f4f5f8);
+}
+
+@layer sa {
+    /* Utility-styled admin pages (bg-primary, text-muted, border-line, …) follow the shop-admin tokens. */
+    .sa {
+        --color-primary: var(--primary);
+        --color-primary-dark: var(--primary-600);
+        --color-primary-soft: var(--primary-50);
+        --color-ink: var(--text);
+        --color-muted: var(--muted);
+        --color-line: var(--border);
+        --color-surface: var(--surface-2);
+        /* Re-declared here so they resolve where the (possibly dark) --surface/--bg exist, not at :root. */
+        --color-sa-surface: var(--surface);
+        --color-sa-bg: var(--bg);
+    }
+}
+
 body { @apply bg-white font-sans text-ink antialiased; }
 
 @layer components {
     .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 font-medium text-white transition hover:bg-primary-dark disabled:opacity-60; }
     .btn-outline { @apply inline-flex items-center justify-center gap-2 rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary-soft; }
-    .field { @apply w-full rounded-md border border-line bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-primary; }
-    .card { @apply rounded-xl border border-line bg-white; }
+    .field { @apply w-full rounded-md border border-line bg-sa-surface px-3.5 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-primary; }
+    .card { @apply rounded-xl border border-line bg-sa-surface; }
     .skeleton { @apply animate-pulse rounded-xl bg-gray-200; }
 }

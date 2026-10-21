@@ -28,7 +28,7 @@ export default function Contact() {
             <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
                 <div className="rounded-2xl bg-primary-soft p-6"><h2 className="text-lg font-semibold">Get in Touch</h2><p className="mb-5 text-sm text-muted">Choose the way that works best for you.</p>
                     {[['mail', 'Email Us', 'support@readyecommerce.com'], ['truck', 'Call Us', '+8801700000000'], ['store', 'Visit Us', 'Dhaka, Bangladesh']].map(([i, t, d]) => (
-                        <div key={t} className="mb-4 flex gap-3"><span className="grid h-9 w-9 place-items-center rounded-lg bg-white text-primary"><Icon name={i} /></span><div><p className="text-sm font-semibold">{t}</p><p className="text-sm text-muted">{d}</p></div></div>))}</div>
+                        <div key={t} className="mb-4 flex gap-3"><span className="grid h-9 w-9 place-items-center rounded-lg bg-sa-surface text-primary"><Icon name={i} /></span><div><p className="text-sm font-semibold">{t}</p><p className="text-sm text-muted">{d}</p></div></div>))}</div>
                 <form onSubmit={submit} className="card space-y-4 p-6"><h2 className="text-lg font-semibold">Send Us a Message</h2>
                     <div className="grid gap-4 sm:grid-cols-2"><F k="name" label="Name" /><F k="email" label="Email" /></div>
                     <F k="subject" label="Subject" /><F k="message" label="Message" area />

@@ -76,6 +76,8 @@ return new class extends Migration
             $t->text('meta_description')->nullable();
             $t->json('meta_keywords')->nullable();
             $t->string('image')->nullable();
+            $t->json('gallery')->nullable();
+            $t->unsignedInteger('favorites')->default(0);
             $t->decimal('price', 12, 2);
             $t->decimal('old_price', 12, 2)->nullable();
             $t->decimal('discount_price', 12, 2)->nullable();

@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { errorMessage, useUploadImageMutation } from '../app/api';
 import { Icon } from './ui';
 
-export const PageTitle = ({ icon, children }) => <h2 className="mb-4 flex items-center gap-2 text-[22px] font-semibold"><Icon name={icon} size={22} />{children}</h2>;
+export const PageTitle = ({ children }) => <div className="page-head" style={{ marginBottom: 4 }}><h1>{children}</h1></div>;
 
-export const Section = ({ title, icon, children, className = '' }) => (
-    <section className={`card mb-4 rounded-xl !border-[#f4f4f4] p-5 ${className}`}>
-        {title && <h3 className="mb-4 flex items-center gap-2 border-b border-[#f4f4f4] pb-3 text-[13px] font-semibold">{icon && <Icon name={icon} size={14} />}{title}</h3>}
-        {children}
+export const Section = ({ title, children, className = '' }) => (
+    <section className={`card mb-5 ${className}`}>
+        {title && <div className="card-h"><h3>{title}</h3></div>}
+        <div className="card-b">{children}</div>
     </section>
 );
 
@@ -22,7 +22,7 @@ export function Field({ label, required, error, hint, children }) {
     );
 }
 
-export const inputCls = 'w-full rounded-md border border-line bg-white px-3 py-2.5 text-[13px] outline-none placeholder:text-gray-400 focus:border-primary';
+export const inputCls = 'w-full rounded-[10px] border border-line bg-sa-surface px-3 py-[9px] text-sm outline-none placeholder:text-gray-400 focus:border-primary focus:ring-[3px] focus:ring-primary-soft';
 
 export function TextInput({ value, onChange, ...rest }) {
     return <input className={inputCls} value={value ?? ''} onChange={(e) => onChange(e.target.value)} {...rest} />;
@@ -42,7 +42,7 @@ export function Select({ value, onChange, options, placeholder }) {
 // Chip multi-select (colors, sizes, keywords).
 export function MultiSelect({ value = [], onChange, options }) {
     const toggle = (id) => onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
-    return <div className="flex flex-wrap gap-2 rounded-md border border-line p-2">{options.map((o) => <button type="button" key={o.id} onClick={() => toggle(o.id)} className={`rounded-full px-3 py-1 text-xs ${value.includes(o.id) ? 'bg-primary text-white' : 'bg-[#f6f7f9]'}`}>{o.name}</button>)}</div>;
+    return <div className="flex flex-wrap gap-2 rounded-md border border-line p-2">{options.map((o) => <button type="button" key={o.id} onClick={() => toggle(o.id)} className={`rounded-full px-3 py-1 text-xs ${value.includes(o.id) ? 'bg-primary text-white' : 'bg-surface'}`}>{o.name}</button>)}</div>;
 }
 
 export function TagInput({ value = [], onChange, placeholder }) {
@@ -72,12 +72,12 @@ export function ImagePicker({ label, value, onChange, error, ratio = 'aspect-squ
     return (
         <div className="mb-4">
             {label && <label className="mb-1.5 block text-[13px]">{label}</label>}
-            <div className={`${width} ${ratio} relative mb-2 grid place-items-center overflow-hidden rounded-md bg-[#f1f2f4] text-gray-400`}>
-                {value ? <img src={`/storage/${value}`} alt="" className="h-full w-full object-cover" /> : <Icon name="box" size={40} />}
-                {isLoading && <div className="absolute inset-0 grid place-items-center bg-white/70 text-xs">Uploading…</div>}
+            <div className={`${width} ${ratio} relative mb-2 grid place-items-center overflow-hidden rounded-md bg-surface text-gray-400`}>
+                {value ? <img src={/^https?:\/\//.test(value) ? value : `/storage/${value}`} alt="" referrerPolicy="no-referrer" className="h-full w-full object-contain" /> : <Icon name="box" size={40} />}
+                {isLoading && <div className="absolute inset-0 grid place-items-center bg-sa-surface/70 text-xs">Uploading…</div>}
             </div>
             <div className="flex items-center gap-3">
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={isLoading} onChange={pick} className="w-full text-[13px] file:mr-3 file:rounded file:border file:border-line file:bg-white file:px-3 file:py-1.5" />
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={isLoading} onChange={pick} className="w-full text-[13px] file:mr-3 file:rounded file:border file:border-line file:bg-sa-surface file:px-3 file:py-1.5" />
                 {value && <button type="button" onClick={() => onChange('')} className="whitespace-nowrap text-xs text-red-500">Remove</button>}
             </div>
             {(localError || error) && <p className="mt-1 text-xs text-red-500">{localError || error}</p>}
@@ -87,10 +87,10 @@ export function ImagePicker({ label, value, onChange, error, ratio = 'aspect-squ
 
 export function FormActions({ saving, onReset, back }) {
     return (
-        <div className="flex justify-end gap-3 pb-6">
-            {onReset && <button type="button" onClick={onReset} className="rounded-lg bg-white px-6 py-2.5 text-sm shadow-sm">Reset</button>}
-            {back && <a href={back} className="rounded-lg bg-white px-6 py-2.5 text-sm shadow-sm">Cancel</a>}
-            <button disabled={saving} className="btn-primary !rounded-lg !px-8">{saving ? 'Saving…' : 'Submit'}</button>
+        <div className="row" style={{ justifyContent: 'flex-end', gap: 10, paddingBottom: 24 }}>
+            {onReset && <button type="button" onClick={onReset} className="btn">Reset</button>}
+            {back && <a href={back} className="btn">Cancel</a>}
+            <button disabled={saving} className="btn primary">{saving ? 'Saving…' : 'Submit'}</button>
         </div>
     );
 }

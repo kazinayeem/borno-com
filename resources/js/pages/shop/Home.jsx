@@ -48,12 +48,12 @@ export default function Home() {
                 <p className="text-xs tracking-widest">EXCLUSIVE OFFERS</p>
                 <h2 className="text-4xl font-extrabold">FLASH SALE</h2>
                 <p className="mt-2 text-sm opacity-90">The biggest deals are almost here! Get ready to shop &amp; save big.</p>
-                <div className="mt-4 flex justify-center gap-2">{['00', '00', '00'].map((n, i) => <span key={i} className="rounded-lg bg-white px-4 py-2 text-2xl font-bold text-primary">{n}</span>)}</div>
+                <div className="mt-4 flex justify-center gap-2">{['00', '00', '00'].map((n, i) => <span key={i} className="rounded-lg bg-sa-surface px-4 py-2 text-2xl font-bold text-primary">{n}</span>)}</div>
             </section>
 
             <section className="grid gap-4 lg:grid-cols-[280px_1fr]">
                 <div className="rounded-2xl bg-gradient-to-b from-stone-500 to-stone-700 p-6 text-white">
-                    <span className="rounded bg-white px-2 py-1 text-xs font-semibold text-ink">Limited Time Only</span>
+                    <span className="rounded bg-sa-surface px-2 py-1 text-xs font-semibold text-ink">Limited Time Only</span>
                     <h2 className="mt-4 text-3xl font-bold">FLASH SALE</h2>
                     <p className="mt-3 text-sm opacity-90">Don't miss our Mega Flash Sale! Save up to 70% on thousands of products.</p>
                     <Link to="/products" className="btn-primary mt-6 w-full">Shop Now <Icon name="arrow" size={16} /></Link>

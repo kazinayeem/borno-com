@@ -12,11 +12,16 @@ class Product extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? '/storage/'.$this->image : null;
+        if (! $this->image) {
+            return null;
+        }
+
+        // Seeded demo products point at hosted image URLs; uploaded files live under /storage.
+        return preg_match('#^https://#', $this->image) ? $this->image : '/storage/'.$this->image;
     }
 
     protected $casts = [
-        'price' => 'float', 'old_price' => 'float', 'discount_price' => 'float', 'buy_price' => 'float', 'weight' => 'float', 'color_ids' => 'array', 'size_ids' => 'array', 'meta_keywords' => 'array', 'rating' => 'float',
+        'price' => 'float', 'old_price' => 'float', 'discount_price' => 'float', 'buy_price' => 'float', 'weight' => 'float', 'color_ids' => 'array', 'size_ids' => 'array', 'meta_keywords' => 'array', 'gallery' => 'array', 'rating' => 'float',
         'is_digital' => 'boolean', 'is_preorder' => 'boolean', 'is_flash_sale' => 'boolean', 'active' => 'boolean',
     ];
 

@@ -19,8 +19,8 @@ class StoreController extends Controller
 
         return [
             'categories' => Category::where('active', true)->get(),
-            'flash_sale' => Product::with($with)->where('is_flash_sale', true)->where('active', true)->limit(5)->get(),
-            'popular' => Product::with($with)->where('active', true)->orderByDesc('reviews_count')->limit(12)->get(),
+            'flash_sale' => Product::with($with)->where('is_flash_sale', true)->where('active', true)->where('approval', '!=', 'pending')->limit(5)->get(),
+            'popular' => Product::with($with)->where('active', true)->where('approval', '!=', 'pending')->orderByDesc('reviews_count')->limit(12)->get(),
             'shops' => Shop::withCount('products')->limit(6)->get(),
         ];
     }
@@ -39,7 +39,7 @@ class StoreController extends Controller
             'currency' => ['name' => $cur?->name ?? 'USD', 'symbol' => $cur?->symbol ?? '$', 'position' => $c['currency_position'], 'rate' => $cur?->rate ?? 1],
             'currencies' => \App\Models\Currency::all(['name', 'symbol', 'rate']),
             'languages' => [['name' => 'English', 'code' => 'en']],
-            'show_download_app' => (bool) $c['show_download_app'], 'google_playstore_link' => $c['google_playstore_url'], 'app_store_link' => $c['app_store_url'],
+            'show_download_app' => (bool) $c['show_download_app'], 'google_client_id' => config('services.google.client_id') ?: null, 'google_playstore_link' => $c['google_playstore_url'], 'app_store_link' => $c['app_store_url'],
             'cash_on_delivery' => true, 'online_payment' => true, 'multi_vendor' => true, 'preOrder' => true,
             'return_order_within_days' => 7, 'show_product_stock' => true, 'theme_colors' => ['primary' => '#ee456b'],
         ]];
@@ -52,7 +52,10 @@ class StoreController extends Controller
 
     public function products(Request $request)
     {
-        $q = Product::with(['shop:id,name', 'category:id,name,slug', 'brand:id,name'])->where('active', true);
+        $q = Product::with(['shop:id,name', 'category:id,name,slug', 'brand:id,name'])->where('active', true)->where('approval', '!=', 'pending');
+        if ($ids = $request->query('ids')) {
+            $q->whereIn('id', array_slice(array_filter(array_map('intval', explode(',', $ids))), 0, 100));
+        }
 
         if ($s = $request->query('search')) {
             $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('description', 'like', "%$s%"));
@@ -92,7 +95,10 @@ class StoreController extends Controller
 
     public function product(Product $product)
     {
-        return $product->load(['shop', 'category', 'brand']);
+        // Inactive and not-yet-approved products are not public.
+        abort_if(! $product->active || $product->approval === 'pending', 404);
+
+        return $product->load(['shop:id,name,online,rating', 'category:id,name,slug', 'brand:id,name']);
     }
 
     public function shops()

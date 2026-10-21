@@ -172,4 +172,128 @@ class AdminEngineTest extends TestCase
         $this->assertStringNotContainsString('<img', $r->getContent());
         $this->get('/placeholder/Ab%20Cd.svg')->assertOk()->assertSee('>AC<', false);
     }
+
+    public function test_seller_dashboard_has_wallet_chart_and_top_products_for_their_shop_only(): void
+    {
+        $cust = User::create(['name' => 'Cu', 'email' => 'cu@x.test', 'role' => 'customer', 'password' => 'secret']);
+        $other = Shop::create(['name' => 'Other']);
+        $theirs = Order::create(['number' => 'T1', 'user_id' => $cust->id, 'shop_id' => $other->id, 'status' => 'delivered', 'subtotal' => 999, 'total' => 999]);
+        $theirs->items()->create(['name' => 'Hidden', 'price' => 999, 'qty' => 9]);
+        [, $mine] = $this->seller();
+        $o1 = Order::create(['number' => 'M1', 'user_id' => $cust->id, 'shop_id' => $mine->id, 'status' => 'delivered', 'subtotal' => 100, 'shipping' => 5, 'total' => 105]);
+        $o1->items()->create(['name' => 'Mug', 'price' => 50, 'qty' => 2]);
+        $o2 = Order::create(['number' => 'M2', 'user_id' => $cust->id, 'shop_id' => $mine->id, 'source' => 'pos', 'status' => 'pending', 'subtotal' => 20, 'total' => 20]);
+        $o2->items()->create(['name' => 'Pen', 'price' => 20, 'qty' => 1]);
+        $o3 = Order::create(['number' => 'M3', 'user_id' => $cust->id, 'shop_id' => $mine->id, 'status' => 'cancelled', 'subtotal' => 500, 'total' => 500]);
+        $o3->items()->create(['name' => 'Cancelled item', 'price' => 500, 'qty' => 1]);
+        Record::create(['resource' => 'withdraws', 'rid' => 1, 'data' => ['shop_id' => $mine->id, 'amount' => 30, 'status' => 'Approved']]);
+        Record::create(['resource' => 'withdraws', 'rid' => 2, 'data' => ['shop_id' => $mine->id, 'amount' => 10, 'status' => 'Pending']]);
+        Record::create(['resource' => 'withdraws', 'rid' => 3, 'data' => ['shop_id' => $mine->id, 'amount' => 999, 'status' => 'Rejected']]);
+        Record::create(['resource' => 'withdraws', 'rid' => 4, 'data' => ['shop_id' => $other->id, 'amount' => 50, 'status' => 'Approved']]);
+
+        $d = $this->getJson('/api/admin/dashboard')->assertOk()->assertJsonPath('scope', 'shop')->assertJsonPath('shop_name', 'Mine')->assertJsonPath('stats.orders', 3)->json();
+        $this->assertSame(105.0, (float) $d['wallet']['total_sales']);
+        $this->assertSame(65.0, (float) $d['wallet']['balance']);        // 105 delivered - 30 approved - 10 pending (rejected ignored)
+        $this->assertSame(10.0, (float) $d['wallet']['pending_withdraw']);
+        $this->assertSame(30.0, (float) $d['wallet']['already_withdraw']);
+        $this->assertSame(5.0, (float) $d['wallet']['delivery_charge']);
+        $this->assertSame(20.0, (float) $d['wallet']['pos_sales']);
+        $this->assertCount(7, $d['last7']);
+        $this->assertSame(3, array_sum(array_column($d['last7'], 'count')));
+        $names = array_column($d['top_products'], 'name');
+        $this->assertSame(['Mug', 'Pen'], $names);                      // cancelled + other shop's items excluded
+    }
+
+    public function test_seeded_url_images_can_be_kept_but_arbitrary_urls_are_rejected(): void
+    {
+        $this->admin();
+        $shop = Shop::create(['name' => 'S']);
+        $cat = \App\Models\Category::create(['name' => 'C', 'slug' => 'c']);
+        $url = 'https://cdn.dummyjson.com/product-images/x/thumbnail.webp';
+        $p = \App\Models\Product::create(['shop_id' => $shop->id, 'category_id' => $cat->id, 'name' => 'Seeded', 'price' => 5, 'image' => $url, 'gallery' => ['https://cdn.dummyjson.com/product-images/x/1.webp']]);
+
+        $this->getJson("/api/products/{$p->id}")->assertJsonPath('image_url', $url)->assertJsonPath('gallery.0', 'https://cdn.dummyjson.com/product-images/x/1.webp');
+        $this->putJson("/api/admin/products/{$p->id}", ['name' => 'Renamed', 'image' => $url])->assertOk()->assertJsonPath('name', 'Renamed')->assertJsonPath('image_url', $url);
+        $this->putJson("/api/admin/products/{$p->id}", ['image' => 'https://evil.example/x.png'])->assertJsonValidationErrors('image');
+        $this->putJson("/api/admin/products/{$p->id}", ['image' => 'uploads/new.png'])->assertOk()->assertJsonPath('image_url', '/storage/uploads/new.png');
+    }
+
+    public function test_admin_dashboard_has_the_shop_admin_shape(): void
+    {
+        $this->admin();
+        $shop = Shop::create(['name' => 'Alpha']);
+        \App\Models\Rider::create(['name' => 'R']);
+        $cust = User::create(['name' => 'Cu', 'email' => 'cu@x.test', 'role' => 'customer', 'password' => 'secret']);
+        $cat = \App\Models\Category::create(['name' => 'C', 'slug' => 'c']);
+        $p = \App\Models\Product::create(['shop_id' => $shop->id, 'category_id' => $cat->id, 'name' => 'Mug', 'price' => 10, 'favorites' => 3]);
+        $o = Order::create(['number' => 'RC1', 'user_id' => $cust->id, 'shop_id' => $shop->id, 'status' => 'delivered', 'payment_status' => 'paid', 'subtotal' => 20, 'total' => 20]);
+        $o->items()->create(['product_id' => $p->id, 'name' => 'Mug', 'price' => 10, 'qty' => 2]);
+        Order::create(['number' => 'RC2', 'user_id' => $cust->id, 'shop_id' => $shop->id, 'status' => 'cancelled', 'payment_status' => 'paid', 'subtotal' => 99, 'total' => 99]);
+        Record::create(['resource' => 'withdraws', 'rid' => 1, 'data' => ['amount' => 5, 'status' => 'Approved']]);
+        Record::create(['resource' => 'withdraws', 'rid' => 2, 'data' => ['amount' => 7, 'status' => 'Pending']]);
+
+        $d = $this->getJson('/api/admin/dashboard')->assertOk()->json();
+        $this->assertSame(['shops' => 1, 'products' => 1, 'orders' => 2, 'customers' => 1], $d['totals']);
+        $this->assertSame(1, $d['order_analytics']['delivered']);
+        $this->assertEquals(20, $d['wallet']['total_earning']);              // cancelled orders never count as earnings
+        $this->assertEquals(5, $d['wallet']['already_withdraw']);
+        $this->assertEquals(7, $d['wallet']['pending_withdraw']);
+        $this->assertSame(['customer' => 1, 'shop' => 1, 'rider' => 1], $d['user_overview']);
+        $this->assertSame('Alpha', $d['top_shops'][0]['name']);
+        $this->assertSame(3, $d['favorite_products'][0]['favorites']);
+        $this->assertSame(2, $d['top_selling'][0]['sold']);
+        $this->assertSame(2, $d['latest_orders'][1]['qty']);
+    }
+
+    public function test_statistics_buckets_orders_and_validates_input(): void
+    {
+        $this->admin();
+        $cust = User::create(['name' => 'Cu', 'email' => 'cu@x.test', 'role' => 'customer', 'password' => 'secret']);
+        $shop = Shop::create(['name' => 'S']);
+        foreach (['2026-03-10 09:30:00', '2026-03-10 09:45:00', '2026-07-01 12:00:00'] as $i => $when) {
+            Order::create(['number' => "S$i", 'user_id' => $cust->id, 'shop_id' => $shop->id, 'status' => 'pending', 'subtotal' => 1, 'total' => 1, 'created_at' => $when]);
+        }
+        $y = $this->getJson('/api/admin/statistics?type=yearly&date=2026-05-05')->assertOk()->json();
+        $this->assertCount(12, $y['labels']);
+        $this->assertSame(3, $y['total']);
+        $this->assertSame(2, $y['values'][2]);                                // March
+        $this->assertSame(1, $y['values'][6]);                                // July
+        $m = $this->getJson('/api/admin/statistics?type=monthly&date=2026-03-15')->json();
+        $this->assertCount(31, $m['labels']);
+        $this->assertSame(2, $m['values'][9]);                                // 10 March
+        $d = $this->getJson('/api/admin/statistics?type=daily&date=2026-03-10')->json();
+        $this->assertCount(24, $d['labels']);
+        $this->assertSame(2, $d['values'][9]);                                // 09:00 bucket
+        $this->getJson('/api/admin/statistics?type=hourly')->assertStatus(422);
+        $this->getJson('/api/admin/statistics')->assertStatus(422);
+        Sanctum::actingAs(User::create(['name' => 'Sel', 'email' => 'sel@x.test', 'role' => 'shop', 'password' => 'secret']));
+        $this->getJson('/api/admin/statistics?type=yearly')->assertForbidden();
+    }
+
+    public function test_notification_bell_counts_unread_and_mark_all_read(): void
+    {
+        $this->admin();
+        foreach ([1, 2, 3] as $n) {
+            Record::create(['resource' => 'notifications', 'rid' => $n, 'data' => ['title' => "N$n", 'content' => 'c', 'is_read' => $n === 3]]);
+        }
+        $this->getJson('/api/admin/bell')->assertOk()->assertJsonPath('count', 2)->assertJsonCount(3, 'notifications')->assertJsonPath('notifications.0.title', 'N3');
+        $this->postJson('/api/admin/notifications/read-all')->assertNoContent();
+        $this->getJson('/api/admin/bell')->assertJsonPath('count', 0);
+    }
+
+    public function test_approve_and_reject_only_apply_to_pending_requests_of_resources_that_allow_it(): void
+    {
+        $this->admin();
+        Record::create(['resource' => 'rider_cash_submissions', 'rid' => 1, 'data' => ['status' => 'Pending', 'amount' => 10]]);
+        Record::create(['resource' => 'rider_cash_submissions', 'rid' => 2, 'data' => ['status' => 'Pending', 'amount' => 20]]);
+        Record::create(['resource' => 'banners', 'rid' => 1, 'data' => ['title' => 'B', 'status' => 'Pending']]);
+
+        $this->postJson('/api/admin/r/rider_cash_submissions/1/approve')->assertOk()->assertJsonPath('status', 'Approved');
+        $this->postJson('/api/admin/r/rider_cash_submissions/1/reject')->assertStatus(422);       // already decided
+        $this->postJson('/api/admin/r/rider_cash_submissions/2/reject')->assertOk()->assertJsonPath('status', 'Rejected');
+        $this->postJson('/api/admin/r/banners/1/approve')->assertNotFound();                      // banners have no approve action
+        $this->postJson('/api/admin/r/rider_cash_submissions/2/explode')->assertNotFound();
+        Sanctum::actingAs(User::create(['name' => 'Sel', 'email' => 'sel@x.test', 'role' => 'shop', 'password' => 'secret']));
+        $this->postJson('/api/admin/r/rider_cash_submissions/1/approve')->assertForbidden();
+    }
 }

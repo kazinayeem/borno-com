@@ -1,87 +1,117 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { api, useGetDashboardQuery, useLogoutMutation } from '../../app/api';
+import { api, useGetBellQuery, useGetDashboardQuery, useLogoutMutation, useReadAllNotificationsMutation } from '../../app/api';
 import { loggedOut } from '../../app/slices';
-import { Icon } from '../../components/ui';
-import { BUILT, SELLER_MENU, menu, pages, resolvePage, stripQuery, toRoute } from './spec/engine';
+import { fdate, SaIcon } from '../../components/sa';
+import { SELLER_MENU, menu, toRoute } from './spec/engine';
 
-const ICONS = { home: 'home', cart: 'bag', truck: 'truck', gift: 'box', pos: 'grid', refund: 'logout', chat: 'mail', grid: 'grid', box: 'box', layers: 'box', inbox: 'box', megaphone: 'star', chart: 'doc', bell: 'mail', image: 'doc', users: 'user', user: 'user', store: 'store', card: 'tag', help: 'mail', wallet: 'tag', swap: 'grid', pin: 'home', globe: 'grid', settings: 'grid', file: 'doc', plug: 'grid', shield: 'star', phone: 'mail', puzzle: 'box' };
-const extraTitles = { '/admin/messages': 'Contact Messages', '/admin/settings': 'Admin Settings', '/admin/pos': 'Point of Sale (POS)', '/admin/pos/sales': 'POS Sales', '/admin/pos/draft': 'POS Draft', '/admin/product/create': 'Add New Product', '/admin/category/create': 'Create New Category', '/admin/shops/create': 'Add New Shop', '/admin/products': 'Product List', '/admin/riders': 'All Driver', '/admin/profile': 'Profile', '/admin/customers': 'All Customers' };
-const reverse = Object.fromEntries(Object.entries(BUILT).map(([spec, mine]) => [stripQuery(mine), pages[stripQuery(spec)]?.title]).filter(([, t]) => t));
+// Where a seller may go; everything else is bounced to the dashboard (the API enforces the same rules).
 const shopOk = (p) => p === '/admin' || p === '/shop/profile' || ['/admin/orders', '/admin/products', '/admin/pos', '/admin/product/', '/admin/soon'].some((a) => p === a || p.startsWith(a + (a.endsWith('/') ? '' : '/')));
-const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-
 const isActive = (to, loc) => { const [path, query] = to.split('?'); return loc.pathname === path && (query ? loc.search === `?${query}` : !(path === '/admin/products' && loc.search)); };
+const EXTRA = [{ label: 'Contact Messages', icon: 'phone', path: '/admin/messages' }];
+const SELLER_EXTRA = [{ label: 'My Profile', icon: 'user', path: '/shop/profile' }];
 
-function Group({ item, loc, onNavigate }) {
-    const kids = item.children.map(([label, path]) => [label, toRoute(path)]);
-    const active = kids.some(([, to]) => isActive(to, loc));
-    const [open, setOpen] = useState(active);
-    return (
-        <div>
-            <button onClick={() => setOpen(!open)} className={`flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-[15px] ${active ? 'bg-[#fee5e8] text-primary' : 'text-[#556070] hover:bg-[#fff1f3]'}`}>
-                <Icon name={ICONS[item.icon] ?? 'grid'} size={18} /><span className="flex-1 text-left">{item.label}</span>{item.addon && <Icon name="box" size={13} className="text-amber-500" />}<Icon name="chevron" size={13} className={open ? 'rotate-180' : ''} />
-            </button>
-            {open && <div className="ml-4 mt-1 space-y-1 border-l-2 border-primary/40 pl-3">{kids.map(([label, to]) => <Link key={label} to={to} onClick={onNavigate} className={`block rounded-md px-3 py-2 text-[13px] ${isActive(to, loc) ? 'bg-[#fee5e8] text-primary' : 'bg-[#f6f7f9] text-[#556070] hover:text-primary'}`}>{label}</Link>)}</div>}
-        </div>
-    );
+function Menu({ items, loc, filter, onNavigate }) {
+    const [open, setOpen] = useState(() => new Set());
+    const toggle = (l) => setOpen((s) => { const n = new Set(s); n.has(l) ? n.delete(l) : n.add(l); return n; });
+    const out = [];
+    items.forEach((m, i) => {
+        if (m.section) { if (!filter) out.push(<div key={`s${i}`} className="menu-section">{m.section}</div>); return; }
+        if (m.children) {
+            const kids = m.children.map(([l, p]) => [l, toRoute(p)]).filter(([l]) => !filter || l.toLowerCase().includes(filter) || m.label.toLowerCase().includes(filter));
+            if (!kids.length) return;
+            const act = kids.some(([, p]) => isActive(p, loc));
+            const isOpen = !!filter || act || open.has(m.label);
+            out.push(
+                <React.Fragment key={m.label}>
+                    <button className={`menu-item ${isOpen ? 'open' : ''} ${act ? 'active' : ''}`} onClick={() => toggle(m.label)} aria-expanded={isOpen}>
+                        <SaIcon name={m.icon} className="ic" /><span>{m.label}</span>{m.addon && <em className="tag">add-on</em>}<SaIcon name="chev" className="chev" />
+                    </button>
+                    <div className={`submenu ${isOpen ? 'open' : ''}`}>{kids.map(([l, p]) => <Link key={l} to={p} onClick={onNavigate} className={isActive(p, loc) ? 'active' : ''}>{l}</Link>)}</div>
+                </React.Fragment>,
+            );
+        } else if (!filter || m.label.toLowerCase().includes(filter)) {
+            const to = toRoute(m.path);
+            out.push(<Link key={m.label} to={to} onClick={onNavigate} className={`menu-item ${isActive(to, loc) ? 'active' : ''}`}><SaIcon name={m.icon} className="ic" /><span>{m.label}</span></Link>);
+        }
+    });
+    return <nav className="menu">{out.length ? out : <div className="empty">No menu found</div>}</nav>;
 }
 
 export default function AdminLayout() {
     const { token, user } = useSelector((s) => s.auth);
-    const [open, setOpen] = useState(false);
+    const isAdmin = user?.role === 'admin';
+    const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
     const [q, setQ] = useState('');
+    const [dd, setDd] = useState(null);                       // which dropdown is open: 'bell' | 'user' | null
+    const [theme, setTheme] = useState(() => { try { return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } });
     const [logout] = useLogoutMutation();
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const loc = useLocation();
-    const { data: dash } = useGetDashboardQuery(undefined, { skip: user?.role !== 'shop' || !token });
-    const { pathname } = loc;
-    const [userMenu, setUserMenu] = useState(false);
-    useEffect(() => setUserMenu(false), [pathname]);
+    const { data: bell } = useGetBellQuery(undefined, { skip: !isAdmin || !token, pollingInterval: 30000 });
+    const [readAll] = useReadAllNotificationsMutation();
+    const { data: dash } = useGetDashboardQuery(undefined, { skip: isAdmin || !token });
+    useEffect(() => { try { localStorage.setItem('theme', theme); } catch { /* storage unavailable */ } }, [theme]);
+    useEffect(() => { setDd(null); setMobileOpen(false); }, [loc.pathname]);
+    useEffect(() => { const h = (e) => { if (!e.target.closest('.dropdown, [data-dd]')) setDd(null); }; document.addEventListener('click', h); return () => document.removeEventListener('click', h); }, []);
 
     const items = useMemo(() => {
-        const ql = q.trim().toLowerCase();
-        const list = [...menu, { label: 'Contact Messages', icon: 'mail', path: '/admin/messages' }, ...(user?.role === 'shop' ? [{ label: 'My Profile', icon: 'user', path: '/shop/profile' }] : [])];
-        return list.filter((m) => !m.section || !ql).filter((m) => user?.role === 'admin' ? m.label !== 'My Profile' : [...SELLER_MENU, 'My Profile'].includes(m.label))
-            .filter((m) => m.section || !ql || m.label.toLowerCase().includes(ql) || m.children?.some(([l]) => l.toLowerCase().includes(ql)));
-    }, [q, user?.role]);
+        const list = [...menu, ...EXTRA, ...(isAdmin ? [] : SELLER_EXTRA)];
+        return isAdmin ? list.filter((m) => m.label !== 'My Profile') : list.filter((m) => [...SELLER_MENU, 'My Profile'].includes(m.label));
+    }, [isAdmin]);
 
     if (!token) return <Navigate to="/admin/login" replace />;
-    if (user?.role === 'shop' && !shopOk(pathname)) return <Navigate to="/admin" replace />;
+    if (user?.role === 'shop' && !shopOk(loc.pathname)) return <Navigate to="/admin" replace />;
     const out = async () => { await logout(); dispatch(loggedOut()); dispatch(api.util.resetApiState()); navigate('/admin/login'); };
-    const title = extraTitles[pathname] ?? (/\/admin\/orders\/\d+\/show$/.test(pathname) ? 'Order Details' : null) ?? reverse[pathname] ?? resolvePage(pathname)?.title ?? (/\/edit$/.test(pathname) ? 'Edit' : 'Admin');
+    const name = dash?.shop_name ?? user?.name ?? '';
+    const toggleSide = () => (window.matchMedia('(max-width:820px)').matches ? setMobileOpen((v) => !v) : setCollapsed((v) => !v));
 
     return (
-        <div className="min-h-screen bg-[#f6f7f9] text-[14px] print:bg-white">
-            <aside className={`print:hidden fixed inset-y-0 left-0 z-40 flex w-[290px] flex-col bg-white px-3 pt-[15px] transition-transform lg:translate-x-0 ${open ? '' : '-translate-x-full'}`}>
-                <img src="/assets/logo.png" alt="ReadyEcommerce" className="mx-auto mb-3 h-11 w-auto" />
-                <div className="relative mb-3"><Icon name="search" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu..." className="w-full rounded-lg border border-line py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary" /></div>
-                <nav className="flex-1 space-y-1 overflow-y-auto pb-3">
-                    {items.map((m, i) => m.section ? <p key={m.section + i} className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{m.section}</p>
-                        : m.children ? <Group key={m.label} item={m} loc={loc} onNavigate={() => setOpen(false)} />
-                            : <Link key={m.label} to={toRoute(m.path)} onClick={() => setOpen(false)} className={`flex items-center gap-3 rounded-lg px-2 py-2.5 text-[15px] ${isActive(toRoute(m.path), loc) ? 'bg-[#fee5e8] text-primary' : 'text-[#556070] hover:bg-[#fff1f3]'}`}><Icon name={ICONS[m.icon] ?? 'grid'} size={18} />{m.label}</Link>)}
-                </nav>
-                <div className="flex items-center justify-between border-t border-line py-3 text-xs text-gray-500"><Icon name="grid" /><Icon name="user" /><Icon name="store" /><span>4.6.1</span></div>
-            </aside>
-            {open && <div className="fixed inset-0 z-30 bg-black/30 lg:hidden print:hidden" onClick={() => setOpen(false)} />}
-            <div className="lg:pl-[290px] print:!pl-0">
-                <header className="print:hidden sticky top-0 z-20 flex h-[69px] items-center justify-between border-b border-line bg-white px-4">
-                    <div className="flex items-center gap-4"><button onClick={() => setOpen(!open)} aria-label="Menu" className="text-primary"><Icon name="menu" size={26} /></button>
-                        <div><h1 className="text-lg font-semibold">{pathname === '/admin' ? `Welcome Back, ${dash?.shop_name ?? user?.name}` : title}</h1>{pathname === '/admin' && <p className="text-xs text-muted">Monitor your business analytics and statistics.</p>}</div></div>
-                    <div className="relative flex items-center gap-3">
-                        <Link to="/admin/notifications" aria-label="Notifications" className="relative grid h-9 w-9 place-items-center rounded-full"><Icon name="mail" /><span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] text-white">9</span></Link>
-                        <span className="hidden text-sm sm:block">EN</span>
-                        <button onClick={() => setUserMenu(!userMenu)} className="flex items-center gap-2 text-left"><span className="hidden sm:block"><b className="block text-sm leading-4">{user?.name}</b><span className="text-xs capitalize text-muted">{user?.role === 'admin' ? 'Root' : 'Shop'}</span></span>
-                            <span className="grid h-10 w-10 place-items-center rounded-full bg-primary-soft font-bold text-primary">{user?.name?.[0]}</span></button>
-                        {userMenu && <div className="absolute right-0 top-12 w-44 rounded-lg border border-line bg-white p-1 shadow-lg">
-                            {user?.role === 'admin' && <Link to="/admin/profile" className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-primary-soft"><Icon name="user" size={15} />Profile</Link>}
-                            <button onClick={out} className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-primary-soft"><Icon name="logout" size={15} />Logout</button></div>}
-                    </div>
-                </header>
-                <main className="p-4 md:p-5 print:p-0"><Outlet /></main>
+        <div className="sa" data-theme={theme}>
+            <div className={`layout ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
+                <aside className="sidebar print:hidden">
+                    <div className="brand"><img className="brand-mark !bg-transparent" src="/assets/favicon.png" alt="" /><span>ReadyEcommerce</span></div>
+                    <div className="menu-search"><SaIcon name="search" /><input aria-label="Search menu" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu..." /></div>
+                    <Menu items={items} loc={loc} filter={q.trim().toLowerCase()} onNavigate={() => setMobileOpen(false)} />
+                    <div className="sidebar-foot"><span>{isAdmin ? 'Admin panel' : 'Seller panel'}</span><span>v1.0</span></div>
+                </aside>
+                <div className="main">
+                    <header className="topbar print:hidden">
+                        <button className="icon-btn" aria-label="Toggle sidebar" onClick={toggleSide}><SaIcon name="menu" /></button>
+                        <div className="hello"><h2>Welcome Back, {name}</h2><p>Monitor your business analytics and statistics.</p></div>
+                        <div className="spacer" />
+                        <button className="icon-btn" aria-label="Toggle dark mode" onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}><SaIcon name="moon" /></button>
+                        {isAdmin && (
+                            <div className="rel">
+                                <button className="icon-btn" data-dd aria-label="Notifications" aria-expanded={dd === 'bell'} onClick={() => setDd(dd === 'bell' ? null : 'bell')}>
+                                    <SaIcon name="bell" />{bell?.count > 0 && <span className="badge-dot">{bell.count}</span>}
+                                </button>
+                                {dd === 'bell' && (
+                                    <div className="dropdown" style={{ minWidth: 320 }}>
+                                        <div className="row between" style={{ padding: '8px 12px' }}><b>Notifications</b><button className="btn sm" style={{ width: 'auto' }} onClick={() => readAll()}>Mark all as read</button></div>
+                                        {bell?.notifications.length ? bell.notifications.map((n) => <Link key={n.id} className="n-item" to={toRoute(n.url || '/admin/notifications')}>{n.title}<small>{n.content} · {fdate(n.created_at)}</small></Link>) : <div className="empty">No notifications</div>}
+                                        <Link to="/admin/notifications" style={{ textAlign: 'center', color: 'var(--primary)' }}>View All Notifications</Link>
+                                    </div>)}
+                            </div>)}
+                        <div className="rel">
+                            <button className="user-chip" data-dd aria-expanded={dd === 'user'} onClick={() => setDd(dd === 'user' ? null : 'user')}>
+                                <span className="nm"><b>{user?.name}</b><small>{isAdmin ? 'root' : 'shop'}</small></span>
+                                <img className="avatar" src={`/placeholder/${encodeURIComponent(user?.name ?? '?')}.svg?h=20`} alt="" />
+                            </button>
+                            {dd === 'user' && (
+                                <div className="dropdown">
+                                    {isAdmin && <Link to="/admin/profile">Profile</Link>}
+                                    {isAdmin && <Link to="/admin/settings">Settings</Link>}
+                                    {!isAdmin && <Link to="/shop/profile">My Profile</Link>}
+                                    <button onClick={out}>Logout</button>
+                                </div>)}
+                        </div>
+                    </header>
+                    <main className="content"><Outlet /></main>
+                </div>
             </div>
         </div>
     );

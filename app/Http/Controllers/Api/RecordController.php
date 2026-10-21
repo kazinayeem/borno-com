@@ -93,6 +93,18 @@ class RecordController extends Controller
         return $record->flat();
     }
 
+    /** Approve / reject a pending request (withdrawals, cash deposits, …). Allowed only for resources whose spec lists the action. */
+    public function decide(string $res, int $id, string $decision)
+    {
+        $this->check($res);
+        abort_unless(in_array($decision, ['approve', 'reject'], true) && in_array($decision, Spec::actionsFor($res), true), 404);
+        $record = $this->find($res, $id);
+        abort_unless(strtolower($record->data['status'] ?? '') === 'pending', 422, 'Only pending requests can be approved or rejected.');
+        $record->update(['data' => array_merge($record->data, ['status' => $decision === 'approve' ? 'Approved' : 'Rejected'])]);
+
+        return $record->flat();
+    }
+
     private function find(string $res, int $id): Record
     {
         return Record::where('resource', $res)->where('rid', $id)->firstOrFail();

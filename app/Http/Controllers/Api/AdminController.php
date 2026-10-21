@@ -72,20 +72,71 @@ class AdminController extends Controller
             return $this->shopDashboard();
         }
 
+        $sumRecords = function (string $resource, string $field, ?string $status = null) {
+            return round((float) Record::where('resource', $resource)->get()
+                ->filter(fn ($r) => $status === null || strtolower($r->data['status'] ?? '') === $status)
+                ->sum(fn ($r) => (float) ($r->data[$field] ?? 0)), 2);
+        };
+        $live = Order::where('status', '!=', 'cancelled');
+        $sold = \App\Models\OrderItem::selectRaw('product_id, sum(qty) as sold')
+            ->whereIn('order_id', (clone $live)->pluck('id'))->whereNotNull('product_id')->groupBy('product_id')->orderByDesc('sold')->limit(5)->get();
+        $soldProducts = Product::whereIn('id', $sold->pluck('product_id'))->get(['id', 'name', 'image', 'price'])->keyBy('id');
+
         return [
-            'stats' => [
-                'products' => Product::count(), 'categories' => Category::count(), 'brands' => Brand::count(),
-                'shops' => Shop::count(), 'customers' => User::where('role', 'customer')->count(), 'orders' => Order::count(),
-                'messages' => ContactMessage::where('read', false)->count(),
+            'totals' => ['shops' => Shop::count(), 'products' => Product::count(), 'orders' => Order::count(), 'customers' => User::where('role', 'customer')->count()],
+            'order_analytics' => Order::selectRaw('status, count(*) as count')->groupBy('status')->pluck('count', 'status'),
+            'wallet' => [
+                'total_earning' => round((float) (clone $live)->where('payment_status', 'paid')->sum('total'), 2),
+                'already_withdraw' => $sumRecords('withdraws', 'amount', 'approved'), 'pending_withdraw' => $sumRecords('withdraws', 'amount', 'pending'),
+                'rejected_withdraw' => $sumRecords('withdraws', 'amount', 'rejected'), 'total_commission' => $sumRecords('commissions', 'admin_commission'),
             ],
-            'revenue' => (float) Order::where('status', '!=', 'cancelled')->sum('total'),
-            'orders_by_status' => Order::selectRaw('status, count(*) as count')->groupBy('status')->pluck('count', 'status'),
-            'latest_orders' => Order::with(['user:id,name', 'shop:id,name'])->withSum('items as qty', 'qty')->latest('id')->limit(5)->get(),
-            'trending_shops' => Shop::withCount('orders')->orderByDesc('orders_count')->limit(5)->get(),
-            'wallet' => ['balance' => round((float) Order::where('payment_status', 'paid')->sum('total') * 0.1, 2), 'earning' => (float) Order::where('payment_status', 'paid')->sum('total')],
-            'latest_products' => Product::with('shop:id,name')->latest()->limit(5)->get(),
-            'latest_messages' => ContactMessage::latest()->limit(5)->get(),
+            'user_overview' => ['customer' => User::where('role', 'customer')->count(), 'shop' => Shop::count(), 'rider' => Rider::count()],
+            'latest_orders' => Order::with('shop:id,name')->withSum('items as qty', 'qty')->latest('id')->limit(6)->get()
+                ->map(fn ($o) => ['id' => $o->id, 'number' => $o->number, 'qty' => (int) $o->qty, 'shop_name' => $o->shop?->name, 'created_at' => $o->created_at, 'status' => $o->status]),
+            'top_shops' => Shop::withCount('orders')->orderByDesc('orders_count')->limit(5)->get()->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'image_url' => $s->image_url, 'rating' => $s->rating, 'orders' => $s->orders_count]),
+            'favorite_products' => Product::orderByDesc('favorites')->orderBy('id')->limit(5)->get(['id', 'name', 'image', 'favorites'])->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'image_url' => $p->image_url, 'favorites' => $p->favorites]),
+            'top_selling' => $sold->map(fn ($r) => ['id' => $r->product_id, 'name' => $soldProducts[$r->product_id]->name ?? 'Deleted product', 'image_url' => $soldProducts[$r->product_id]->image_url ?? null, 'price' => $soldProducts[$r->product_id]->price ?? 0, 'sold' => (int) $r->sold])->values(),
         ];
+    }
+
+    /** Order counts for the dashboard chart: daily = 24 hours, monthly = days of the month, yearly = 12 months. */
+    public function statistics(Request $request)
+    {
+        $d = $request->validate(['type' => 'required|in:daily,monthly,yearly', 'date' => 'nullable|date']);
+        $date = isset($d['date']) && $d['date'] ? \Illuminate\Support\Carbon::parse($d['date']) : now();
+        $q = Order::query();
+        [$from, $to] = match ($d['type']) {
+            'daily' => [$date->copy()->startOfDay(), $date->copy()->endOfDay()],
+            'monthly' => [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()],
+            'yearly' => [$date->copy()->startOfYear(), $date->copy()->endOfYear()],
+        };
+        $rows = $q->whereBetween('created_at', [$from, $to])->get(['created_at']);
+        [$labels, $key] = match ($d['type']) {
+            'daily' => [array_map(fn ($h) => sprintf('%02d:00', $h), range(0, 23)), fn ($c) => (int) $c->format('G')],
+            'monthly' => [array_map(fn ($n) => $date->format('Y-m-').sprintf('%02d', $n), range(1, $date->daysInMonth)), fn ($c) => (int) $c->format('j') - 1],
+            'yearly' => [['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], fn ($c) => (int) $c->format('n') - 1],
+        };
+        $values = array_fill(0, count($labels), 0);
+        foreach ($rows as $r) {
+            $values[$key($r->created_at)]++;
+        }
+
+        return ['labels' => $labels, 'values' => $values, 'total' => array_sum($values)];
+    }
+
+    /** Notification bell: unread count + the latest entries. */
+    public function bell()
+    {
+        $all = Record::where('resource', 'notifications')->orderByDesc('rid')->get()->map->flat();
+
+        return ['count' => $all->filter(fn ($n) => ! ($n['is_read'] ?? false))->count(), 'notifications' => $all->take(6)->values()];
+    }
+
+    public function readAllNotifications()
+    {
+        Record::where('resource', 'notifications')->get()->each(fn ($r) => $r->update(['data' => array_merge($r->data, ['is_read' => true])]));
+
+        return response()->noContent();
     }
 
     /** Seller dashboard (ShopDesk layout): shop stats, status counts, wallet, 7-day orders and top products for the seller's own shop(s). */
@@ -173,6 +224,11 @@ class AdminController extends Controller
         $row = $model::findOrFail($id);
         $before = $this->imageOf($row);
         $rules = array_map(fn ($r) => is_string($r) ? str_replace('required|', 'sometimes|required|', $r) : $r, $rules);
+        foreach (['icon', 'logo', 'image'] as $imgField) {
+            if (isset($rules[$imgField]) && $request->input($imgField) === ($row->{$imgField} ?? null)) {
+                $rules[$imgField] = 'nullable|string'; // unchanged value (e.g. a seeded image URL) is always fine
+            }
+        }
         if ($res === 'coupons') {
             $rules['code'] = 'sometimes|required|string|max:40|unique:coupons,code,'.$id;
         }

@@ -6,9 +6,7 @@ import {
     usePosDeleteDraftMutation, usePosDraftsQuery, usePosProductsQuery, usePosQuoteMutation, usePosSalesQuery, usePosSaveDraftMutation,
 } from '../../app/api';
 import { pushToast } from '../../app/slices';
-import { Field, TextInput } from '../../components/FormKit';
-import { Empty, Icon, Img, Modal, Pagination, money } from '../../components/ui';
-import { Badge } from './Orders';
+import { ActBtn, Card, CardB, CardH, fdt, Modal, money, PageHead, Pager, Pill, SaIcon, Thumb } from '../../components/sa';
 
 const DRAFT_KEY = 'pos_resume';
 
@@ -90,65 +88,66 @@ export function Pos() {
         dispatch(pushToast('Saved as draft')); reset();
     };
 
+    const rows = products?.data ?? [];
     return (
-        <div>
-            <h2 className="mb-4 text-[22px] font-semibold">Point of Sale (POS)</h2>
-            <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
-                <section className="card rounded-xl !border-[#f4f4f4] p-4">
-                    <div className="mb-4 grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
-                        <select className="field" value={filters.brand_id} onChange={(e) => setFilters({ ...filters, brand_id: e.target.value, page: 1 })}><option value="">Select Brand</option>{opts?.brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
-                        <select className="field" value={filters.category_id} onChange={(e) => setFilters({ ...filters, category_id: e.target.value, page: 1 })}><option value="">Select Category</option>{opts?.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                        <form className="flex" onSubmit={(e) => { e.preventDefault(); setFilters({ ...filters, search: q, page: 1 }); }}><input className="field !rounded-r-none" placeholder="Search by product name" value={q} onChange={(e) => setQ(e.target.value)} /><button className="rounded-r-md border border-l-0 border-line px-3" aria-label="Search"><Icon name="search" size={16} /></button></form>
-                    </div>
-                    <div className={`grid gap-3 sm:grid-cols-2 ${isFetching ? 'opacity-60' : ''}`}>
-                        {!products ? Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton h-24" />) : products.data.map((p) => (
-                            <button key={p.id} onClick={() => add(p)} disabled={p.stock < 1} className="flex overflow-hidden rounded-lg border border-[#f0f0f0] text-left transition hover:border-primary disabled:opacity-50">
-                                <span className="grid h-[100px] w-[100px] shrink-0 place-items-center bg-[#f1f2f4] text-gray-400"><Img src={p.image_url} alt={p.name} className="h-full w-full object-cover" fallback={<Icon name="box" size={28} />} /></span>
-                                <span className="flex flex-1 flex-col justify-center px-3 text-xs">
-                                    <b className="line-clamp-1 text-[13px] font-medium">{p.name}</b>
-                                    <span className="my-0.5"><b className="text-xl text-blue-600">{money(p.price).replace('.00', '')}</b>{p.old_price > p.price && <s className="ml-2 text-[11px] text-gray-500">{money(p.old_price).replace('.00', '')}</s>}</span>
-                                    <span className="flex justify-between text-[12px] text-[#556070]"><span>{p.sold} Sold</span><span>{p.stock > 0 ? `${p.stock} Left` : 'Out of stock'}</span></span>
-                                </span>
+        <>
+            <PageHead title="POS">{draftId && <span className="muted">Resuming draft #{draftId} <button className="btn sm" onClick={() => navigate(0)}>Discard</button></span>}</PageHead>
+            <div className="pos">
+                <Card>
+                    <CardH><form className="toolbar" style={{ flex: 1 }} onSubmit={(e) => { e.preventDefault(); setFilters({ ...filters, search: q, page: 1 }); }}>
+                        <input className="input" aria-label="Search products" placeholder="Search product by name" style={{ flex: 1 }} value={q} onChange={(e) => setQ(e.target.value)} />
+                        <select className="input" aria-label="Brand" value={filters.brand_id} onChange={(e) => setFilters({ ...filters, brand_id: e.target.value, page: 1 })}><option value="">All Brands</option>{opts?.brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
+                        <select className="input" aria-label="Category" value={filters.category_id} onChange={(e) => setFilters({ ...filters, category_id: e.target.value, page: 1 })}><option value="">All Categories</option>{opts?.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                    </form></CardH>
+                    <CardB className="prod-grid" style={{ opacity: isFetching ? 0.6 : 1 }}>
+                        {rows.map((p) => (
+                            <button key={p.id} className="prod" disabled={p.stock < 1} onClick={() => add(p)} style={p.stock < 1 ? { opacity: 0.5 } : undefined}>
+                                <img src={p.image_url || `/placeholder/${encodeURIComponent(p.name)}.svg?h=${(p.id * 37) % 360}`} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                                <div>{p.name}</div><b>{money(p.price)}</b> <small className="muted">{p.stock > 0 ? `${p.stock} left` : 'Out of stock'}</small>
                             </button>))}
-                    </div>
-                    {products?.data.length === 0 && <Empty title="No products found" />}
-                    <Pagination meta={products} onPage={(page) => setFilters({ ...filters, page })} />
-                </section>
+                        {!products && <p className="muted">Loading…</p>}
+                        {products && rows.length === 0 && <p className="muted">No products</p>}
+                    </CardB>
+                    <Pager meta={products} count={rows.length} onPage={(page) => setFilters({ ...filters, page })} />
+                </Card>
 
-                <section className="card h-fit rounded-xl !border-[#f4f4f4] p-4">
-                    <div className="mb-4 flex gap-3">
-                        <div className="flex-1"><input className="field mb-1" list="pos-customers" placeholder="Enter customer name or phone number" value={custSearch} onChange={(e) => { setCustSearch(e.target.value); const m = customers?.find((c) => `${c.name} (${c.phone ?? ''})` === e.target.value); setCustomer(m ? String(m.id) : ''); }} />
+                <Card>
+                    <CardH><h3 style={{ flex: 1 }}>Cart</h3><button className="btn sm" onClick={() => setShowCustomer(true)}><SaIcon name="plus" /> Customer</button></CardH>
+                    <CardB>
+                        <div className="sa-field" style={{ marginBottom: 12 }}><label htmlFor="pos-cust">Customer</label>
+                            <input id="pos-cust" className="input" list="pos-customers" placeholder="Enter customer name or phone number" value={custSearch} onChange={(e) => { setCustSearch(e.target.value); const m = customers?.find((c) => `${c.name} (${c.phone ?? ''})` === e.target.value); setCustomer(m ? String(m.id) : ''); }} />
                             <datalist id="pos-customers">{customers?.map((c) => <option key={c.id} value={`${c.name} (${c.phone ?? ''})`} />)}</datalist>
-                            {customer ? <p className="text-xs text-emerald-600">Customer selected</p> : <p className="text-xs text-muted">Walk-in customer if none selected</p>}</div>
-                        <button onClick={() => setShowCustomer(true)} className="btn-outline !rounded-lg !px-4"><Icon name="plus" size={15} /> Customer</button>
-                    </div>
-                    <div className="min-h-[220px] space-y-2 rounded-lg bg-[#f4f4f4] p-3">
-                        {cart.length === 0 && <p className="py-16 text-center text-sm text-muted">Cart is empty. Click a product to add it.</p>}
-                        {cart.map(({ product: p, qty }) => (
-                            <div key={p.id} className="flex items-center gap-3 rounded-lg bg-white p-3">
-                                <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded bg-[#f1f2f4] text-gray-400"><Img src={p.image_url} alt="" className="h-full w-full object-cover" fallback={<Icon name="box" size={20} />} /></span>
-                                <div className="flex-1 text-sm"><b className="line-clamp-1">{p.name}</b><span className="text-blue-600">{money(p.price)}</span></div>
-                                <input type="number" min="1" max={p.stock} aria-label={`Quantity for ${p.name}`} value={qty} onChange={(e) => setQty(p.id, e.target.value)} className="w-16 rounded border border-line px-2 py-1 text-center text-sm" />
-                                <button onClick={() => remove(p.id)} aria-label={`Remove ${p.name}`} className="text-red-500"><Icon name="trash" size={16} /></button>
-                            </div>))}
-                    </div>
-                    <dl className="mt-4 space-y-1 text-[15px]"><div className="flex justify-between"><dt>Sub Total</dt><dd>{money(quote.subtotal)}</dd></div><div className="flex justify-between"><dt>Discount Amount</dt><dd className="text-red-500">- {money(quote.discount)}</dd></div></dl>
-                    <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); setAppliedCoupon(coupon.trim()); setCouponError(null); }}><input className="field" placeholder="Add Coupon" value={coupon} onChange={(e) => setCoupon(e.target.value)} /><button className="btn-primary !rounded-md !bg-[#f43f6a] !px-6">Apply</button></form>
-                    {couponError && <p className="mt-1 text-xs text-red-500">{couponError}</p>}
-                    <div className="mt-4 flex gap-3"><button onClick={draft} className="rounded-lg bg-[#fdecb6] px-6 py-3 font-medium text-amber-700">Draft</button>
-                        <button disabled={!items.length} onClick={() => setShowPay(true)} className="btn-primary flex-1 !rounded-lg !bg-[#f43f6a] !py-3 text-[15px]">Grand Total {money(quote.total).replace('.00', '')} →</button></div>
-                </section>
+                            <small className="muted">{customer ? 'Customer selected' : 'Walk-in customer if none selected'}</small></div>
+                        <div id="cart">
+                            {cart.length === 0 && <p className="muted">Cart is empty — click a product to add it.</p>}
+                            {cart.map(({ product: p, qty }) => (
+                                <div key={p.id} className="cart-row">
+                                    <span>{p.name}</span>
+                                    <input className="input" type="number" min="1" max={p.stock} aria-label={`Quantity for ${p.name}`} value={qty} onChange={(e) => setQty(p.id, e.target.value)} />
+                                    <span>{money(qty * p.price)}</span>
+                                    <button className="act" aria-label={`Remove ${p.name}`} onClick={() => remove(p.id)}><SaIcon name="x" /></button>
+                                </div>))}
+                        </div>
+                        <form className="row" style={{ margin: '12px 0' }} onSubmit={(e) => { e.preventDefault(); setAppliedCoupon(coupon.trim()); setCouponError(null); }}>
+                            <input className="input" aria-label="Coupon code" placeholder="Coupon code" value={coupon} onChange={(e) => setCoupon(e.target.value)} /><button className="btn">Apply</button>
+                        </form>
+                        {couponError && <p className="err" style={{ margin: '0 0 8px', color: 'var(--danger)', fontSize: 12 }}>{couponError}</p>}
+                        <div className="totals">
+                            <div><span>Sub total</span><span>{money(quote.subtotal)}</span></div>
+                            <div><span>Discount{appliedCoupon && quote.discount ? ` (${appliedCoupon})` : ''}</span><span>-{money(quote.discount)}</span></div>
+                            <div className="grand"><span>Total</span><span>{money(quote.total)}</span></div>
+                        </div>
+                        <div className="sa-field" style={{ marginTop: 12 }}><label htmlFor="pos-pay">Payment Method</label>
+                            <select id="pos-pay" className="input" value={payment} onChange={(e) => setPayment(e.target.value)}>{['Cash Payment', 'Card', 'Bkash'].map((m) => <option key={m}>{m}</option>)}</select></div>
+                        <div className="row" style={{ marginTop: 14 }}>
+                            <button className="btn" style={{ flex: 1, justifyContent: 'center' }} onClick={draft}>Save Draft</button>
+                            <button className="btn primary" style={{ flex: 1, justifyContent: 'center' }} disabled={!items.length || paying} onClick={pay}>{paying ? 'Processing…' : 'Place Order'}</button>
+                        </div>
+                    </CardB>
+                </Card>
             </div>
-
             {showCustomer && <AddCustomer onClose={() => setShowCustomer(false)} onAdded={(c) => { setCustomer(String(c.id)); setCustSearch(`${c.name} (${c.phone})`); }} />}
-            {showPay && (
-                <Modal title="Confirm payment" onClose={() => setShowPay(false)}>
-                    <p className="mb-3 text-sm">Total to collect: <b className="text-lg">{money(quote.total)}</b></p>
-                    <Field label="Payment method"><select className="field" value={payment} onChange={(e) => setPayment(e.target.value)}>{['Cash Payment', 'Card', 'Bkash'].map((m) => <option key={m}>{m}</option>)}</select></Field>
-                    <div className="flex justify-end gap-2"><button className="btn-outline" onClick={() => setShowPay(false)}>Close</button><button disabled={paying} onClick={pay} className="btn-primary">{paying ? 'Processing…' : 'Confirm'}</button></div>
-                </Modal>)}
-            {draftId && <p className="mt-2 text-xs text-muted">Resuming draft #{draftId}. <button className="text-primary underline" onClick={() => navigate(0)}>Discard</button></p>}
-        </div>
+        </>
     );
 }
 
@@ -163,15 +162,12 @@ function AddCustomer({ onClose, onAdded }) {
         if (r.error) return dispatch(pushToast(errorMessage(r.error), 'error'));
         dispatch(pushToast('Customer added')); onAdded(r.data); onClose();
     };
-    const set = (k) => (v) => setF({ ...f, [k]: v });
+    const row = (k, label, props = {}) => <div className="sa-field"><label htmlFor={`pc_${k}`}>{label}{props.required && <> <span className="req">*</span></>}</label><input id={`pc_${k}`} className="input" value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} {...props} /><span className="err">{errs[k]?.[0]}</span></div>;
     return (
-        <Modal title="Add Customer" onClose={onClose}>
-            <form onSubmit={submit}>
-                <div className="grid gap-x-4 sm:grid-cols-2"><Field label="First Name" required error={errs.first_name?.[0]}><TextInput value={f.first_name} onChange={set('first_name')} placeholder="First Name" /></Field><Field label="Last Name"><TextInput value={f.last_name} onChange={set('last_name')} placeholder="Enter Name" /></Field></div>
-                <Field label="Phone Number" required error={errs.phone?.[0]}><TextInput value={f.phone} onChange={set('phone')} placeholder="Enter phone number" /></Field>
-                <Field label="Gender"><select className="field" value={f.gender} onChange={(e) => set('gender')(e.target.value)}><option value="male">Male</option><option value="female">Female</option></select></Field>
-                <Field label="Email" required error={errs.email?.[0]}><TextInput type="email" value={f.email} onChange={set('email')} placeholder="Enter Email Address" /></Field>
-                <div className="flex justify-end gap-2"><button type="button" className="btn-outline" onClick={onClose}>Close</button><button disabled={isLoading} className="btn-primary">{isLoading ? 'Saving…' : 'Confirm'}</button></div>
+        <Modal title="Add Customer" onClose={onClose} footer={<><button type="button" className="btn" onClick={onClose}>Cancel</button><button form="pos-cust-form" className="btn primary" disabled={isLoading}>{isLoading ? 'Saving…' : 'Save'}</button></>}>
+            <form id="pos-cust-form" className="form-grid" onSubmit={submit}>
+                {row('first_name', 'First Name', { required: true })}{row('last_name', 'Last Name')}{row('phone', 'Phone', { required: true })}{row('email', 'Email', { type: 'email', required: true })}
+                <div className="sa-field"><label htmlFor="pc_gender">Gender</label><select id="pc_gender" className="input" value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}><option value="male">Male</option><option value="female">Female</option></select></div>
             </form>
         </Modal>
     );
@@ -180,13 +176,23 @@ function AddCustomer({ onClose, onAdded }) {
 export function PosSales() {
     const [page, setPage] = useState(1);
     const { data, isFetching, isError } = usePosSalesQuery(page);
+    const rows = data?.data ?? [];
     return (
-        <div><h2 className="mb-4 text-[22px] font-semibold">POS Sales</h2>
-            <div className="card overflow-x-auto rounded-xl !border-[#f4f4f4] p-4"><p className="mb-3 text-sm">Orders Summary</p><table className="w-full min-w-[640px] text-left text-sm">
-                <thead><tr className="bg-[#f6f7f9] text-[13px]">{['Order ID', 'Order Date', 'Customer', 'Total Amount', 'Payment Method', 'Status'].map((h) => <th key={h} className="px-4 py-3">{h}</th>)}</tr></thead>
-                <tbody className={isFetching ? 'opacity-50' : ''}>{data?.data.map((o) => <tr key={o.id} className="border-b border-[#f4f4f4]"><td className="px-4 py-3">{o.number}</td><td className="px-4">{new Date(o.created_at).toLocaleString()}</td><td className="px-4">{o.user?.name}</td><td className="px-4 font-medium">{money(o.total)}</td><td className="px-4">{o.payment_method}</td><td className="px-4"><Badge v={o.status} /></td></tr>)}</tbody></table>
-                {data?.data.length === 0 && <Empty title="No POS sales yet" hint="Completed POS orders appear here." />}{isError && <Empty title="Could not load sales" />}{!data && !isError && <div className="skeleton h-24" />}</div>
-            <Pagination meta={data} onPage={setPage} /></div>
+        <>
+            <PageHead title="POS Sales" />
+            <Card>
+                <div className="table-wrap" style={{ opacity: isFetching ? 0.6 : 1 }}><table>
+                    <thead><tr><th>SL</th><th>Order ID</th><th>Order Date</th><th>Customer</th><th>Total Amount</th><th>Payment Method</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {rows.map((o, i) => <tr key={o.id}><td>{(data.current_page - 1) * data.per_page + i + 1}</td><td>{o.number}</td><td>{fdt(o.created_at)}</td><td>{o.user?.name}</td><td>{money(o.total)}</td><td>{o.payment_method}</td><td><Pill value={o.status} /></td><td><div className="actions"><a className="act" href={`/admin/orders/${o.id}/show`} title="View" aria-label="View"><SaIcon name="eye" /></a></div></td></tr>)}
+                        {!data && !isError && <tr><td colSpan={8} className="empty">Loading…</td></tr>}
+                        {isError && <tr><td colSpan={8} className="empty">Could not load sales.</td></tr>}
+                        {data && rows.length === 0 && <tr><td colSpan={8} className="empty">No Data Found</td></tr>}
+                    </tbody>
+                </table></div>
+                <Pager meta={data} count={rows.length} onPage={setPage} />
+            </Card>
+        </>
     );
 }
 
@@ -200,14 +206,25 @@ export function PosDrafts() {
         sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ cart: d.lines, customer_id: d.customer_id, id: d.id, coupon: d.coupon }));
         navigate('/admin/pos');
     };
+    const rows = data?.data ?? [];
     return (
-        <div><h2 className="mb-4 text-[22px] font-semibold">POS Draft</h2>
-            <div className="card overflow-x-auto rounded-xl !border-[#f4f4f4] p-4"><table className="w-full min-w-[640px] text-left text-sm">
-                <thead><tr className="bg-[#f6f7f9] text-[13px]">{['SL', 'Created Date', 'Customer', 'Total Products', 'Sub Total', 'Discount', 'Total', 'Action'].map((h) => <th key={h} className="px-4 py-3">{h}</th>)}</tr></thead>
-                <tbody className={isFetching ? 'opacity-50' : ''}>{data?.data.map((d, i) => <tr key={d.id} className="border-b border-[#f4f4f4]"><td className="px-4 py-3">{(data.current_page - 1) * data.per_page + i + 1}</td><td className="px-4">{new Date(d.created_at).toLocaleString()}</td><td className="px-4">{d.customer?.name ?? 'Walk-in'}</td><td className="px-4">{d.items.length}</td><td className="px-4">{money(d.subtotal)}</td><td className="px-4">{money(d.discount)}</td><td className="px-4 font-medium">{money(d.total)}</td>
-                    <td className="px-4"><button onClick={() => resume(d)} className="mr-2 rounded-lg border border-primary/30 bg-primary-soft px-3 py-1.5 text-xs text-primary">Resume</button>
-                        <button aria-label="Delete draft" onClick={async () => { if (window.confirm('Delete this draft?')) { const r = await del(d.id); dispatch(pushToast(r.error ? errorMessage(r.error) : 'Draft deleted', r.error ? 'error' : 'success')); } }} className="text-red-500"><Icon name="trash" size={16} /></button></td></tr>)}</tbody></table>
-                {data?.data.length === 0 && <Empty title="No drafts" hint="Use the Draft button in POS to save a cart for later." />}{isError && <Empty title="Could not load drafts" />}{!data && !isError && <div className="skeleton h-24" />}</div>
-            <Pagination meta={data} onPage={setPage} /></div>
+        <>
+            <PageHead title="POS Draft" />
+            <Card>
+                <div className="table-wrap" style={{ opacity: isFetching ? 0.6 : 1 }}><table>
+                    <thead><tr><th>SL</th><th>Created Date</th><th>Customer</th><th>Total Products</th><th>Sub Total</th><th>Discount</th><th>Total</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {rows.map((d, i) => (
+                            <tr key={d.id}><td>{(data.current_page - 1) * data.per_page + i + 1}</td><td>{fdt(d.created_at)}</td><td>{d.customer?.name ?? 'Walk-in'}</td><td>{d.items.length}</td><td>{money(d.subtotal)}</td><td>{money(d.discount)}</td><td>{money(d.total)}</td>
+                                <td><div className="actions"><button className="btn sm" onClick={() => resume(d)}>Resume</button>
+                                    <ActBtn icon="trash" title="Delete draft" onClick={async () => { if (window.confirm('Delete this draft?')) { const r = await del(d.id); dispatch(pushToast(r.error ? errorMessage(r.error) : 'Draft deleted', r.error ? 'error' : 'success')); } }} /></div></td></tr>))}
+                        {!data && !isError && <tr><td colSpan={8} className="empty">Loading…</td></tr>}
+                        {isError && <tr><td colSpan={8} className="empty">Could not load drafts.</td></tr>}
+                        {data && rows.length === 0 && <tr><td colSpan={8} className="empty">No Data Found</td></tr>}
+                    </tbody>
+                </table></div>
+                <Pager meta={data} count={rows.length} onPage={setPage} />
+            </Card>
+        </>
     );
 }

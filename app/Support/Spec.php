@@ -79,6 +79,19 @@ class Spec
         return array_keys($out);
     }
 
+    /** Row actions the spec declares for a resource (e.g. approve, reject). */
+    public static function actionsFor(string $resource): array
+    {
+        $out = [];
+        foreach (self::all()['pages'] as $page) {
+            if (($page['resource'] ?? null) === $resource) {
+                $out = array_merge($out, $page['actions'] ?? []);
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
     public static function settingsPage(string $key): ?array
     {
         foreach (self::all()['pages'] as $page) {

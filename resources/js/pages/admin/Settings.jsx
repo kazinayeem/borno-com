@@ -7,7 +7,7 @@ import { Icon } from '../../components/ui';
 
 const Toggle = ({ label, on, onChange }) => (
     <label className="flex cursor-pointer items-center justify-between py-1 text-[13px] font-medium">{label}
-        <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className={`relative h-6 w-11 rounded-full transition ${on ? 'bg-primary' : 'bg-gray-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} /></button></label>
+        <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className={`relative h-6 w-11 rounded-full transition ${on ? 'bg-primary' : 'bg-gray-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-sa-surface shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} /></button></label>
 );
 
 export default function Settings() {
@@ -71,7 +71,7 @@ export default function Settings() {
                     {img('footer_logo', 'Frontend Footer Logo Ratio4:1', { width: 'w-full', ratio: 'aspect-[4/1]' })}{img('footer_qrcode', 'Frontend Scan the QR (200x200)', { width: 'w-28' })}
                     {img('footer_payment_img', 'Frontend Footer Payment Image', { width: 'w-full', ratio: 'aspect-[4/1]' })}{img('footer_bg_image', 'Frontend Footer Background Image', { width: 'w-full', ratio: 'aspect-[4/1]' })}</div>
             </Section>
-            <div className="flex justify-end pb-6"><button disabled={saving} className="btn-primary !rounded-lg !bg-[#f43f6a] !px-8">{saving ? 'Saving…' : 'Save And Update'}</button></div>
+            <div className="flex justify-end pb-6"><button disabled={saving} className="btn-primary !rounded-lg !px-8">{saving ? 'Saving…' : 'Save And Update'}</button></div>
         </form>
     );
 }
